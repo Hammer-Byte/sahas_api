@@ -67,6 +67,25 @@ router.put("/dashboard/dialog", async (req, res) => {
     }
 });
 
+router.put("/stream-selection", async (req, res) => {
+    const requiredBodyFields = ["external_attendees","fees"];
+
+    try {
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (isRequestBodyValid) {
+            const config = await readConfig("template");
+            config.stream_selection = validatedRequestBody;
+            writeConfig("template", config);
+            res.status(200).json(validatedRequestBody);
+        } else {
+            res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+    } catch (error) {
+        logger.error(error);
+        res.status(400).json({ error });
+    }
+});
+
 router.delete("/dashboard/carousel-images/:id", async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Carousel Image Id" });

@@ -61,7 +61,6 @@ router.get("/test", requires_authority(AUTHORITIES.READ_CHAPTERS_TEST), async (r
             trim: true,
         });
 
-        logger.info(`records -> ${JSON.stringify(records)}`);
 
         testQuestions.push(...records);
     }

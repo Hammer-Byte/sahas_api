@@ -14,11 +14,12 @@ const {
     updatetreamSelectionQuestionViewIndexById,
     getAllStreamSelectionQuestions,
 } = require("../db/stream_selection_questions");
+const parseAuthenticationToken = require("../middlewares/parse_authentication_token");
 
 const router = libExpress.Router();
 
 //tested
-router.patch("/view_indexes", requires_authority(AUTHORITIES.UPDATE_CHAPTER_TYPES_VIEW_INDEXES), async (req, res) => {
+router.patch("/view_indexes",parseAuthenticationToken, requires_authority(AUTHORITIES.UPDATE_CHAPTER_TYPES_VIEW_INDEXES), async (req, res) => {
     if (req.body?.length) {
         req.body.forEach(updatetreamSelectionQuestionViewIndexById);
         return res.sendStatus(200);
@@ -37,7 +38,7 @@ router.get("/", async (req, res) => {
 });
 
 //tested
-router.post("/", requires_authority(AUTHORITIES.CREATE_STREAM_SELECTION_TEST_QUESTION), async (req, res) => {
+router.post("/",parseAuthenticationToken, requires_authority(AUTHORITIES.CREATE_STREAM_SELECTION_TEST_QUESTION), async (req, res) => {
     const requiredBodyFields = ["category_id", "question", "options"];
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
@@ -59,7 +60,7 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_STREAM_SELECTION_TEST_QUE
 });
 
 //tested
-router.delete("/:id", requires_authority(AUTHORITIES.DELETE_STREAM_SELECTION_TEST_QUESTION), async (req, res) => {
+router.delete("/:id",parseAuthenticationToken, requires_authority(AUTHORITIES.DELETE_STREAM_SELECTION_TEST_QUESTION), async (req, res) => {
     if (!req.params?.id) {
         return res.status(400).json({ error: "Missing Question Id" });
     }
@@ -69,7 +70,7 @@ router.delete("/:id", requires_authority(AUTHORITIES.DELETE_STREAM_SELECTION_TES
     res.sendStatus(204);
 });
 
-router.put("/", requires_authority(AUTHORITIES.UPDATE_STREAM_SELECTION_TEST_QUESTION), async (req, res) => {
+router.put("/",parseAuthenticationToken, requires_authority(AUTHORITIES.UPDATE_STREAM_SELECTION_TEST_QUESTION), async (req, res) => {
     const requiredBodyFields = ["id", "question", "options"];
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);

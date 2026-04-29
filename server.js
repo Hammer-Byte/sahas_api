@@ -130,7 +130,7 @@ const routers = {
         router: require("./routes/stream_selection_questions_categories"),
     },
     "/stream-selection-questions": {
-        middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
+        middlewares: [requiresDeviceFingerPrint,  parseUserDevice, logRequest],
         router: require("./routes/stream_selection_questions"),
     },
     "/stream-selection-tests": {

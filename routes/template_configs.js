@@ -9,6 +9,7 @@ const { validateRequestBody } = require("sahas_utils");
 const router = libExpress.Router();
 const { v4: uuidv4 } = require("uuid");
 const { getAllChapterTypes } = require("../db/chapter_types");
+const { getAllStreamSelectionSuggestions } = require("../db/stream_selection_suggestions");
 
 //Template Config
 router.get("/", async (req, res) => {
@@ -21,6 +22,7 @@ router.get("/", async (req, res) => {
         config.global.roles = await getAllRoles();
         config.global.authorities = await getAllAuthorities();
         config.global.chapter_types = await getAllChapterTypes();
+        config.stream_selection.suggestions = await getAllStreamSelectionSuggestions();
     } catch (error) {
         logger.error(error);
     } finally {

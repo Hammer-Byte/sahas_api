@@ -243,7 +243,7 @@ function addUser({ email, full_name, phone, image = null, address, branch_id=nul
 
 
 function addGuestUser({ email, full_name, phone, image = null, address, branch_id=null }) {
-    return executeSQLQueryParameterized(`INSERT INGORE INTO USERS(email,full_name, phone, image, address, branch_id) VALUES(?,?,?,?,?,?)`, [
+    return executeSQLQueryParameterized(`INSERT IGNORE INTO USERS(email,full_name, phone, image, address, branch_id) VALUES(?,?,?,?,?,?)`, [
         email?.toLowerCase(),
         full_name,
         phone,

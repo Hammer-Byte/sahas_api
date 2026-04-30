@@ -269,6 +269,7 @@ module.exports = {
     getAuthoritiesByRoleIds,
     updateUserById,
     addUser,
+    addGuestUser,
     patchUserFullNameById,
     patchUserPhoneById,
     patchUserStreamSelectionTestAllowedById,

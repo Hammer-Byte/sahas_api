@@ -8,6 +8,7 @@ const {
     addUser,
     patchUserFullNameById,
     patchUserPhoneById,
+    addGuestUser,
 } = require("../db/users");
 const { getInquiriesByUserId } = require("../db/inquiries");
 const { validateRequestBody } = require("sahas_utils");
@@ -309,7 +310,7 @@ router.post("/guest", async (req, res) => {
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        addUser(validatedRequestBody)
+        addGuestUser(validatedRequestBody)
         addUserHistory({ user_id: userId, ...validatedRequestBody?.history });
         return res.status(201).json(validatedRequestBody);
     }

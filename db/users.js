@@ -241,6 +241,22 @@ function addUser({ email, full_name, phone, image = null, address, branch_id=nul
         .catch((error) => logger.error(`addUser: ${error}`));
 }
 
+
+function addGuestUser({ email, full_name, phone, image = null, address, branch_id=null }) {
+    return executeSQLQueryParameterized(`INSERT INGORE INTO USERS(email,full_name, phone, image, address, branch_id) VALUES(?,?,?,?,?,?)`, [
+        email?.toLowerCase(),
+        full_name,
+        phone,
+        image,
+        address,
+        branch_id,
+    ])
+        .then((result) => {
+            result?.affectedRows && addDefaultRoleToUser(result?.insertId);
+        })
+        .catch((error) => logger.error(`addGuestUser: ${error}`));
+}
+
 module.exports = {
     getAllUsersBySearchAndFilters,
     getCountUsersBySearchAndFilters,

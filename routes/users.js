@@ -98,7 +98,7 @@ router.get("/stream-selection-test-results/latest", parseExternalUser, async (re
         return res.status(200).json(streamSelectionTest);
     }
 
-    return res.status(404).json({ error: "Stream Selection Test Not Found" });
+    return res.status(400).json({ error: "No Stream Selection Test Given" });
 });
 
 //tested
@@ -309,18 +309,13 @@ router.post("/guest", async (req, res) => {
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        if ((userId = await addUser(validatedRequestBody))) {
-            await addUserHistory({ user_id: userId, ...validatedRequestBody?.history });
-
-            const user = await getUserById({ id: userId });
-            user.history = await getUserHistoryById({ user_id: user.id });
-
-            return res.status(201).json(user);
-        }
-        return res.status(400).json({ error: "Unable To Add User - User Might Already Exist" });
+        addUser(validatedRequestBody)
+        addUserHistory({ user_id: userId, ...validatedRequestBody?.history });
+        return res.status(201).json(validatedRequestBody);
     }
 
     return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
 });
 
 module.exports = router;
+

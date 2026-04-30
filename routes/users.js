@@ -33,6 +33,9 @@ const {
     getStreamSelectionTestAnswersByStreamSelectionTestId,
 } = require("../db/stream_selection_tests");
 
+const parseExternalUser = require("../middlewares/parse_external_user");
+
+
 const router = libExpress.Router();
 
 //tested
@@ -89,7 +92,7 @@ router.get("/download", async (req, res) => {
 });
 
 //tested
-router.get("/stream-selection-test-results/latest", async (req, res) => {
+router.get("/stream-selection-test-results/latest", parseExternalUser, async (req, res) => {
     const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
     streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
     res.status(200).json(streamSelectionTest);

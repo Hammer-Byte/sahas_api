@@ -6,6 +6,7 @@ module.exports = {
     KEY_DEVICE_DESCRIPTION: "device-description",
     KEY_AUTHENTICATION_TOKEN: "authentication-token",
     ERROR_DEVICE_MISSING: "Device Information Is Missing",
+    KEY_GUEST: "guest",
 
     CACHE_KEY_COURSE_CATEGORIES: "CACHE_KEY_COURSE_CATEGORIES",
     CACHE_KEY_COURSES: "CACHE_KEY_COURSES",

@@ -5,10 +5,10 @@ const router = libExpress.Router();
 const { setTimeout } = require("timers/promises");
 const { logger } = require("sahas_utils");
 const { patchUserStreamSelectionTestAllowedById } = require("../db/users");
-const parseExternalUser = require("../middlewares/parse_external_user");
+const parseGuestUser = require("../middlewares/parse_guest_user");
 
 //tested
-router.post("/",parseExternalUser, async (req, res) => {
+router.post("/",parseGuestUser, async (req, res) => {
     if (req.body?.length) {
         const streamSelectionTestId = await addStreamSelectionTest({ user_id: req.user.id });
 

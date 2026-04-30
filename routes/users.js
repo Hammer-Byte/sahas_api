@@ -314,7 +314,7 @@ router.post("/guest", async (req, res) => {
         await addGuestUser(validatedRequestBody)
         const user =await getUserByEmail({ email: validatedRequestBody?.email });
         addUserHistory({ user_id: user.id, ...validatedRequestBody?.history });
-        return res.status(201).json(validatedRequestBody);
+        return res.status(201).json(user);
     }
 
     return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });

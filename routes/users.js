@@ -95,9 +95,10 @@ router.get("/stream-selection-test-results/latest", parseExternalUser, async (re
     const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
     if (!!streamSelectionTest) {
         streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
-
+        return res.status(200).json(streamSelectionTest);
     }
-    res.status(200).json(streamSelectionTest);
+
+    return res.status(404).json({ error: "Stream Selection Test Not Found" });
 });
 
 //tested

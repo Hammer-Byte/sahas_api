@@ -229,24 +229,6 @@ router.patch(
     },
 );
 
-// router.patch(
-//     "/stream-selection-test-allowed",
-//     requires_authority(AUTHORITIES.UPDATE_USER),
-//     async (req, res, next) => {
-//         const requiredBodyFields = ["id", "stream_selection_test_allowed"];
-//         const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
-//         if (!isRequestBodyValid) {
-//             return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-//         }
-//         req.body = validatedRequestBody;
-//         next();
-//     },
-//     async (req, res) => {
-//         await patchUserStreamSelectionTestAllowedById({ ...req.body });
-//         res.status(200).json(await getUserById({ id: req.body.id }));
-//     },
-// );
-
 //tested
 router.get("/:id/inquiries", requires_authority(AUTHORITIES.READ_USER_INQUIRIES), async (req, res) => {
     if (!req.params.id) {
@@ -317,6 +299,25 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_USER), async (req, res) =
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
+});
+
+router.post("/guest", async (req, res) => {
+    const requiredBodyFields = ["full_name", "email", "phone", "address"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (isRequestBodyValid) {
+        if ((userId = await addUser(validatedRequestBody))) {
+            await addUserHistory({ user_id: userId, ...validatedRequestBody?.history });
+
+            const user = await getUserById({ id: userId });
+            user.history = await getUserHistoryById({ user_id: user.id });
+
+            return res.status(201).json(user);
+        }
+        return res.status(400).json({ error: "Unable To Add User - User Might Already Exist" });
+    }
+
+    return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
 });
 
 module.exports = router;

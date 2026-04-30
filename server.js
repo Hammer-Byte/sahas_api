@@ -141,17 +141,9 @@ const routers = {
         middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
         router: require("./routes/stream_selection_suggestions"),
     },
-
-
-    
-    
     "/stream-selection-test-invites": {
         middlewares: [logRequest],
         router: require("./routes/stream_selection_test_invites"),
-    },
-    "/stream-selection-test-users": {
-        middlewares: [logRequest],
-        router: require("./routes/stream_selection_test_users"),
     },
 };
 

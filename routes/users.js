@@ -8,7 +8,6 @@ const {
     addUser,
     patchUserFullNameById,
     patchUserPhoneById,
-    patchUserStreamSelectionTestAllowedById,
 } = require("../db/users");
 const { getInquiriesByUserId } = require("../db/inquiries");
 const { validateRequestBody } = require("sahas_utils");

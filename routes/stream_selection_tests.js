@@ -1,5 +1,5 @@
 const libExpress = require("express");
-const { addStreamSelectionTest, addStreamSelectionTestAnswer, updateStreamSelectionTestResultById } = require("../db/stream_selection_tests");
+const { addStreamSelectionTest, addStreamSelectionTestAnswer, updateStreamSelectionTestResultById, getLatestStreamSelectionTestByUserId, getStreamSelectionTestAnswersByStreamSelectionTestId } = require("../db/stream_selection_tests");
 const openai = require("../libs/openai");
 const router = libExpress.Router();
 const { setTimeout } = require("timers/promises");
@@ -155,7 +155,11 @@ router.post("/",parseExternalUser, async (req, res) => {
         //Fake Delay
         await setTimeout(10000);
 
-        return res.sendStatus(201);
+
+        const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
+        streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
+        res.status(201).json(streamSelectionTest);
+
     }
 
     return res.status(400).json({ error: "Missing Test Questions" });

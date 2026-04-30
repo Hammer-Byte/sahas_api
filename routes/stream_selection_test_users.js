@@ -12,7 +12,7 @@ router.post("/", async (req, res) => {
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        if ((userId = await addUser({ ...validatedRequestBody }))) {
+        if ((userId = await addUser(validatedRequestBody))) {
             await addUserHistory({ user_id: userId, ...validatedRequestBody?.history });
 
             const user = await getUserById({ id: userId });

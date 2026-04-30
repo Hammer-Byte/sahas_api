@@ -225,7 +225,7 @@ function patchUserStreamSelectionTestAllowedById({ id, stream_selection_test_all
 }
 
 //freeze
-function addUser({ email, full_name, phone, image = null, address, branch_id }) {
+function addUser({ email, full_name, phone, image = null, address, branch_id=null }) {
     return executeSQLQueryParameterized(`INSERT  INTO USERS(email,full_name, phone, image, address, branch_id) VALUES(?,?,?,?,?,?)`, [
         email?.toLowerCase(),
         full_name,

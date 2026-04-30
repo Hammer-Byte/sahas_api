@@ -11,15 +11,21 @@ const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 
+
+const parseAuthenticationToken = require("../middlewares/parse_authentication_token");
+const parseUserDevice = require("../middlewares/parse_user_device");
+const requiresDeviceFingerPrint = require("../middlewares/requires_device_finger_print");
+
+
 const router = libExpress.Router();
 
 // Get all stream selection test invites
-router.get("/", async (req, res) => {
+router.get("/",requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice,  async (req, res) => {
     const invites = await getAllStreamSelectionTestInvites();
     res.status(200).json(invites);
 });
 
-router.post("/", requires_authority(AUTHORITIES.CREATE_STREAM_SELECTION_TEST_INVITE), async (req, res) => {
+router.post("/",requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice,  requires_authority(AUTHORITIES.CREATE_STREAM_SELECTION_TEST_INVITE), async (req, res) => {
     const requiredBodyFields = ["title", "active"];
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
@@ -51,7 +57,7 @@ router.get("/:id/attend", async (req, res) => {
 });
 
 // Update stream selection test invite
-router.patch("/", requires_authority(AUTHORITIES.UPDATE_STREAM_SELECTION_TEST_INVITE), async (req, res) => {
+router.patch("/",requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice,  requires_authority(AUTHORITIES.UPDATE_STREAM_SELECTION_TEST_INVITE), async (req, res) => {
     const requiredBodyFields = ["id", "title", "active"];
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
@@ -65,7 +71,7 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_STREAM_SELECTION_TEST_IN
 });
 
 //tested
-router.delete("/:id", requires_authority(AUTHORITIES.DELETE_STREAM_SELECTION_TEST_INVITE), async (req, res) => {
+router.delete("/:id",requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice,  requires_authority(AUTHORITIES.DELETE_STREAM_SELECTION_TEST_INVITE), async (req, res) => {
     if (!req.params?.id) {
         return res.status(400).json({ error: "Missing Invite Id" });
     }

@@ -1,4 +1,4 @@
-import { getUserByEmail } from "../db/users";
+const { getUserByEmail } = require("../db/users");
 
 module.exports = async (req, res, next) => {
     if (!req?.user) {

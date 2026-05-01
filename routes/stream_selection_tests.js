@@ -158,6 +158,7 @@ router.post("/",parseGuestUser, async (req, res) => {
 
         const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
         streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
+        streamSelectionTest.result= JSON.parse(streamSelectionTest.result);
         return res.status(201).json(streamSelectionTest);
 
     }

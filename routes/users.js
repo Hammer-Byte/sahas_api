@@ -97,6 +97,7 @@ router.get("/stream-selection-test-results/latest", parseGuestUser, async (req, 
     const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
     if (!!streamSelectionTest) {
         streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
+        streamSelectionTest.result= JSON.parse(streamSelectionTest.result);
         return res.status(200).json(streamSelectionTest);
     }
 

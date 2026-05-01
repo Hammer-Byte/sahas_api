@@ -140,6 +140,7 @@ router.post("/", parseGuestUser, async (req, res) => {
 
         if (!!response) {
 
+
             const streamSelectionTestId = await addStreamSelectionTest({ user_id: req.user.id, result: response.output[0].content[0].text });
 
             for (const streamSelectionTestAnswer of req?.body) {
@@ -150,6 +151,8 @@ router.post("/", parseGuestUser, async (req, res) => {
                 });
             }
 
+            const result = JSON.parse(response.output[0].content[0].text);
+
             await requestService({
                 requestServiceName: process.env.SERVICE_MEDIA,
                 onRequestStart: () => logger.info("Generating Result"),
@@ -157,7 +160,32 @@ router.post("/", parseGuestUser, async (req, res) => {
                 requestMethod: "POST",
                 requestPostBody: {
                     template: "stream_selection_test_result",
-                    injects: { full_name: req.user.full_name, ...JSON.parse(response.output[0].content[0].text) },
+                    injects: { 
+                        full_name: req.user.full_name,
+                        created_at: getFormattedDate({ date: new Date(), format: "DD-MM-YY" }),
+                        suitable_stream: result?.suitable_stream,
+                        suggestion: result?.suggestion,
+                        stream_0: result?.analysis[0]?.stream,
+                        stream_0_score: result?.analysis[0]?.score,
+                        stream_0_feedback_0: result?.analysis[0]?.feedback[0],
+                        stream_0_feedback_1: result?.analysis[0]?.feedback[1],
+                        stream_0_feedback_2: result?.analysis[0]?.feedback[2],
+                        stream_1: result?.analysis[1]?.stream,
+                        stream_1_score: result?.analysis[1]?.score,
+                        stream_1_feedback_0: result?.analysis[1]?.feedback[0],
+                        stream_1_feedback_1: result?.analysis[1]?.feedback[1],
+                        stream_1_feedback_2: result?.analysis[1]?.feedback[2],
+                        stream_2: result?.analysis[2]?.stream,
+                        stream_2_score: result?.analysis[2]?.score,
+                        stream_2_feedback_0: result?.analysis[2]?.feedback[0],
+                        stream_2_feedback_1: result?.analysis[2]?.feedback[1],
+                        stream_2_feedback_2: result?.analysis[2]?.feedback[2],
+                        stream_3: result?.analysis[3]?.stream,
+                        stream_3_score: result?.analysis[3]?.score,
+                        stream_3_feedback_0: result?.analysis[3]?.feedback[0],
+                        stream_3_feedback_1: result?.analysis[3]?.feedback[1],
+                        stream_3_feedback_2: result?.analysis[3]?.feedback[2],
+                    },
                 },
                 onRequestFailure: (error) => {
                     logger.error(`Failed To Generate Result For Stream Selection Test Id - ${streamSelectionTestId} - Error: ${error}`);
@@ -182,7 +210,7 @@ router.post("/", parseGuestUser, async (req, res) => {
 
             const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
             streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
-            streamSelectionTest.result = JSON.parse(streamSelectionTest.result);
+            streamSelectionTest.result = result;
             return res.status(201).json(streamSelectionTest);
 
         }

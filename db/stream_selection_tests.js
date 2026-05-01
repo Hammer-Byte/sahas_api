@@ -2,10 +2,16 @@ const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
 
 //freeze
-function addStreamSelectionTest({ user_id }) {
-    return executeSQLQueryParameterized("INSERT INTO STREAM_SELECTION_TESTS(user_id) VALUES(?)", [user_id])
+function addStreamSelectionTest({ user_id ,result }) {
+    return executeSQLQueryParameterized("INSERT INTO STREAM_SELECTION_TESTS(user_id,result) VALUES(?,?)", [user_id,result ])
         .then((result) => result.insertId)
         .catch((error) => logger.error(`addStreamSelectionTest: ${error}`));
+}
+
+function updateStreamSelectionTestReportUrlById({ id, report_url }) {
+    return executeSQLQueryParameterized("UPDATE STREAM_SELECTION_TESTS set report_url=? WHERE id=?", [report_url, id]).catch((error) =>
+        logger.error(`updateStreamSelectionTestReportUrlById: ${error}`),
+    );
 }
 
 function addStreamSelectionTestAnswer({ stream_selection_test_id, question, answer=null }) {
@@ -16,11 +22,6 @@ function addStreamSelectionTestAnswer({ stream_selection_test_id, question, answ
     ]).catch((error) => logger.error(`addStreamSelectionTestAnswer: ${error}`));
 }
 
-function updateStreamSelectionTestResultById({ id, result }) {
-    return executeSQLQueryParameterized("UPDATE STREAM_SELECTION_TESTS set result=? WHERE id=?", [result, id]).catch((error) =>
-        logger.error(`updateStreamSelectionTestResultById: ${error}`),
-    );
-}
 
 function getLatestStreamSelectionTestByUserId({ user_id }) {
     return executeSQLQueryParameterized("SELECT * FROM STREAM_SELECTION_TESTS WHERE user_id=? ORDER BY id DESC LIMIT 1", [user_id])
@@ -43,8 +44,8 @@ function getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection
 module.exports = {
     addStreamSelectionTest,
     addStreamSelectionTestAnswer,
-    updateStreamSelectionTestResultById,
     getLatestStreamSelectionTestByUserId,
     getStreamSelectionTestsByUserId,
     getStreamSelectionTestAnswersByStreamSelectionTestId,
+    updateStreamSelectionTestReportUrlById
 };

@@ -3,22 +3,13 @@ const { addStreamSelectionTest, addStreamSelectionTestAnswer, updateStreamSelect
 const openai = require("../libs/openai");
 const router = libExpress.Router();
 const { setTimeout } = require("timers/promises");
-const { logger } = require("sahas_utils");
+const { logger, requestService } = require("sahas_utils");
 const { patchUserStreamSelectionTestAllowedById } = require("../db/users");
 const parseGuestUser = require("../middlewares/parse_guest_user");
 
 //tested
-router.post("/",parseGuestUser, async (req, res) => {
+router.post("/", parseGuestUser, async (req, res) => {
     if (req.body?.length) {
-        const streamSelectionTestId = await addStreamSelectionTest({ user_id: req.user.id });
-
-        for (const streamSelectionTestAnswer of req?.body) {
-            await addStreamSelectionTestAnswer({
-                stream_selection_test_id: streamSelectionTestId,
-                question: streamSelectionTestAnswer?.question,
-                answer: streamSelectionTestAnswer?.answer?.option,
-            });
-        }
 
         const aiInput = `You are a career guidance expert specializing in stream selection for students after 10th standard.
 
@@ -147,19 +138,53 @@ router.post("/",parseGuestUser, async (req, res) => {
             input: aiInput,
         });
 
-        await updateStreamSelectionTestResultById({ id: streamSelectionTestId, result: response.output[0].content[0].text });
+        if (!!response) {
 
-        //update user that stream selection test is taken
-        patchUserStreamSelectionTestAllowedById({ stream_selection_test_allowed: false, id: req.user.id });
+            const streamSelectionTestId = await addStreamSelectionTest({ user_id: req.user.id, result: response.output[0].content[0].text });
 
-        //Fake Delay
-        //await setTimeout(1000);
+            for (const streamSelectionTestAnswer of req?.body) {
+                await addStreamSelectionTestAnswer({
+                    stream_selection_test_id: streamSelectionTestId,
+                    question: streamSelectionTestAnswer?.question,
+                    answer: streamSelectionTestAnswer?.answer?.option,
+                });
+            }
 
+            await requestService({
+                requestServiceName: process.env.SERVICE_MEDIA,
+                onRequestStart: () => logger.info("Generating Result"),
+                requestPath: "templated/pdf",
+                requestMethod: "POST",
+                requestPostBody: {
+                    template: "stream_selection_test_result",
+                    injects: JSON.parse(response.output[0].content[0].text),
+                },
+                onResponseReceieved: async (generatedResult, responseCode) => {
+                    if (generatedResult?.cdn_url && responseCode === 201) {
+                        logger.success(`Stream Selection Test Result For Stream Selection Test Id - ${streamSelectionTestId} Generated !`);
+                        await updateStreamSelectionTestReportUrlById({ id: streamSelectionTestId, report_url: generatedResult.cdn_url });
+                    } else {
+                        logger.error(
+                            `Failed To Generate Invoice For Transaction - ${enrollmentTransactionId} - Media Responded With ${JSON.stringify(generatedInvoice)}`,
+                        );
+                    }
+                },
+            });
 
-        const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
-        streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
-        streamSelectionTest.result= JSON.parse(streamSelectionTest.result);
-        return res.status(201).json(streamSelectionTest);
+            //update user that stream selection test is taken
+            patchUserStreamSelectionTestAllowedById({ stream_selection_test_allowed: false, id: req.user.id });
+
+            //Fake Delay
+            //await setTimeout(1000);
+
+            const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
+            streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
+            streamSelectionTest.result = JSON.parse(streamSelectionTest.result);
+            return res.status(201).json(streamSelectionTest);
+
+        }
+
+        return res.status(400).json({ error: "Could No Generate AI Response" });
 
     }
 

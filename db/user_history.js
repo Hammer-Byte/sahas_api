@@ -2,11 +2,12 @@ const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
 
 //tested
-function addUserHistory({ user_id, institute = null, course = null, refered_by = null }) {
-    return executeSQLQueryParameterized(`INSERT  INTO USER_HISTORY(user_id,institute, course, refered_by) VALUES(?,?,?,?)`, [
+function addUserHistory({ user_id, institute = null, course = null,course_exam_seat=null, refered_by = null }) {
+    return executeSQLQueryParameterized(`INSERT  INTO USER_HISTORY(user_id,institute, course,course_exam_seat, refered_by) VALUES(?,?,?,?,?)`, [
         user_id,
         institute,
         course,
+        course_exam_seat,
         refered_by,
     ]).catch((error) => logger.error(`addUserHistory: ${error}`));
 }

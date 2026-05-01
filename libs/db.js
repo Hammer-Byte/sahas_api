@@ -36,6 +36,7 @@ async function generateDBTables() {
             user_id INT NOT NULL,
             institute VARCHAR(64) NULL,
             course VARCHAR(64) NULL,
+            course_exam_seat VARCHAR(64) NULL,
             refered_by VARCHAR(64) NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

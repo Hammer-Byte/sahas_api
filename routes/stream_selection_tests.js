@@ -159,6 +159,9 @@ router.post("/", parseGuestUser, async (req, res) => {
                     template: "stream_selection_test_result",
                     injects: JSON.parse(response.output[0].content[0].text),
                 },
+                onRequestFailure: (error) => {
+                    logger.error(`Failed To Generate Result For Stream Selection Test Id - ${streamSelectionTestId} - Error: ${error}`);
+                },
                 onResponseReceieved: async (generatedResult, responseCode) => {
                     if (generatedResult?.cdn_url && responseCode === 201) {
                         await updateStreamSelectionTestReportUrlById({ id: streamSelectionTestId, report_url: generatedResult.cdn_url });

@@ -26,8 +26,8 @@ function deleteGlobalNoteById({ id }) {
     });
 }
 
-async function addGlobalNote({ user_id, note, created_by }) {
-    return executeSQLQueryParameterized("INSERT INTO GLOBAL_NOTES(user_id, note, created_by) VALUES(?,?,?)", [user_id, note, created_by])
+async function addGlobalNote({ user_id, note, type, created_by }) {
+    return executeSQLQueryParameterized("INSERT INTO GLOBAL_NOTES(user_id, note, type, created_by) VALUES(?,?,?,?)", [user_id, note, type, created_by])
         .then((result) => result.insertId)
         .catch((error) => {
             logger.error(`addGlobalNote: ${error}`);

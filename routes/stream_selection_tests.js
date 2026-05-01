@@ -157,7 +157,7 @@ router.post("/", parseGuestUser, async (req, res) => {
                 requestMethod: "POST",
                 requestPostBody: {
                     template: "stream_selection_test_result",
-                    injects: JSON.parse(response.output[0].content[0].text),
+                    injects: { full_name: req.user.full_name, ...JSON.parse(response.output[0].content[0].text) },
                 },
                 onRequestFailure: (error) => {
                     logger.error(`Failed To Generate Result For Stream Selection Test Id - ${streamSelectionTestId} - Error: ${error}`);

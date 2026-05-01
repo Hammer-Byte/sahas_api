@@ -6,6 +6,7 @@ const { setTimeout } = require("timers/promises");
 const { logger, requestService } = require("sahas_utils");
 const { patchUserStreamSelectionTestAllowedById } = require("../db/users");
 const parseGuestUser = require("../middlewares/parse_guest_user");
+const { getFormattedDate } = require("../utils");
 
 //tested
 router.post("/", parseGuestUser, async (req, res) => {

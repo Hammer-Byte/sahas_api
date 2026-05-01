@@ -161,11 +161,11 @@ router.post("/", parseGuestUser, async (req, res) => {
                 },
                 onResponseReceieved: async (generatedResult, responseCode) => {
                     if (generatedResult?.cdn_url && responseCode === 201) {
-                        logger.success(`Stream Selection Test Result For Stream Selection Test Id - ${streamSelectionTestId} Generated !`);
                         await updateStreamSelectionTestReportUrlById({ id: streamSelectionTestId, report_url: generatedResult.cdn_url });
+                        logger.success(`Stream Selection Test Result For Stream Selection Test Id - ${streamSelectionTestId} Generated !`);
                     } else {
                         logger.error(
-                            `Failed To Generate Invoice For Transaction - ${enrollmentTransactionId} - Media Responded With ${JSON.stringify(generatedInvoice)}`,
+                            `Failed To Generate Result For Stream Selection Test Id - ${streamSelectionTestId} - Media Responded With ${JSON.stringify(generatedResult)}`,
                         );
                     }
                 },

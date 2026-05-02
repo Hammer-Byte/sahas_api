@@ -166,7 +166,7 @@ router.post("/", parseGuestUser, async (req, res) => {
                 requestMethod: "POST",
                 requestPostBody: {
                     template: "stream_selection_test_result",
-                    injects: { 
+                    injects: {
                         full_name: req.user.full_name,
                         created_at: getFormattedDate({ date: new Date(), format: "DD-MM-YY" }),
                         suitable_stream: result?.suitable_stream,
@@ -233,7 +233,7 @@ router.post("/payment-gateway-payloads", async (req, res) => {
 
     const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
 
-    const { stream_selection  = {} } = await readConfig("template");
+    const { stream_selection = {} } = await readConfig("template");
 
 
     const paymentGateWayPayLoad = {
@@ -256,41 +256,35 @@ router.post("/payment-gateway-payloads", async (req, res) => {
         product: "Stream Selection Test",
     };
 
-    
+    //add cgst and sgst
+    paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.amount * cgst) / 100).toFixed(2);
+    paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
 
-    if (isRequestBodyValid) {
+    //pre tax amount
+    paymentGateWayPayLoad.transaction.preTaxAmount =
+        Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
+        (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
 
-        //add cgst and sgst
-        paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.amount * cgst) / 100).toFixed(2);
-        paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
+    //final amount
+    paymentGateWayPayLoad.transaction.amount = (
+        Number(paymentGateWayPayLoad.transaction.preTaxAmount) +
+        Number(paymentGateWayPayLoad.transaction.sgst) +
+        Number(paymentGateWayPayLoad.transaction.cgst)
+    ).toFixed(2);
 
-        //pre tax amount
-        paymentGateWayPayLoad.transaction.preTaxAmount =
-            Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
-            (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
+    //hash generation
+    paymentGateWayPayLoad.transaction.hash = libCrypto
+        .createHash("sha512")
+        .update(
+            `${merchantKey}|${paymentGateWayPayLoad.transaction.id}|${paymentGateWayPayLoad.transaction.amount}|${paymentGateWayPayLoad.product}|${paymentGateWayPayLoad.user.firstName}|${paymentGateWayPayLoad.user.email}|||||||||||${merchantSalt}`,
+        )
+        .digest("hex");
 
-        //final amount
-        paymentGateWayPayLoad.transaction.amount = (
-            Number(paymentGateWayPayLoad.transaction.preTaxAmount) +
-            Number(paymentGateWayPayLoad.transaction.sgst) +
-            Number(paymentGateWayPayLoad.transaction.cgst)
-        ).toFixed(2);
+    //add transcation in to table
+    addPaymentGateWayPayLoad(paymentGateWayPayLoad);
 
-        //hash generation
-        paymentGateWayPayLoad.transaction.hash = libCrypto
-            .createHash("sha512")
-            .update(
-                `${merchantKey}|${paymentGateWayPayLoad.transaction.id}|${paymentGateWayPayLoad.transaction.amount}|${paymentGateWayPayLoad.product}|${paymentGateWayPayLoad.user.firstName}|${paymentGateWayPayLoad.user.email}|||||||||||${merchantSalt}`,
-            )
-            .digest("hex");
+    res.status(201).json(paymentGateWayPayLoad);
 
-        //add transcation in to table
-        addPaymentGateWayPayLoad(paymentGateWayPayLoad);
-
-        res.status(201).json(paymentGateWayPayLoad);
-    } else {
-        res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-    }
 });
 
 module.exports = router;

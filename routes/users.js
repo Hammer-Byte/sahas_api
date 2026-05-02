@@ -36,6 +36,7 @@ const {
 
 const parseGuestUser = require("../middlewares/parse_guest_user");
 const { addInactiveToken } = require("../db/authentication_tokens");
+const { generateToken } = require("../utils");
 
 
 const router = libExpress.Router();

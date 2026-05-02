@@ -5,6 +5,7 @@ module.exports = {
     KEY_DEVICE_FINGER_PRINT: "device-finger-print",
     KEY_DEVICE_DESCRIPTION: "device-description",
     KEY_AUTHENTICATION_TOKEN: "authentication-token",
+    KEY_GUEST_TOKEN: "guest-token",
     ERROR_DEVICE_MISSING: "Device Information Is Missing",
     KEY_GUEST: "guest",
 

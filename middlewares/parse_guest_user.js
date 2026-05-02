@@ -5,7 +5,7 @@ const { getUserByAuthenticationToken, getAuthoritiesByRoleIds } = require("../db
 module.exports = async (req, res, next) => {
     //verify token and get user information
 
-    if (!!req.headers?.[KEY_GUEST_TOKEN] && (user = await getUserByAuthenticationToken(req.headers?.[KEY_GUEST_TOKEN]))) {
+    if (req.headers?.[KEY_GUEST_TOKEN] && (user = await getUserByAuthenticationToken(req.headers?.[KEY_GUEST_TOKEN]))) {
         req.user = user;
 
      

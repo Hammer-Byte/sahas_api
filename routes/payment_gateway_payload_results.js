@@ -20,7 +20,7 @@ router.post("/", async (req, res) => {
         if(validatedRequestBody.productinfo === "Stream Selection Test") {
             const user = await getUserByEmail({ email: req.body.email });
             await patchUserStreamSelectionTestAllowedById({ id: user.id, stream_selection_test_allowed: true });
-            return res.redirect(redirectionHost.concat("stream-selection-test/attempt"));
+            return res.redirect(redirectionHost.concat("stream-selection-test/enroll"));
         }
         return res.redirect(redirectionHost.concat(postPaymentRoute.concat(validatedRequestBody.txnid)));
     }

@@ -212,7 +212,7 @@ router.post("/", parseGuestUser, async (req, res) => {
             patchUserStreamSelectionTestAllowedById({ stream_selection_test_allowed: false, id: req.user.id });
 
             //Fake Delay
-            //await setTimeout(1000);
+            await setTimeout(5000);
 
             const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
             streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });

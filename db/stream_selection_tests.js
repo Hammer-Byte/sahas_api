@@ -36,7 +36,7 @@ function getStreamSelectionTestsByUserId({ user_id }) {
 }
 
 function getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id }) {
-    return executeSQLQueryParameterized("SELECT * FROM STREAM_SELECTION_TEST_ANSWERS WHERE stream_selection_test_id=? ORDER BY id DESC ", [
+    return executeSQLQueryParameterized("SELECT * FROM STREAM_SELECTION_TEST_ANSWERS WHERE stream_selection_test_id=? AND created_at >= NOW() - INTERVAL 60 MINUTE  ORDER BY id DESC ", [
         stream_selection_test_id,
     ]).catch((error) => logger.error(`getLatestStreamSelectionTestByUserId: ${error}`));
 }

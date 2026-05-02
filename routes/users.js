@@ -323,9 +323,9 @@ router.post("/guest", async (req, res) => {
 
         addUserHistory({ user_id: user.id, ...validatedRequestBody?.history });
 
-        user.guest_token = generateToken();
+        user.token = generateToken();
 
-        await addInactiveToken({ user_id: user.id,  token: user.guest_token, validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000) });
+        await addInactiveToken({ user_id: user.id,  token: user.token, validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000) });
 
         return res.status(201).json(user);
     }

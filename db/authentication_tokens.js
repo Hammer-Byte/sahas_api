@@ -21,15 +21,11 @@ async function activateToken(token) {
     );
 }
 
-async function addInactiveToken(userId, otp, token, validity) {
-    //get allowed validity from configuration
-
-    return executeSQLQueryParameterized(`INSERT INTO AUTHENTICATION_TOKENS(user_id,otp,token,validity) VALUES(?,?,?,?)`, [userId, otp, token, validity]).catch(
-        (error) => {
-            logger.error(`addInactiveToken: ${error}`);
-            return [];
-        }
-    );
+async function addInactiveToken({user_id, otp=null, token, validity  }) {
+    return executeSQLQueryParameterized(`INSERT INTO AUTHENTICATION_TOKENS(user_id,otp,token,validity) VALUES(?,?,?,?)`, [user_id, otp, token, validity]).catch((error) => {
+        logger.error(`addInactiveToken: ${error}`);
+        
+    });
 }
 
 module.exports = { addInactiveToken, activateToken, getTokenByOTP };

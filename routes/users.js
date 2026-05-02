@@ -35,6 +35,7 @@ const {
 } = require("../db/stream_selection_tests");
 
 const parseGuestUser = require("../middlewares/parse_guest_user");
+const { addInactiveToken } = require("../db/authentication_tokens");
 
 
 const router = libExpress.Router();
@@ -315,6 +316,11 @@ router.post("/guest", async (req, res) => {
         await addGuestUser(validatedRequestBody)
         const user =await getUserByEmail({ email: validatedRequestBody?.email });
         addUserHistory({ user_id: user.id, ...validatedRequestBody?.history });
+
+        user.guest_toekn = generateToken();
+
+        await addInactiveToken({ user_id: user.id,  token: user.guest_token, validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000) });
+
         return res.status(201).json(user);
     }
 

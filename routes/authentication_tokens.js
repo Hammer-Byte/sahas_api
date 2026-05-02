@@ -64,7 +64,7 @@ router.post("/", async (req, res) => {
         const authentication_token = generateToken();
         //add token into table
         logger.info("Generated Inactive Token");
-        await addInactiveToken(user.id, otp, authentication_token, new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000));
+        await addInactiveToken({ user_id: user.id, otp, token: authentication_token, validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000) });
 
         //send otp through the mailed
         requestService({

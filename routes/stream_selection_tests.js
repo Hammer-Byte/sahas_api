@@ -7,6 +7,11 @@ const { logger, requestService } = require("sahas_utils");
 const { patchUserStreamSelectionTestAllowedById } = require("../db/users");
 const parseGuestUser = require("../middlewares/parse_guest_user");
 const { getFormattedDate } = require("../utils");
+const { readConfig } = require("../libs/config");
+
+const libCrypto = require("crypto");
+const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
+
 
 //tested
 router.post("/", parseGuestUser, async (req, res) => {
@@ -221,6 +226,71 @@ router.post("/", parseGuestUser, async (req, res) => {
     }
 
     return res.status(400).json({ error: "Missing Test Questions" });
+});
+
+
+router.post("/payment-gateway-payloads", async (req, res) => {
+
+    const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
+
+    const { stream_selection  = {} } = await readConfig("template");
+
+
+    const paymentGateWayPayLoad = {
+        paymentGateWay: {
+            merchantKey,
+            url,
+        },
+        transaction: {
+            id: libCrypto.randomUUID(),
+            successURL: redirectionHost.concat(resultAPI),
+            failureURL: redirectionHost.concat(resultAPI),
+            amount: Number(stream_selection?.fees),
+        },
+        user: {
+            email: req.user.email,
+            firstName: req.user.full_name?.split(" ")[0],
+            lastName: req.user.full_name?.split(" ")?.[1] || "NA",
+            phone: req.user.phone,
+        },
+        product: "Stream Selection Test",
+    };
+
+    
+
+    if (isRequestBodyValid) {
+
+        //add cgst and sgst
+        paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.amount * cgst) / 100).toFixed(2);
+        paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
+
+        //pre tax amount
+        paymentGateWayPayLoad.transaction.preTaxAmount =
+            Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
+            (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
+
+        //final amount
+        paymentGateWayPayLoad.transaction.amount = (
+            Number(paymentGateWayPayLoad.transaction.preTaxAmount) +
+            Number(paymentGateWayPayLoad.transaction.sgst) +
+            Number(paymentGateWayPayLoad.transaction.cgst)
+        ).toFixed(2);
+
+        //hash generation
+        paymentGateWayPayLoad.transaction.hash = libCrypto
+            .createHash("sha512")
+            .update(
+                `${merchantKey}|${paymentGateWayPayLoad.transaction.id}|${paymentGateWayPayLoad.transaction.amount}|${paymentGateWayPayLoad.product}|${paymentGateWayPayLoad.user.firstName}|${paymentGateWayPayLoad.user.email}|||||||||||${merchantSalt}`,
+            )
+            .digest("hex");
+
+        //add transcation in to table
+        addPaymentGateWayPayLoad(paymentGateWayPayLoad);
+
+        res.status(201).json(paymentGateWayPayLoad);
+    } else {
+        res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
 });
 
 module.exports = router;

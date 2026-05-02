@@ -1,19 +1,15 @@
 const libExpress = require("express");
-const { getCourseById } = require("../db/courses");
-const { verifyPaymentGatewayPayLoadStatus, getDateByInterval, getFormattedDate } = require("../utils");
+const { verifyPaymentGatewayPayLoadStatus,  getFormattedDate } = require("../utils");
 const { requestService } = require("sahas_utils");
 const { validateRequestBody } = require("sahas_utils");
-const libCrypto = require("crypto");
 const { readConfig } = require("../libs/config");
-const { addPaymentGateWayPayLoad, removePaymentGateWayPayLoadsByIds, getAllNonVerifiedPaymentGateWayPayLoads } = require("../db/payment_gateway_payloads");
+const {   getAllNonVerifiedPaymentGateWayPayLoads } = require("../db/payment_gateway_payloads");
 const { logger } = require("sahas_utils");
-const { getCouponCodeCourseByCouponCodeAndCourseId } = require("../db/coupon_code_courses");
 const { addEnrollment } = require("../db/enrollments");
 const libMoment = require("moment");
 const { addEnrollmentCourse } = require("../db/enrollment_courses");
 const { addEnrollmentTransaction, updateEnrollmentTransactionInvoiceById } = require("../db/enrollment_transactions");
-const { addWalletTransaction, getWalletBalanceByUserId } = require("../db/wallet_transactions");
-const { getUserByEmail } = require("../db/users");
+const { addWalletTransaction } = require("../db/wallet_transactions");
 const libNumbersToWords = require("number-to-words");
 const { getBundledCoursesByCourseId } = require("../db/bundled_courses");
 

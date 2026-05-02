@@ -1,5 +1,4 @@
 const { KEY_GUEST_TOKEN } = require("../constants");
-const { getUserRolesByUserId } = require("../db/user_roles");
 const { getUserByAuthenticationToken, getAuthoritiesByRoleIds } = require("../db/users");
 
 module.exports = async (req, res, next) => {

@@ -7,6 +7,13 @@ const { removeBundledCoursesByCourseId, addBundledCourse, getBundledCoursesByCou
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { deleteCourseDialogByCourseId, addCourseDialog, getCourseDialogByCourseId } = require("../db/course_dialog");
+const { readConfig } = require("../libs/config");
+const { getDateByInterval } = require("../utils");
+const libCrypto = require("crypto");
+const { getWalletBalanceByUserId } = require("../db/wallet_transactions");
+const { getCouponCodeCourseByCouponCodeAndCourseId } = require("../db/coupon_code_courses");
+const { getUserByEmail } = require("../db/users");
+const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
 
 
 
@@ -140,5 +147,130 @@ router.get("/:id", requires_authority(AUTHORITIES.READ_COURSE), async (req, res)
 
     res.status(400).json({ error: "Course Not Exist" });
 });
+
+
+
+router.post("/payment-gateway-payloads", async (req, res) => {
+    const requiredBodyFields = ["courseId"];
+
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
+
+    //if already existing enrollment is there then do not give back the payment hash
+
+    if (isRequestBodyValid) {
+        const course = await getCourseById({ id: validatedRequestBody.courseId });
+
+        const paymentGateWayPayLoad = {
+            course: { ...course, validity: getDateByInterval({ days: course?.validity }) },
+            paymentGateWay: {
+                merchantKey,
+                url,
+            },
+            transaction: {
+                id: libCrypto.randomUUID(),
+                successURL: redirectionHost.concat(resultAPI),
+                failureURL: redirectionHost.concat(resultAPI),
+                amount: Number(course.fees),
+            },
+            user: {
+                email: req.user.email,
+                firstName: req.user.full_name?.split(" ")[0],
+                lastName: req.user.full_name?.split(" ")?.[1] || "NA",
+                phone: req.user.phone,
+                wallet: (await getWalletBalanceByUserId({ user_id: req?.user?.id })).toFixed(2),
+            },
+            product: course.title,
+        };
+
+        //calculate coupon code first
+        paymentGateWayPayLoad.transaction.discount = 0;
+        paymentGateWayPayLoad.transaction.couponCode = validatedRequestBody?.couponCode || null;
+
+        if (!!paymentGateWayPayLoad?.transaction?.couponCode) {
+            if (
+                (couponCodeCourse = await getCouponCodeCourseByCouponCodeAndCourseId({
+                    code: paymentGateWayPayLoad.transaction.couponCode,
+                    course_id: course?.id,
+                }))
+            ) {
+                //if having discount
+                if (couponCodeCourse?.discount > 0) {
+                    paymentGateWayPayLoad.transaction.discount = Number(couponCodeCourse?.discount);
+                    if (couponCodeCourse?.discount_type === "%") {
+                        paymentGateWayPayLoad.transaction.discount = (paymentGateWayPayLoad.transaction.amount * couponCodeCourse.discount) / 100;
+                    }
+                    paymentGateWayPayLoad.transaction.discount = paymentGateWayPayLoad.transaction.discount.toFixed(2);
+                }
+
+                //if coupon code is there that means we will pick validity from there - default 365
+                paymentGateWayPayLoad.course.validity =
+                    couponCodeCourse.validity_type === "DAYS" ? getDateByInterval({ days: couponCodeCourse.validity_days }) : couponCodeCourse.validity_date;
+                //if we have coupon code distributor commision is there
+                //it will also check if given email is correct or not
+                if (
+                    !!couponCodeCourse.distributor_email &&
+                    !!couponCodeCourse.commision &&
+                    (distributorUser = await getUserByEmail({ email: couponCodeCourse.distributor_email }))
+                ) {
+                    paymentGateWayPayLoad.transaction.distributor_user = distributorUser;
+                    paymentGateWayPayLoad.transaction.commision = couponCodeCourse.commision;
+
+                    if (couponCodeCourse?.commision_type === "%") {
+                        paymentGateWayPayLoad.transaction.commision = (paymentGateWayPayLoad.course.fees * couponCodeCourse.discount) / 100;
+                    }
+                }
+            }
+
+            paymentGateWayPayLoad.transaction.amount -= Number(paymentGateWayPayLoad.transaction.discount);
+        }
+
+        //if use wallet is required
+        if (validatedRequestBody?.useWalletBalance && paymentGateWayPayLoad?.user?.wallet > 0 && paymentGateWayPayLoad.transaction.amount > 0) {
+            paymentGateWayPayLoad.transaction.usedWalletBalance = Math.min(
+                paymentGateWayPayLoad?.user?.wallet,
+                paymentGateWayPayLoad.transaction.amount,
+            ).toFixed(2);
+
+            paymentGateWayPayLoad.transaction.amount = Math.max(
+                paymentGateWayPayLoad.transaction.amount - paymentGateWayPayLoad.transaction.usedWalletBalance,
+                0,
+            );
+        }
+
+        //add cgst and sgst
+        paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.amount * cgst) / 100).toFixed(2);
+        paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
+
+        //pre tax amount
+        paymentGateWayPayLoad.transaction.preTaxAmount =
+            Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
+            (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
+
+        //final amount
+        paymentGateWayPayLoad.transaction.amount = (
+            Number(paymentGateWayPayLoad.transaction.preTaxAmount) +
+            Number(paymentGateWayPayLoad.transaction.sgst) +
+            Number(paymentGateWayPayLoad.transaction.cgst)
+        ).toFixed(2);
+
+        //hash generation
+        paymentGateWayPayLoad.transaction.hash = libCrypto
+            .createHash("sha512")
+            .update(
+                `${merchantKey}|${paymentGateWayPayLoad.transaction.id}|${paymentGateWayPayLoad.transaction.amount}|${paymentGateWayPayLoad.product}|${paymentGateWayPayLoad.user.firstName}|${paymentGateWayPayLoad.user.email}|||||||||||${merchantSalt}`,
+            )
+            .digest("hex");
+
+        //add transcation in to table
+        addPaymentGateWayPayLoad(paymentGateWayPayLoad);
+
+        res.status(201).json(paymentGateWayPayLoad);
+    } else {
+        res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+});
+
 
 module.exports = router;

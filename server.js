@@ -8,6 +8,7 @@ const requiresDeviceFingerPrint = require("./middlewares/requires_device_finger_
 const requiresNoMaintenance = require("./middlewares/requires_no_maintenance");
 
 //Common Middlewares
+const parseGuestUser = require("./middlewares/parse_guest_user");
 const parseAuthenticationToken = require("./middlewares/parse_authentication_token");
 const parseUserDevice = require("./middlewares/parse_user_device");
 const logRequest = require("./middlewares/log_request");
@@ -32,7 +33,7 @@ const routers = {
         router: require("./routes/template_configs"),
     },
     "/authentication-tokens": {
-        middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
+        middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken,parseGuestUser, parseUserDevice, logRequest],
         router: require("./routes/authentication_tokens"),
     },
     "/course-categories": {

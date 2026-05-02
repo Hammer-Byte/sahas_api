@@ -37,6 +37,7 @@ const {
 const parseGuestUser = require("../middlewares/parse_guest_user");
 const { addInactiveToken } = require("../db/authentication_tokens");
 const { generateToken } = require("../utils");
+const { readConfig } = require("../libs/config");
 
 
 const router = libExpress.Router();
@@ -311,6 +312,9 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_USER), async (req, res) =
 
 router.post("/guest", async (req, res) => {
     const requiredBodyFields = ["full_name", "email", "phone", "address"];
+
+    const { authentication: { token_validity } = {} } = await readConfig("app");
+
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {

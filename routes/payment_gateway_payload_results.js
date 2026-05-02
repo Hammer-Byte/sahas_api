@@ -2,7 +2,7 @@ const libExpress = require("express");
 const { validateRequestBody } = require("sahas_utils");
 const { logger } = require("sahas_utils");
 const { readConfig } = require("../libs/config");
-const { getUserByEmail } = require("../db/users");
+const { getUserByEmail, patchUserStreamSelectionTestAllowedById } = require("../db/users");
 
 const router = libExpress.Router();
 
@@ -19,7 +19,7 @@ router.post("/", async (req, res) => {
 
         if(validatedRequestBody.productinfo === "Stream Selection Test") {
             const user = await getUserByEmail({ email: req.body.email });
-            await updateUserStreamSelectionTestAllowedById({ user_id: user.id, allowed: true });
+            await patchUserStreamSelectionTestAllowedById({ id: user.id, stream_selection_test_allowed: true });
             return res.redirect(redirectionHost.concat("stream-selection-test/attempt"));
         }
         return res.redirect(redirectionHost.concat(postPaymentRoute.concat(validatedRequestBody.txnid)));

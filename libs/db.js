@@ -88,7 +88,7 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS AUTHENTICATION_TOKENS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
-            otp VARCHAR(4)  NULL,
+            otp VARCHAR(4) NULL,
             token VARCHAR(36) NULL UNIQUE,
             active BOOLEAN NOT NULL DEFAULT FALSE,
             validity DATETIME NOT NULL,

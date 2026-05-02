@@ -320,6 +320,7 @@ router.post("/guest", async (req, res) => {
     if (isRequestBodyValid) {
         await addGuestUser(validatedRequestBody)
         const user =await getUserByEmail({ email: validatedRequestBody?.email });
+        
         addUserHistory({ user_id: user.id, ...validatedRequestBody?.history });
 
         user.guest_toekn = generateToken();

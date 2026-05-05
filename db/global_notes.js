@@ -26,7 +26,7 @@ function deleteGlobalNoteById({ id }) {
     });
 }
 
-async function addGlobalNote({ user_id, note, type, created_by }) {
+async function addGlobalNote({ user_id, note, type=null, created_by }) {
     return executeSQLQueryParameterized("INSERT INTO GLOBAL_NOTES(user_id, note, type, created_by) VALUES(?,?,?,?)", [user_id, note, type, created_by])
         .then((result) => result.insertId)
         .catch((error) => {
@@ -34,8 +34,8 @@ async function addGlobalNote({ user_id, note, type, created_by }) {
         });
 }
 
-function updateGlobalNoteById({ id, note }) {
-    return executeSQLQueryParameterized("UPDATE GLOBAL_NOTES SET note=? WHERE id=?", [note, id]).catch((error) => {
+function updateGlobalNoteById({ id, note ,type=null}) {
+    return executeSQLQueryParameterized("UPDATE GLOBAL_NOTES SET note=?, type=? WHERE id=?", [note, type, id]).catch((error) => {
         logger.error(`updateGlobalNoteById: ${error}`);
     });
 }

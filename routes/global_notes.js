@@ -13,9 +13,8 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req,
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        const type = req.body.type || null;
-        const userNoteId = await addGlobalNote({ ...validatedRequestBody, type, created_by: req.user.id });
-        res.status(201).json(await getGlobalNoteById({ id: userNoteId }));
+        const globalNoteId = await addGlobalNote({ ...validatedRequestBody,  created_by: req.user.id });
+        res.status(201).json(await getGlobalNoteById({ id: globalNoteId }));
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }

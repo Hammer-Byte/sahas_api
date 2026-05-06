@@ -47,7 +47,7 @@ const router = libExpress.Router();
 
 //external end point to enroll automatically into stream selection test
 //tested
-router.patch(
+router.post(
     "/stream-selection-test-allowed",
    
     async (req, res, next) => {

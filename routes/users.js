@@ -242,28 +242,6 @@ router.patch(
 
 
 
-//external end point to enroll automatically into stream selection test
-//tested
-router.patch(
-    "/stream-selection-test-allowed",
-   
-    async (req, res, next) => {
-
-        const { stream_selection = {} } = await readConfig("template");
-        const amount = Number(stream_selection?.fees)
-
-        if (amount > 0) {
-            return res.status(400).json({ error: "Amount is not valid to enroll into stream selection test" });
-        }
-        next()
-    },
-    async (req, res) => {
-        await patchUserStreamSelectionTestAllowedById({ id: req.user.id, stream_selection_test_allowed: true });
-
-        return res.redirect(redirectionHost.concat("stream-selection-test/enroll"));
-    },
-);
-
 
 //tested
 router.get("/:id/inquiries", requires_authority(AUTHORITIES.READ_USER_INQUIRIES), async (req, res) => {

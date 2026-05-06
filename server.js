@@ -146,6 +146,10 @@ const routers = {
         middlewares: [logRequest],
         router: require("./routes/stream_selection_test_invites"),
     },
+    "/temporary-stream-selection-test-enroll": {
+        middlewares: [logRequest],
+        router: require("./routes/stream_selection_test_invites"),
+    },
 };
 
 //apply all routes

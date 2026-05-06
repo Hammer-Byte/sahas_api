@@ -242,6 +242,7 @@ router.patch(
 
 router.patch(
     "/stream-selection-test-allowed",
+    parseGuestUser,
     async (req, res, next) => {
         const { stream_selection = {} } = await readConfig("template");
         const amount = Number(stream_selection?.fees)

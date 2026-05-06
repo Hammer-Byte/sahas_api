@@ -246,15 +246,7 @@ router.patch(
 //tested
 router.patch(
     "/stream-selection-test-allowed",
-    async (req, res, next) => {
-        const requiredBodyFields = ["id", "stream_selection_test_allowed"];
-        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
-        if (!isRequestBodyValid) {
-            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-        }
-        req.body = validatedRequestBody;
-        next();
-    },
+   
     async (req, res, next) => {
 
         const { stream_selection = {} } = await readConfig("template");

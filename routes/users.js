@@ -242,7 +242,6 @@ router.patch(
 
 router.patch(
     "/stream-selection-test-allowed",
-   
     async (req, res, next) => {
         const { stream_selection = {} } = await readConfig("template");
         const amount = Number(stream_selection?.fees)
@@ -254,7 +253,7 @@ router.patch(
     },
     async (req, res) => {
         await patchUserStreamSelectionTestAllowedById({ id: req.user.id, stream_selection_test_allowed: true });
-        res.status(200).json({ message: "Stream selection test allowed" });
+        res.sendStatus(201);
     },
 );
 

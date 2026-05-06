@@ -10,6 +10,7 @@ const {
     patchUserPhoneById,
     addGuestUser,
     getUserByEmail,
+    patchUserStreamSelectionTestAllowedById,
 } = require("../db/users");
 const { getInquiriesByUserId } = require("../db/inquiries");
 const { validateRequestBody } = require("sahas_utils");
@@ -98,10 +99,10 @@ router.get("/download", async (req, res) => {
 //tested
 router.get("/stream-selection-test-results/latest", parseGuestUser, async (req, res) => {
     const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
-    if (!!streamSelectionTest ) {
-        
+    if (!!streamSelectionTest) {
+
         streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
-        streamSelectionTest.result= JSON.parse(streamSelectionTest.result);
+        streamSelectionTest.result = JSON.parse(streamSelectionTest.result);
         return res.status(200).json(streamSelectionTest);
     }
 
@@ -239,6 +240,39 @@ router.patch(
     },
 );
 
+
+
+//external end point to enroll automatically into stream selection test
+//tested
+router.patch(
+    "/stream-selection-test-allowed",
+    async (req, res, next) => {
+        const requiredBodyFields = ["id", "stream_selection_test_allowed"];
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (!isRequestBodyValid) {
+            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+        req.body = validatedRequestBody;
+        next();
+    },
+    async (req, res, next) => {
+
+        const { stream_selection = {} } = await readConfig("template");
+        const amount = Number(stream_selection?.fees)
+
+        if (amount > 0) {
+            return res.status(400).json({ error: "Amount is not valid to enroll into stream selection test" });
+        }
+        next()
+    },
+    async (req, res) => {
+        await patchUserStreamSelectionTestAllowedById({ id: req.user.id, stream_selection_test_allowed: true });
+
+        return res.redirect(redirectionHost.concat("stream-selection-test/enroll"));
+    },
+);
+
+
 //tested
 router.get("/:id/inquiries", requires_authority(AUTHORITIES.READ_USER_INQUIRIES), async (req, res) => {
     if (!req.params.id) {
@@ -320,13 +354,13 @@ router.post("/guest", async (req, res) => {
 
     if (isRequestBodyValid) {
         await addGuestUser(validatedRequestBody)
-        const user =await getUserByEmail({ email: validatedRequestBody?.email });
+        const user = await getUserByEmail({ email: validatedRequestBody?.email });
 
         addUserHistory({ user_id: user.id, ...validatedRequestBody?.history });
 
         user.token = generateToken();
 
-        await addInactiveToken({ user_id: user.id,  token: user.token, validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000) });
+        await addInactiveToken({ user_id: user.id, token: user.token, validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000) });
 
         return res.status(201).json(user);
     }

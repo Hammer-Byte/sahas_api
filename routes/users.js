@@ -253,7 +253,7 @@ router.patch(
     },
     async (req, res) => {
         await patchUserStreamSelectionTestAllowedById({ id: req.user.id, stream_selection_test_allowed: true });
-        res.sendStatus(201);
+        res.sendStatus(200);
     },
 );
 

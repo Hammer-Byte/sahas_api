@@ -205,6 +205,7 @@ router.put("/", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) =>
 //tested
 router.patch(
     "/name",
+    requires_authority(AUTHORITIES.UPDATE_USER),
     async (req, res, next) => {
         const requiredBodyFields = ["id", "full_name"];
         const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
@@ -223,6 +224,7 @@ router.patch(
 //tested
 router.patch(
     "/phone",
+    requires_authority(AUTHORITIES.UPDATE_USER),
     async (req, res, next) => {
         const requiredBodyFields = ["id", "phone"];
         const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);

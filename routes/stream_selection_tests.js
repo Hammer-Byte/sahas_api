@@ -229,7 +229,7 @@ router.post("/", parseGuestUser, async (req, res) => {
 });
 
 
-router.post("/payment-gateway-payloads", parseGuestUser,async (req, res) => {
+router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
 
     const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
 

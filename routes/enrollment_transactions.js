@@ -1,5 +1,5 @@
 const libExpress = require("express");
-const { getFormattedDate, getDateByInterval, getDifferenceOfDates } = require("../utils");
+const { getFormattedDate,  getDifferenceOfDates } = require("../utils");
 const {
     addEnrollmentTransaction,
     getEnrollmentTransactionById,

@@ -280,6 +280,9 @@ router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
         )
         .digest("hex");
 
+
+    //add a post payment route to the payment gate way payload
+
     //add transcation in to table
     addPaymentGateWayPayLoad(paymentGateWayPayLoad);
 

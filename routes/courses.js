@@ -263,6 +263,11 @@ router.post("/payment-gateway-payloads", async (req, res) => {
             )
             .digest("hex");
 
+
+
+            //add post payment route to the payment gate way payload
+            //type will be course
+
         //add transcation in to table
         addPaymentGateWayPayLoad(paymentGateWayPayLoad);
 

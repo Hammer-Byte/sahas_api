@@ -302,12 +302,11 @@ router.get("/", async (req, res) => {
         return res.status(400).json({ error: "Missing start_date or end_date" });
     }
 
-    const tests = await getStreamSelectionTests({
+
+    return res.status(200).json(await getStreamSelectionTests({
         start_date: getFormattedDate({ date: start_date, format: "YYYY-MM-DD HH:mm:ss" }),
         end_date: getFormattedDate({ date: end_date, format: "YYYY-MM-DD HH:mm:ss" }),
-    });
-
-    return res.status(200).json(tests || []);
+    }));
 });
 
 

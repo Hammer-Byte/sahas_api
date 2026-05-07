@@ -528,7 +528,7 @@ function executeSQLQueryRaw(query) {
                 dbConnection.query(query, (error, result) => {
                     logger.info(`Executing ${query}`);
                     if (error) {
-                        console.error("FAILED - ", query, error);
+                        logger.error("FAILED - ", query, error);
                         reject(error); // Reject the promise if the query fails
                     } else {
                         resolve(result); // Resolve the promise if the query succeeds
@@ -549,8 +549,8 @@ function executeSQLQueryParameterized(query, parameters) {
                 dbConnection.execute(query, parameters, (error, result) => {
                     logger.info(`Executing ${query} [${parameters}]`);
                     if (error) {
+                        logger.error("FAILED - ", query, error);
                         reject(error); // Reject the promise if the query fails
-                        console.error("FAILED - ", query, error);
                     } else {
                         resolve(result); // Resolve the promise if the query succeeds
                     }

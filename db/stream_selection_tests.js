@@ -35,6 +35,13 @@ function getStreamSelectionTestsByUserId({ user_id }) {
     );
 }
 
+function getStreamSelectionTests({ start_date, end_date }) {
+    return executeSQLQueryParameterized(
+        "SELECT STREAM_SELECTION_TESTS.*, USERS.full_name FROM STREAM_SELECTION_TESTS LEFT JOIN USERS ON STREAM_SELECTION_TESTS.user_id = USERS.id WHERE STREAM_SELECTION_TESTS.created_on BETWEEN ? AND ? ORDER BY STREAM_SELECTION_TESTS.id DESC",
+        [start_date, end_date],
+    ).catch((error) => logger.error(`getStreamSelectionTests: ${error}`));
+}
+
 function getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id }) {
     return executeSQLQueryParameterized("SELECT * FROM STREAM_SELECTION_TEST_ANSWERS WHERE stream_selection_test_id=? AND created_at >= NOW() - INTERVAL 60 MINUTE  ORDER BY id DESC ", [
         stream_selection_test_id,
@@ -46,6 +53,7 @@ module.exports = {
     addStreamSelectionTestAnswer,
     getLatestStreamSelectionTestByUserId,
     getStreamSelectionTestsByUserId,
+    getStreamSelectionTests,
     getStreamSelectionTestAnswersByStreamSelectionTestId,
     updateStreamSelectionTestReportUrlById
 };

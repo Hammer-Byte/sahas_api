@@ -1,5 +1,5 @@
 const libExpress = require("express");
-const { addStreamSelectionTest, addStreamSelectionTestAnswer, updateStreamSelectionTestResultById, getLatestStreamSelectionTestByUserId, getStreamSelectionTestAnswersByStreamSelectionTestId, updateStreamSelectionTestReportUrlById } = require("../db/stream_selection_tests");
+const { addStreamSelectionTest, addStreamSelectionTestAnswer, updateStreamSelectionTestResultById, getLatestStreamSelectionTestByUserId, getStreamSelectionTestAnswersByStreamSelectionTestId, updateStreamSelectionTestReportUrlById, getStreamSelectionTests } = require("../db/stream_selection_tests");
 const openai = require("../libs/openai");
 const router = libExpress.Router();
 const { setTimeout } = require("timers/promises");
@@ -287,4 +287,30 @@ router.post("/payment-gateway-payloads", parseGuestUser,async (req, res) => {
 
 });
 
+
+
+
+
+
+
+
+
+router.get("/", async (req, res) => {
+    const { start_date, end_date } = req.query;
+
+    if (!start_date || !end_date) {
+        return res.status(400).json({ error: "Missing start_date or end_date" });
+    }
+
+    const tests = await getStreamSelectionTests({ start_date, end_date });
+
+    return res.status(200).json(tests );
+});
+
+
 module.exports = router;
+
+
+
+
+

@@ -52,9 +52,14 @@ function getEnrollmentTransactionsForInterval({ start_date, end_date, order_by =
             ENROLLMENT_TRANSACTIONS.sgst,
             ENROLLMENT_TRANSACTIONS.amount,
             ENROLLMENT_TRANSACTIONS.type,
+            ENROLLMENT_TRANSACTIONS.invoice,
             ENROLLMENT_TRANSACTIONS.manually_verified, 
             ENROLLMENT_TRANSACTIONS.created_on, 
-            USERS.full_name,
+            USERS.id as user_id,
+            USERS.full_name as full_name,
+            USERS.email as email,
+            USERS.phone as phone,
+
             CREATORS.id as created_by_id,
             CREATORS.full_name as created_by_full_name
         FROM ENROLLMENT_TRANSACTIONS 

@@ -238,18 +238,18 @@ router.post("/payment-gateway-payloads", async (req, res) => {
                 0,
             );
         }
-        
+
 
         //pre tax amount
         paymentGateWayPayLoad.transaction.preTaxAmount =
             Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) /
-            Number(100+ Number(cgst) + Number(sgst))/100;
+            Number(100 + Number(cgst) + Number(sgst)) / 100;
 
 
-            logger.info(`${Number(100+ Number(cgst) + Number(sgst))/100}`)
+        logger.info(`${Number(100 + Number(cgst) + Number(sgst)) / 100}`)
 
 
-               //add cgst and sgst
+        //add cgst and sgst
         paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.preTaxAmount * cgst) / 100).toFixed(2);
         paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.preTaxAmount * sgst) / 100).toFixed(2);
 
@@ -270,8 +270,8 @@ router.post("/payment-gateway-payloads", async (req, res) => {
 
 
 
-            //add post payment route to the payment gate way payload
-            //type will be course
+        //add post payment route to the payment gate way payload
+        //type will be course
 
         //add transcation in to table
         addPaymentGateWayPayLoad(paymentGateWayPayLoad);

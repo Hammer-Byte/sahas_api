@@ -90,9 +90,16 @@ router.get(
                 injects: enrollmentTranscations,
             },
             onResponseReceieved: (generatedEnrollmentTranscations, responseCode) => {
-                if (generatedEnrollmentTranscations?.cdn_url && responseCode === 201) logger.success(`Enrollment Transcations Sheet Generated !`);
-                else logger.error(`Failed To Generate Enrollment Transcations - Media Responded With ${JSON.stringify(generatedEnrollmentTranscations)} - ${responseCode}`);
-                return res.status(responseCode).json(generatedEnrollmentTranscations);
+                if (generatedEnrollmentTranscations?.cdn_url && responseCode === 201) {
+                    logger.success(`Enrollment Transcations Sheet Generated !`)
+                    return res.status(responseCode).json(generatedEnrollmentTranscations);
+                }
+                else {
+                    logger.error(`Failed To Generate Enrollment Transcations - Media Responded With ${JSON.stringify(generatedEnrollmentTranscations)} - ${responseCode}`)
+                    return res.status(400).json({error: "Failed To Generate Enrollment Transcations"});
+
+                }
+                
             },
         });
 

@@ -72,10 +72,29 @@ router.get(
         });
 
         for (const enrollmentTranscation of enrollmentTranscations) {
-            enrollmentTranscation.courses = await getEnrollmentCoursesByEnrollmentId({ enrollment_id: enrollmentTranscation?.enrollment_id });
+            const courses = await getEnrollmentCoursesByEnrollmentId({ enrollment_id: enrollmentTranscation?.enrollment_id });
+            enrollmentTranscation.courses = courses.map(({title})=>title).join(",");
         }
 
-        res.status(200).json(enrollmentTranscations);
+        await requestService({
+            requestServiceName: process.env.SERVICE_MEDIA,
+            onRequestStart: () => logger.info("Generating Transcation Report"),
+            requestPath: "templated/sheet",
+            requestMethod: "POST",
+            requestPostBody: {
+                template: "enrollment-transcations",
+                injects: enrollmentTranscation,
+            },
+            onResponseReceieved: (generatedEnrollmentTranscations, responseCode) => {
+                if (generatedEnrollmentTranscations?.cdn_url && responseCode === 201) logger.success(`Enrollment Transcations Sheet Generated !`);
+                else logger.error(`Failed To Generate Enrollment Transcations - Media Responded With ${JSON.stringify(generatedEnrollmentTranscations)} - ${responseCode}`);
+                return res.status(responseCode).json(generatedEnrollmentTranscations);
+            },
+        });
+
+
+        
+
     },
 );
 

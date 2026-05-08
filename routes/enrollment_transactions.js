@@ -77,6 +77,7 @@ router.get(
             const user = await getUserById({ id: enrollmentTranscation?.user_id });
 
             enrollmentTranscation.transaction_id = enrollmentTranscation?.id;
+            enrollmentTranscation.transaction_date = enrollmentTranscation?.created_on;
             enrollmentTranscation.courses = courses.map(({title})=>title).join(",");
             enrollmentTranscation.full_name = user?.full_name;
             enrollmentTranscation.user_id = user?.id;

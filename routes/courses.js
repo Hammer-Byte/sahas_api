@@ -242,12 +242,10 @@ router.post("/payment-gateway-payloads", async (req, res) => {
 
         //pre tax amount
         paymentGateWayPayLoad.transaction.preTaxAmount =
-            Number(paymentGateWayPayLoad.transaction.amount) /
-            (Number(100 + Number(cgst) + Number(sgst)) / 100);
+            (Number(paymentGateWayPayLoad.transaction.amount).toFixed(2)) /
+            (100 + Number(cgst) + Number(sgst) / 100);
 
 
-        logger.info(`${Number(paymentGateWayPayLoad.transaction.amount)}`)
-        logger.info(`${Number(100 + Number(cgst) + Number(sgst)) / 100}`)
 
 
 

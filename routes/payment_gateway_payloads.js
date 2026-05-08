@@ -50,7 +50,7 @@ router.get("/:id", async (req, res) => {
                 //return success
 
 
-                
+
 
                 return;
             } else {
@@ -76,6 +76,8 @@ router.get("/:id", async (req, res) => {
                 for (const enrollmentCourse of enrollmentCourses)
                     await addEnrollmentCourse({ created_by: req?.user?.id, enrollment_id: enrollmentId, course_id: enrollmentCourse?.id });
 
+
+                paymentGateWayPayLoad.transaction.discount = (Number(paymentGateWayPayLoad?.transaction?.discount || 0) + Number(paymentGateWayPayLoad?.transaction?.usedWalletBalance || 0)).toFixed(2);
                 //add transaction for it
                 const enrollmentTransactionId = await addEnrollmentTransaction({
                     enrollment_id: enrollmentId,
@@ -84,7 +86,7 @@ router.get("/:id", async (req, res) => {
                     sgst: paymentGateWayPayLoad?.transaction?.sgst,
                     created_by: req?.user?.id,
                     coupon_code: paymentGateWayPayLoad?.transaction?.couponCode,
-                    discount: paymentGateWayPayLoad?.transaction?.discount + (paymentGateWayPayLoad.transaction?.usedWalletBalance || 0),
+                    discount: paymentGateWayPayLoad?.transaction?.discount,
                     note: "Self Purchased",
                     type: "PAYMENT_GATEWAY",
                 });
@@ -162,7 +164,7 @@ router.get("/:id", async (req, res) => {
                             sgst_percentage: sgst,
                             price_original: paymentGateWayPayLoad?.course?.fees,
                             price_pre_tax: paymentGateWayPayLoad?.transaction?.preTaxAmount,
-                            discount: paymentGateWayPayLoad?.transaction?.discount + (paymentGateWayPayLoad.transaction?.usedWalletBalance || 0),
+                            discount: paymentGateWayPayLoad?.transaction?.discount,
                             coupon_code: paymentGateWayPayLoad?.transaction?.couponCode || "No Coupon Code",
                             total_tax: (Number(paymentGateWayPayLoad?.transaction?.cgst) + Number(paymentGateWayPayLoad?.transaction?.sgst)).toFixed(2),
                             cgst: paymentGateWayPayLoad?.transaction?.cgst,

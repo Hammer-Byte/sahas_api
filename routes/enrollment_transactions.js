@@ -82,7 +82,7 @@ router.get(
             requestPath: "templated/sheet",
             requestMethod: "POST",
             requestPostBody: {
-                template: "enrollment-transcations",
+                template: "enrollment_transcations",
                 injects: enrollmentTranscation,
             },
             onResponseReceieved: (generatedEnrollmentTranscations, responseCode) => {

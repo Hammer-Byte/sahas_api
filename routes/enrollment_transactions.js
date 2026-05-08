@@ -92,7 +92,7 @@ router.get(
             onResponseReceieved: (generatedEnrollmentTranscations, responseCode) => {
                 if (generatedEnrollmentTranscations?.cdn_url && responseCode === 201) {
                     logger.success(`Enrollment Transcations Sheet Generated !`)
-                    return res.status(responseCode).json(generatedEnrollmentTranscations);
+                    return res.status(200).json(generatedEnrollmentTranscations);
                 }
                 else {
                     logger.error(`Failed To Generate Enrollment Transcations - Media Responded With ${JSON.stringify(generatedEnrollmentTranscations)} - ${responseCode}`)

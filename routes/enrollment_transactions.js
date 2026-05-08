@@ -73,7 +73,11 @@ router.get(
 
         for (const enrollmentTranscation of enrollmentTranscations) {
             const courses = await getEnrollmentCoursesByEnrollmentId({ enrollment_id: enrollmentTranscation?.enrollment_id });
+
+            const user = await getUserById({ id: enrollmentTranscation?.user_id });
+
             enrollmentTranscation.courses = courses.map(({title})=>title).join(",");
+            enrollmentTranscation.full_name = user?.full_name;
         }
 
         await requestService({

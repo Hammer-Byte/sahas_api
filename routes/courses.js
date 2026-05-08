@@ -1,6 +1,6 @@
 const libExpress = require("express");
 const { addCourse, getCourseById, deleteCourseById, updateCourseViewIndexById, updateCourseById, getCourseByCategoryIdAndTitle } = require("../db/courses");
-const { validateRequestBody } = require("sahas_utils");
+const { validateRequestBody, logger } = require("sahas_utils");
 const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { removeBundledCoursesByCourseId, addBundledCourse, getBundledCoursesByCourseId } = require("../db/bundled_courses");

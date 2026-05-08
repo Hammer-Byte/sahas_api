@@ -238,23 +238,12 @@ router.post("/payment-gateway-payloads", async (req, res) => {
                 0,
             );
         }
-
-
-        logger.info(`${Number(paymentGateWayPayLoad.transaction.amount.toFixed(2))}`)
-
-        logger.info(`${ Number(paymentGateWayPayLoad.transaction.cgst)}`)
-
-        logger.info(`${Number(100+ Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst))}`)
-
-
-        logger.info(`${Number(100+ Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst))/100}`)
-
-
+        
 
         //pre tax amount
         paymentGateWayPayLoad.transaction.preTaxAmount =
             Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) /
-            Number(100+ Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst))/100;
+            Number(100+ Number(cgst) + Number(sgst))/100;
 
 
             logger.info(`${ paymentGateWayPayLoad.transaction.preTaxAmount}`)

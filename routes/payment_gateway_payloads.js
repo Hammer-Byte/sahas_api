@@ -84,7 +84,7 @@ router.get("/:id", async (req, res) => {
                     sgst: paymentGateWayPayLoad?.transaction?.sgst,
                     created_by: req?.user?.id,
                     coupon_code: paymentGateWayPayLoad?.transaction?.couponCode,
-                    discount: paymentGateWayPayLoad?.transaction?.discount,
+                    discount: paymentGateWayPayLoad?.transaction?.discount + (paymentGateWayPayLoad.transaction?.usedWalletBalance || 0),
                     note: "Self Purchased",
                     type: "PAYMENT_GATEWAY",
                 });
@@ -162,7 +162,7 @@ router.get("/:id", async (req, res) => {
                             sgst_percentage: sgst,
                             price_original: paymentGateWayPayLoad?.course?.fees,
                             price_pre_tax: paymentGateWayPayLoad?.transaction?.preTaxAmount,
-                            discount: paymentGateWayPayLoad?.transaction?.discount,
+                            discount: paymentGateWayPayLoad?.transaction?.discount + (paymentGateWayPayLoad.transaction?.usedWalletBalance || 0),
                             coupon_code: paymentGateWayPayLoad?.transaction?.couponCode || "No Coupon Code",
                             total_tax: (Number(paymentGateWayPayLoad?.transaction?.cgst) + Number(paymentGateWayPayLoad?.transaction?.sgst)).toFixed(2),
                             cgst: paymentGateWayPayLoad?.transaction?.cgst,

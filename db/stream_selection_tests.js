@@ -37,7 +37,7 @@ function getStreamSelectionTestsByUserId({ user_id }) {
 
 function getStreamSelectionTests({ start_date, end_date }) {
     return executeSQLQueryParameterized(
-        "SELECT STREAM_SELECTION_TESTS.*, USERS.full_name FROM STREAM_SELECTION_TESTS LEFT JOIN USERS ON STREAM_SELECTION_TESTS.user_id = USERS.id WHERE STREAM_SELECTION_TESTS.created_at BETWEEN ? AND ? ORDER BY STREAM_SELECTION_TESTS.id DESC",
+        "SELECT STREAM_SELECTION_TESTS.*, USERS.full_name, USERS.phone, USER_HISTORY.institute, USER_HISTORY.course FROM STREAM_SELECTION_TESTS LEFT JOIN USERS ON STREAM_SELECTION_TESTS.user_id = USERS.id LEFT JOIN USER_HISTORY ON USER_HISTORY.user_id = USERS.id WHERE STREAM_SELECTION_TESTS.created_at BETWEEN ? AND ? ORDER BY STREAM_SELECTION_TESTS.id DESC",
         [start_date, end_date],
     ).catch((error) => logger.error(`getStreamSelectionTests: ${error}`));
 }

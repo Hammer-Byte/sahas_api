@@ -87,7 +87,7 @@ router.get(
             requestMethod: "POST",
             requestPostBody: {
                 template: "enrollment_transcations",
-                injects: enrollmentTranscation,
+                injects: enrollmentTranscations,
             },
             onResponseReceieved: (generatedEnrollmentTranscations, responseCode) => {
                 if (generatedEnrollmentTranscations?.cdn_url && responseCode === 201) logger.success(`Enrollment Transcations Sheet Generated !`);

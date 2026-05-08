@@ -239,14 +239,15 @@ router.post("/payment-gateway-payloads", async (req, res) => {
             );
         }
 
-        //add cgst and sgst
-        paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.amount * cgst) / 100).toFixed(2);
-        paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
-
         //pre tax amount
         paymentGateWayPayLoad.transaction.preTaxAmount =
-            Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
-            (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
+            Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) /
+            ((100+ Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst))/100);
+
+
+               //add cgst and sgst
+        paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.preTaxAmount * cgst) / 100).toFixed(2);
+        paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.preTaxAmount * sgst) / 100).toFixed(2);
 
         //final amount
         paymentGateWayPayLoad.transaction.amount = (

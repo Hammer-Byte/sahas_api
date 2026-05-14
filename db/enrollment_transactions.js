@@ -65,7 +65,7 @@ function getEnrollmentTransactionsForInterval({ start_date, end_date, order_by =
             ON ENROLLMENTS.user_id = USERS.id 
         LEFT JOIN USERS AS CREATORS 
             ON ENROLLMENTS.created_by = CREATORS.id 
-        WHERE ENROLLMENT_TRANSACTIONS.created_on BETWEEN ? AND ? 
+        WHERE ENROLLMENT_TRANSACTIONS.type NOT IN ('SCH','DIS') AND ENROLLMENT_TRANSACTIONS.created_on BETWEEN ? AND ? 
         ORDER BY ENROLLMENT_TRANSACTIONS.created_on ${order_by}`,
         [start_date, end_date],
     ).catch((error) => logger.error(`getEnrollmentTransactionsForInterval: ${error}`));

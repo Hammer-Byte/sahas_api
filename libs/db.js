@@ -578,3 +578,6 @@ function executeSQLQueryParameterized(query, parameters) {
 
 // Export the pool to use in other files
 module.exports = { generateDBTables, executeSQLQueryRaw, executeSQLQueryParameterized };
+
+
+

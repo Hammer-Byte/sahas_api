@@ -310,6 +310,7 @@ async function generateDBTables() {
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(96) NOT NULL UNIQUE,
             course_id INT NOT NULL,
+            fees DECIMAL(8, 2) NOT NULL DEFAULT 0,
             start_at DATETIME NOT NULL,
             end_at DATETIME NOT NULL,
             active BOOLEAN NOT NULL DEFAULT FALSE,

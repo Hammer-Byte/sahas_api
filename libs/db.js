@@ -306,7 +306,7 @@ async function generateDBTables() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
-        `CREATE TABLE IF NOT EXISTS EXAMS (
+        `CREATE TABLE IF NOT EXISTS EXAM_SERIES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(96) NOT NULL UNIQUE,
             course_id INT NOT NULL,
@@ -314,6 +314,15 @@ async function generateDBTables() {
             start_at DATETIME NOT NULL,
             end_at DATETIME NOT NULL,
             active BOOLEAN NOT NULL DEFAULT FALSE,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS EXAMS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            exam_series_id INT NOT NULL,
+            subject_id INT NOT NULL,
+            start_at DATETIME NOT NULL,
+            end_at DATETIME NOT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
@@ -525,10 +534,14 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (3, 2);`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
 
-        `INSERT IGNORE INTO EXAMS (title, course_id, start_at, end_at, active) VALUES
-            ('Mid Term Exam 2026', 1, '2026-06-01 09:00:00', '2026-06-01 12:00:00', TRUE),
-            ('Final Exam 2026', 1, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
-            ('Unit Test - March 2026', 1, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
+        `INSERT IGNORE INTO EXAM_SERIES (title, course_id, fees, start_at, end_at, active) VALUES
+            ('Mid Term Exam 2026', 1, 0, '2026-06-01 09:00:00', '2026-06-01 12:00:00', TRUE),
+            ('Final Exam 2026', 1, 0, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
+            ('Unit Test - March 2026', 1, 0, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
+
+        `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at) VALUES
+            (1, 1, '2026-06-02 09:00:00', '2026-06-02 11:00:00'),
+            (1, 2, '2026-06-03 14:00:00', '2026-06-03 16:00:00')`,
     ];
 
     return Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));

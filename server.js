@@ -126,9 +126,9 @@ const routers = {
         middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
         router: require("./routes/policies"),
     },
-    "/exams": {
+    "/exam-series": {
         middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
-        router: require("./routes/exams"),
+        router: require("./routes/exam_series"),
     },
     "/stream-selection-question-categories": {
         middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],

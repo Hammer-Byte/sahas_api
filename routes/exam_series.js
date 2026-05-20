@@ -1,6 +1,7 @@
 const libExpress = require("express");
 const { getAllExamSeries, getExamSeriesById, getExamSeriesByTitle, addExamSeries, updateExamSeriesById } = require("../db/exam_series");
 const { getExamsByExamSeriesId } = require("../db/exams");
+const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { validateRequestBody } = require("sahas_utils");
 
 const router = libExpress.Router();
@@ -39,6 +40,7 @@ router.get("/:id", async (req, res) => {
         return res.status(400).json({ error: "Exam Series Not Exist" });
     }
 
+    examSeries.subjects = await getCourseSubjectsByCourseId({ course_id: examSeries.course_id });
     res.status(200).json(examSeries);
 });
 

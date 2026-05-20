@@ -306,6 +306,16 @@ async function generateDBTables() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
+        `CREATE TABLE IF NOT EXISTS EXAMS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(96) NOT NULL,
+            course_id INT NOT NULL,
+            start_at DATETIME NOT NULL,
+            end_at DATETIME NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT FALSE,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_QUESTION_CATEGORIES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL UNIQUE,

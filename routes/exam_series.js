@@ -1,6 +1,6 @@
 const libExpress = require("express");
 const { getAllExamSeries, getExamSeriesById, getExamSeriesByTitle, addExamSeries, updateExamSeriesById } = require("../db/exam_series");
-const { getExamsByExamSeriesId } = require("../db/exams");
+const { getExamsByExamSeriesId, addExam, getExamById } = require("../db/exams");
 const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { validateRequestBody } = require("sahas_utils");
 
@@ -41,7 +41,39 @@ router.get("/:id", async (req, res) => {
     }
 
     examSeries.subjects = await getCourseSubjectsByCourseId({ course_id: examSeries.course_id });
+    examSeries.exams = await getExamsByExamSeriesId({ exam_series_id: req.params.id });
     res.status(200).json(examSeries);
+});
+
+router.post("/:examSeriesId/exams", async (req, res) => {
+    if (!req.params.examSeriesId) {
+        return res.status(400).json({ error: "Missing Exam Series Id" });
+    }
+
+    const examSeries = await getExamSeriesById({ id: req.params.examSeriesId });
+    if (!examSeries) {
+        return res.status(400).json({ error: "Exam Series Not Exist" });
+    }
+
+    const requiredBodyFields = ["subject_id", "start_at", "end_at"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const examId = await addExam({
+        exam_series_id: req.params.examSeriesId,
+        subject_id: validatedRequestBody.subject_id,
+        start_at: validatedRequestBody.start_at,
+        end_at: validatedRequestBody.end_at,
+    });
+
+    if (!examId) {
+        return res.status(400).json({ error: "Failed To Add Exam" });
+    }
+
+    res.status(201).json(await getExamById({ id: examId }));
 });
 
 router.get("/:examSeriesId/exams", async (req, res) => {

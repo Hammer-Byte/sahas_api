@@ -15,6 +15,15 @@ function getExamsByExamSeriesId({ exam_series_id }) {
     });
 }
 
+function addExam({ exam_series_id, subject_id, start_at, end_at }) {
+    return executeSQLQueryParameterized(
+        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at) VALUES (?,?,?,?)`,
+        [exam_series_id, subject_id, start_at, end_at],
+    )
+        .then((result) => result.insertId)
+        .catch((error) => logger.error(`addExam: ${error}`));
+}
+
 function getExamById({ id }) {
     return executeSQLQueryParameterized(
         `SELECT EXAMS.*, SUBJECTS.title AS subject_title
@@ -29,5 +38,6 @@ function getExamById({ id }) {
 
 module.exports = {
     getExamsByExamSeriesId,
+    addExam,
     getExamById,
 };

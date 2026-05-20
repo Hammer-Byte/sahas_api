@@ -535,13 +535,17 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
 
         `INSERT IGNORE INTO EXAM_SERIES (title, course_id, fees, start_at, end_at, active) VALUES
-            ('Mid Term Exam 2026', 1, 0, '2026-06-01 09:00:00', '2026-06-01 12:00:00', TRUE),
+            ('Mid Term Exam 2026', 1, 0, '2026-06-01 09:00:00', '2026-06-15 18:00:00', TRUE),
             ('Final Exam 2026', 1, 0, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
             ('Unit Test - March 2026', 1, 0, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
 
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at) VALUES
             (1, 1, '2026-06-02 09:00:00', '2026-06-02 11:00:00'),
-            (1, 2, '2026-06-03 14:00:00', '2026-06-03 16:00:00')`,
+            (1, 2, '2026-06-03 14:00:00', '2026-06-03 16:00:00'),
+            (2, 1, '2026-07-15 09:00:00', '2026-07-15 12:00:00'),
+            (2, 2, '2026-07-15 14:00:00', '2026-07-15 17:00:00'),
+            (3, 1, '2026-03-10 10:00:00', '2026-03-10 10:45:00'),
+            (3, 2, '2026-03-10 10:50:00', '2026-03-10 11:30:00')`,
     ];
 
     return Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));

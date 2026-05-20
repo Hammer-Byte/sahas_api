@@ -308,7 +308,7 @@ async function generateDBTables() {
         )`,
         `CREATE TABLE IF NOT EXISTS EXAMS (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            title VARCHAR(96) NOT NULL,
+            title VARCHAR(96) NOT NULL UNIQUE,
             course_id INT NOT NULL,
             start_at DATETIME NOT NULL,
             end_at DATETIME NOT NULL,
@@ -523,6 +523,11 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (1, 2);`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (3, 2);`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
+
+        `INSERT IGNORE INTO EXAMS (title, course_id, start_at, end_at, active) VALUES
+            ('Mid Term Exam 2026', 1, '2026-06-01 09:00:00', '2026-06-01 12:00:00', TRUE),
+            ('Final Exam 2026', 1, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
+            ('Unit Test - March 2026', 1, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
     ];
 
     return Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));

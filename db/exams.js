@@ -5,7 +5,7 @@ function getExamsByExamSeriesId({ exam_series_id }) {
     return executeSQLQueryParameterized(
         `SELECT EXAMS.*, SUBJECTS.title AS subject_title
          FROM EXAMS
-         INNER JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
+         LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
          WHERE EXAMS.exam_series_id = ?
          ORDER BY EXAMS.start_at ASC`,
         [exam_series_id],
@@ -28,7 +28,7 @@ function getExamById({ id }) {
     return executeSQLQueryParameterized(
         `SELECT EXAMS.*, SUBJECTS.title AS subject_title
          FROM EXAMS
-         INNER JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
+         LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
          WHERE EXAMS.id = ?`,
         [id],
     )

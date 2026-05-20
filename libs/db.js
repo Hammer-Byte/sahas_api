@@ -535,22 +535,40 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
 
         `INSERT IGNORE INTO EXAM_SERIES (title, course_id, fees, start_at, end_at, active) VALUES
-            ('Mid Term Exam 2026', 1, 0, '2026-06-01 09:00:00', '2026-06-15 18:00:00', TRUE),
-            ('Final Exam 2026', 1, 0, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
-            ('Unit Test - March 2026', 1, 0, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
+            ('Mid Term Exam 2026', 7, 0, '2026-06-01 09:00:00', '2026-06-15 18:00:00', TRUE),
+            ('Final Exam 2026', 2, 0, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
+            ('Unit Test - March 2026', 7, 0, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
 
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, 1, '2026-06-02 09:00:00', '2026-06-02 11:00:00' FROM EXAM_SERIES es WHERE es.title = 'Mid Term Exam 2026' LIMIT 1`,
+            SELECT es.id, cs.subject_id, '2026-06-02 09:00:00', '2026-06-02 11:00:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 58
+            WHERE es.title = 'Mid Term Exam 2026' LIMIT 1`,
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, 2, '2026-06-03 14:00:00', '2026-06-03 16:00:00' FROM EXAM_SERIES es WHERE es.title = 'Mid Term Exam 2026' LIMIT 1`,
+            SELECT es.id, cs.subject_id, '2026-06-03 14:00:00', '2026-06-03 16:00:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 59
+            WHERE es.title = 'Mid Term Exam 2026' LIMIT 1`,
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, 1, '2026-07-15 09:00:00', '2026-07-15 12:00:00' FROM EXAM_SERIES es WHERE es.title = 'Final Exam 2026' LIMIT 1`,
+            SELECT es.id, cs.subject_id, '2026-07-15 09:00:00', '2026-07-15 12:00:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 55
+            WHERE es.title = 'Final Exam 2026' LIMIT 1`,
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, 2, '2026-07-15 14:00:00', '2026-07-15 17:00:00' FROM EXAM_SERIES es WHERE es.title = 'Final Exam 2026' LIMIT 1`,
+            SELECT es.id, cs.subject_id, '2026-07-15 14:00:00', '2026-07-15 17:00:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 52
+            WHERE es.title = 'Final Exam 2026' LIMIT 1`,
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, 1, '2026-03-10 10:00:00', '2026-03-10 10:45:00' FROM EXAM_SERIES es WHERE es.title = 'Unit Test - March 2026' LIMIT 1`,
+            SELECT es.id, cs.subject_id, '2026-03-10 10:00:00', '2026-03-10 10:45:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 57
+            WHERE es.title = 'Unit Test - March 2026' LIMIT 1`,
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, 2, '2026-03-10 10:50:00', '2026-03-10 11:30:00' FROM EXAM_SERIES es WHERE es.title = 'Unit Test - March 2026' LIMIT 1`,
+            SELECT es.id, cs.subject_id, '2026-03-10 10:50:00', '2026-03-10 11:30:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 58
+            WHERE es.title = 'Unit Test - March 2026' LIMIT 1`,
     ];
 
     return Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));

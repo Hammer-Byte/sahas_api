@@ -1,10 +1,23 @@
 const libExpress = require("express");
 const { getAllExamSeries, getExamSeriesById, getExamSeriesByTitle, addExamSeries, updateExamSeriesById } = require("../db/exam_series");
-const { getExamsByExamSeriesId, addExam, getExamById } = require("../db/exams");
+const { getExamsByExamSeriesId, addExam, updateExamById, deleteExamById, getExamById } = require("../db/exams");
+const {
+    getExamQuestionsByExamId,
+    getExamQuestionById,
+    addExamQuestion,
+    updateExamQuestionById,
+    deleteExamQuestionById,
+} = require("../db/exam_questions");
 const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { validateRequestBody } = require("sahas_utils");
 
 const router = libExpress.Router();
+
+const EXAM_QUESTION_REQUIRED_FIELDS = ["question", "choice_one", "choice_two", "choice_three", "choice_four", "correct_choice"];
+
+function isValidCorrectChoice(correct_choice) {
+    return [1, 2, 3, 4].includes(Number(correct_choice));
+}
 
 router.get("/", async (req, res) => {
     res.status(200).json(await getAllExamSeries());
@@ -28,6 +41,137 @@ router.post("/", async (req, res, next) => {
 }, async (req, res) => {
     const examSeriesId = await addExamSeries(req.body);
     res.status(201).json(await getExamSeriesById({ id: examSeriesId }));
+});
+
+router.patch("/exams", async (req, res) => {
+    const requiredBodyFields = ["id", "subject_id", "start_at", "end_at"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const exam = await getExamById({ id: validatedRequestBody.id });
+    if (!exam) {
+        return res.status(400).json({ error: "Exam Not Exist" });
+    }
+
+    await updateExamById(validatedRequestBody);
+    res.status(200).json(await getExamById({ id: validatedRequestBody.id }));
+});
+
+router.delete("/exams/:id", async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Exam Id" });
+    }
+
+    const exam = await getExamById({ id: req.params.id });
+    if (!exam) {
+        return res.status(400).json({ error: "Exam Not Exist" });
+    }
+
+    await deleteExamById({ id: req.params.id });
+    res.sendStatus(204);
+});
+
+router.get("/exams/:examId", async (req, res) => {
+    if (!req.params.examId) {
+        return res.status(400).json({ error: "Missing Exam Id" });
+    }
+
+    const exam = await getExamById({ id: req.params.examId });
+    if (!exam) {
+        return res.status(400).json({ error: "Exam Not Exist" });
+    }
+
+    res.status(200).json(exam);
+});
+
+router.get("/exams/:examId/questions", async (req, res) => {
+    if (!req.params.examId) {
+        return res.status(400).json({ error: "Missing Exam Id" });
+    }
+
+    const exam = await getExamById({ id: req.params.examId });
+    if (!exam) {
+        return res.status(400).json({ error: "Exam Not Exist" });
+    }
+
+    res.status(200).json(await getExamQuestionsByExamId({ exam_id: req.params.examId }));
+});
+
+router.post("/exams/:examId/questions", async (req, res) => {
+    if (!req.params.examId) {
+        return res.status(400).json({ error: "Missing Exam Id" });
+    }
+
+    const exam = await getExamById({ id: req.params.examId });
+    if (!exam) {
+        return res.status(400).json({ error: "Exam Not Exist" });
+    }
+
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, EXAM_QUESTION_REQUIRED_FIELDS);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    if (!isValidCorrectChoice(validatedRequestBody.correct_choice)) {
+        return res.status(400).json({ error: "Invalid Correct Choice" });
+    }
+
+    const examQuestionId = await addExamQuestion({
+        exam_id: req.params.examId,
+        ...validatedRequestBody,
+        media_url: req.body.media_url ?? null,
+        created_by: req.user?.id,
+    });
+
+    if (!examQuestionId) {
+        return res.status(400).json({ error: "Failed To Add Exam Question" });
+    }
+
+    res.status(201).json(await getExamQuestionById({ id: examQuestionId }));
+});
+
+router.patch("/exam-questions", async (req, res) => {
+    const requiredBodyFields = ["id", ...EXAM_QUESTION_REQUIRED_FIELDS];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    if (!isValidCorrectChoice(validatedRequestBody.correct_choice)) {
+        return res.status(400).json({ error: "Invalid Correct Choice" });
+    }
+
+    const examQuestion = await getExamQuestionById({ id: validatedRequestBody.id });
+    if (!examQuestion) {
+        return res.status(400).json({ error: "Exam Question Not Exist" });
+    }
+
+    await updateExamQuestionById({
+        ...validatedRequestBody,
+        media_url: req.body.media_url ?? null,
+        updated_by: req.user?.id,
+    });
+
+    res.status(200).json(await getExamQuestionById({ id: validatedRequestBody.id }));
+});
+
+router.delete("/exam-questions/:id", async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Exam Question Id" });
+    }
+
+    const examQuestion = await getExamQuestionById({ id: req.params.id });
+    if (!examQuestion) {
+        return res.status(400).json({ error: "Exam Question Not Exist" });
+    }
+
+    await deleteExamQuestionById({ id: req.params.id });
+    res.sendStatus(204);
 });
 
 router.get("/:id", async (req, res) => {

@@ -24,6 +24,16 @@ function addExam({ exam_series_id, subject_id, start_at, end_at }) {
         .catch((error) => logger.error(`addExam: ${error}`));
 }
 
+function deleteExamById({ id }) {
+    return executeSQLQueryParameterized("DELETE FROM EXAMS WHERE id=?", [id]).catch((error) => logger.error(`deleteExamById: ${error}`));
+}
+
+function updateExamById({ id, subject_id, start_at, end_at }) {
+    return executeSQLQueryParameterized("UPDATE EXAMS SET subject_id=?, start_at=?, end_at=? WHERE id=?", [subject_id, start_at, end_at, id]).catch(
+        (error) => logger.error(`updateExamById: ${error}`),
+    );
+}
+
 function getExamById({ id }) {
     return executeSQLQueryParameterized(
         `SELECT EXAMS.*, SUBJECTS.title AS subject_title
@@ -39,5 +49,7 @@ function getExamById({ id }) {
 module.exports = {
     getExamsByExamSeriesId,
     addExam,
+    updateExamById,
+    deleteExamById,
     getExamById,
 };

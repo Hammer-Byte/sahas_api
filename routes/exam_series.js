@@ -15,8 +15,15 @@ const router = libExpress.Router();
 
 const EXAM_QUESTION_REQUIRED_FIELDS = ["question", "choice_one", "choice_two", "choice_three", "choice_four", "correct_choice"];
 
-function isValidCorrectChoice(correct_choice) {
-    return [1, 2, 3, 4].includes(Number(correct_choice));
+function normalizeChoice(value) {
+    return typeof value === "string" ? value.trim() : value;
+}
+
+function isValidCorrectChoice(correct_choice, { choice_one, choice_two, choice_three, choice_four }) {
+    const normalizedCorrectChoice = normalizeChoice(correct_choice);
+    if (!normalizedCorrectChoice) return false;
+
+    return [choice_one, choice_two, choice_three, choice_four].map(normalizeChoice).includes(normalizedCorrectChoice);
 }
 
 router.get("/", async (req, res) => {
@@ -116,8 +123,8 @@ router.post("/exams/:examId/questions", async (req, res) => {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
 
-    if (!isValidCorrectChoice(validatedRequestBody.correct_choice)) {
-        return res.status(400).json({ error: "Invalid Correct Choice" });
+    if (!isValidCorrectChoice(validatedRequestBody.correct_choice, validatedRequestBody)) {
+        return res.status(400).json({ error: "Correct choice must match one of the four options" });
     }
 
     const examQuestionId = await addExamQuestion({
@@ -142,8 +149,8 @@ router.patch("/exam-questions", async (req, res) => {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
 
-    if (!isValidCorrectChoice(validatedRequestBody.correct_choice)) {
-        return res.status(400).json({ error: "Invalid Correct Choice" });
+    if (!isValidCorrectChoice(validatedRequestBody.correct_choice, validatedRequestBody)) {
+        return res.status(400).json({ error: "Correct choice must match one of the four options" });
     }
 
     const examQuestion = await getExamQuestionById({ id: validatedRequestBody.id });

@@ -334,7 +334,7 @@ async function generateDBTables() {
             choice_two VARCHAR(256) NOT NULL,
             choice_three VARCHAR(256) NOT NULL,
             choice_four VARCHAR(256) NOT NULL,
-            correct_choice TINYINT NOT NULL,
+            correct_choice VARCHAR(256) NOT NULL,
             media_url VARCHAR(512) DEFAULT NULL,
             created_by INT NULL,
             updated_by INT NULL,
@@ -586,43 +586,43 @@ async function generateDBTables() {
             WHERE es.title = 'Unit Test - March 2026' LIMIT 1`,
 
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'What is the value of 15 + 27?', '40', '42', '44', '46', 2, NULL
+            SELECT e.id, 'What is the value of 15 + 27?', '40', '42', '44', '46', '42', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
             WHERE es.title = 'Mid Term Exam 2026' AND e.subject_id = 58
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Which unit is used to measure electric current?', 'Volt', 'Ampere', 'Ohm', 'Watt', 2, NULL
+            SELECT e.id, 'Which unit is used to measure electric current?', 'Volt', 'Ampere', 'Ohm', 'Watt', 'Ampere', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
             WHERE es.title = 'Mid Term Exam 2026' AND e.subject_id = 58
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Water boils at 100°C at standard pressure — true or false?', 'True', 'False', 'Only in vacuum', 'Depends on altitude', 1, NULL
+            SELECT e.id, 'Water boils at 100°C at standard pressure — true or false?', 'True', 'False', 'Only in vacuum', 'Depends on altitude', 'True', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
             WHERE es.title = 'Mid Term Exam 2026' AND e.subject_id = 59
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Solve for x: 3x - 9 = 0', 'x = 2', 'x = 3', 'x = 4', 'x = 5', 2, NULL
+            SELECT e.id, 'Solve for x: 3x - 9 = 0', 'x = 2', 'x = 3', 'x = 4', 'x = 5', 'x = 3', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
             WHERE es.title = 'Final Exam 2026' AND e.subject_id = 55
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Which gas is most abundant in Earth atmosphere?', 'Oxygen', 'Nitrogen', 'Carbon dioxide', 'Hydrogen', 2, NULL
+            SELECT e.id, 'Which gas is most abundant in Earth atmosphere?', 'Oxygen', 'Nitrogen', 'Carbon dioxide', 'Hydrogen', 'Nitrogen', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
             WHERE es.title = 'Final Exam 2026' AND e.subject_id = 52
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'What is 12 × 8?', '84', '92', '96', '104', 3, NULL
+            SELECT e.id, 'What is 12 × 8?', '84', '92', '96', '104', '96', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
             WHERE es.title = 'Unit Test - March 2026' AND e.subject_id = 57
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Photosynthesis primarily occurs in which part of the plant?', 'Root', 'Stem', 'Leaf', 'Flower', 3, NULL
+            SELECT e.id, 'Photosynthesis primarily occurs in which part of the plant?', 'Root', 'Stem', 'Leaf', 'Flower', 'Leaf', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
             WHERE es.title = 'Unit Test - March 2026' AND e.subject_id = 58

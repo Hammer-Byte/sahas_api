@@ -16,6 +16,10 @@ const {
     deleteExamQuestionById,
 } = require("../db/exam_questions");
 const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
+const {
+    addExamSeriesEnrollment,
+    getExamSeriesEnrollmentByUserIdAndExamSeriesId,
+} = require("../db/exam_series_enrollments");
 const { validateRequestBody } = require("sahas_utils");
 
 const router = libExpress.Router();
@@ -102,6 +106,49 @@ router.get("/courses/:courseId", async (req, res) => {
     }
 
     res.status(200).json(await getExamSeriesByCourseId({ course_id: req.params.courseId }));
+});
+
+router.post("/enrollments", async (req, res) => {
+    const requiredBodyFields = ["exam_series_id"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const examSeries = await getExamSeriesById({ id: validatedRequestBody.exam_series_id });
+    if (!examSeries) {
+        return res.status(400).json({ error: "Exam Series Not Exist" });
+    }
+
+    if (Number(examSeries.fees) !== 0) {
+        return res.status(400).json({ error: "Payment Required For This Exam Series" });
+    }
+
+    const existingEnrollment = await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+        user_id: req.user.id,
+        exam_series_id: validatedRequestBody.exam_series_id,
+    });
+
+    if (existingEnrollment) {
+        return res.status(400).json({ error: "Already Enrolled In This Exam Series" });
+    }
+
+    const enrollmentId = await addExamSeriesEnrollment({
+        user_id: req.user.id,
+        exam_series_id: validatedRequestBody.exam_series_id,
+    });
+
+    if (!enrollmentId) {
+        return res.status(400).json({ error: "Failed To Enroll In Exam Series" });
+    }
+
+    res.status(201).json(
+        await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+            user_id: req.user.id,
+            exam_series_id: validatedRequestBody.exam_series_id,
+        }),
+    );
 });
 
 router.get("/exams/:examId", async (req, res) => {

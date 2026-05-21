@@ -12,6 +12,8 @@ const { addEnrollmentTransaction, updateEnrollmentTransactionInvoiceById } = req
 const { addWalletTransaction } = require("../db/wallet_transactions");
 const libNumbersToWords = require("number-to-words");
 const { getBundledCoursesByCourseId } = require("../db/bundled_courses");
+const { PAYMENT_GATEWAY_TYPE_EXAM_SERIES } = require("../constants");
+const { addExamSeriesEnrollment, getExamSeriesEnrollmentByUserIdAndExamSeriesId } = require("../db/exam_series_enrollments");
 
 const router = libExpress.Router();
 
@@ -39,21 +41,26 @@ router.get("/:id", async (req, res) => {
 
 
             if (paymentGateWayPayLoad?.product === "Stream Selection Test") {
+                return;
+            }
 
+            if (paymentGateWayPayLoad?.type === PAYMENT_GATEWAY_TYPE_EXAM_SERIES) {
+                const existingEnrollment = await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+                    user_id: req?.user?.id,
+                    exam_series_id: paymentGateWayPayLoad.exam_series_id,
+                });
 
-                //need to create a table called STREAM_SELECTION_TEST_TRANSACTIONS
-                //fromt payload apply entires
-                //process all paid transcations
-                //enable stream selection test for user
-                //generate invoice
-                //send notification emails
-                //return success
-
-
-
+                if (!existingEnrollment) {
+                    await addExamSeriesEnrollment({
+                        user_id: req?.user?.id,
+                        exam_series_id: paymentGateWayPayLoad.exam_series_id,
+                    });
+                }
 
                 return;
-            } else {
+            }
+
+            {
 
                 // add Enrollment
                 const enrollmentId = await addEnrollment({
@@ -220,7 +227,13 @@ router.get("/:id", async (req, res) => {
 
     const paymentGateWayPayLoad = { ...verifiedPaymentGatewayPayLoads?.find(({ transaction }) => transaction?.id == req.params.id) };
 
-    res.status(200).json({ transaction: { paid: paymentGateWayPayLoad?.transaction?.paid }, course: paymentGateWayPayLoad?.course });
+    res.status(200).json({
+        transaction: { paid: paymentGateWayPayLoad?.transaction?.paid },
+        course: paymentGateWayPayLoad?.course,
+        type: paymentGateWayPayLoad?.type,
+        exam_series_id: paymentGateWayPayLoad?.exam_series_id,
+        examSeries: paymentGateWayPayLoad?.examSeries,
+    });
 });
 
 module.exports = router;

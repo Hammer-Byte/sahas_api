@@ -17,11 +17,16 @@ router.post("/", async (req, res) => {
     if (isRequestBodyValid) {
         const { paymentGateWay: { redirectionHost, postPaymentRoute } = {} } = await readConfig("app");
 
-        if(validatedRequestBody.productinfo === "Stream Selection Test") {
+        if (validatedRequestBody.productinfo === "Stream Selection Test") {
             const user = await getUserByEmail({ email: req.body.email });
             await patchUserStreamSelectionTestAllowedById({ id: user.id, stream_selection_test_allowed: true });
             return res.redirect(redirectionHost.concat("stream-selection-test/enroll"));
         }
+
+        if (validatedRequestBody.productinfo === "Exam Series") {
+            return res.redirect(redirectionHost.concat(postPaymentRoute.concat(validatedRequestBody.txnid)));
+        }
+
         return res.redirect(redirectionHost.concat(postPaymentRoute.concat(validatedRequestBody.txnid)));
     }
     res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });

@@ -1,4 +1,8 @@
 const libExpress = require("express");
+const libCrypto = require("crypto");
+const { readConfig } = require("../libs/config");
+const { PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES, PAYMENT_GATEWAY_TYPE_EXAM_SERIES } = require("../constants");
+const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
 const {
     getAllExamSeries,
     getExamSeriesByCourseId,
@@ -129,7 +133,7 @@ router.post("/enrollments", async (req, res) => {
     }));
 
     if (!hasFreeExamSeries && !hasActiveCourseEnrollment) {
-        return res.status(400).json({ error: "Payment Required For This Exam Series" });
+        return res.status(405).json({ error: "Payment Required For This Exam Series" });
     }
 
     const existingEnrollment = await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
@@ -156,6 +160,82 @@ router.post("/enrollments", async (req, res) => {
             exam_series_id: validatedRequestBody.exam_series_id,
         }),
     );
+});
+
+router.post("/payment-gateway-payloads", async (req, res) => {
+    const requiredBodyFields = ["exam_series_id"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const examSeries = await getExamSeriesById({ id: validatedRequestBody.exam_series_id });
+    if (!examSeries) {
+        return res.status(400).json({ error: "Exam Series Not Exist" });
+    }
+
+    if (Number(examSeries.fees) === 0) {
+        return res.status(400).json({ error: "This Exam Series Does Not Require Payment" });
+    }
+
+    const existingEnrollment = await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+        user_id: req.user.id,
+        exam_series_id: validatedRequestBody.exam_series_id,
+    });
+
+    if (existingEnrollment) {
+        return res.status(400).json({ error: "Already Enrolled In This Exam Series" });
+    }
+
+    const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
+
+    const paymentGateWayPayLoad = {
+        type: PAYMENT_GATEWAY_TYPE_EXAM_SERIES,
+        exam_series_id: examSeries.id,
+        examSeries,
+        paymentGateWay: {
+            merchantKey,
+            url,
+        },
+        transaction: {
+            id: libCrypto.randomUUID(),
+            successURL: redirectionHost.concat(resultAPI),
+            failureURL: redirectionHost.concat(resultAPI),
+            amount: Number(examSeries.fees),
+        },
+        user: {
+            email: req.user.email,
+            firstName: req.user.full_name?.split(" ")[0],
+            lastName: req.user.full_name?.split(" ")?.[1] || "NA",
+            phone: req.user.phone,
+        },
+        product: PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES,
+    };
+
+    paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.amount * cgst) / 100).toFixed(2);
+    paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
+
+    paymentGateWayPayLoad.transaction.preTaxAmount =
+        Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
+        (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
+
+    paymentGateWayPayLoad.transaction.amount = (
+        Number(paymentGateWayPayLoad.transaction.preTaxAmount) +
+        Number(paymentGateWayPayLoad.transaction.sgst) +
+        Number(paymentGateWayPayLoad.transaction.cgst)
+    ).toFixed(2);
+
+    paymentGateWayPayLoad.transaction.hash = libCrypto
+        .createHash("sha512")
+        .update(
+            `${merchantKey}|${paymentGateWayPayLoad.transaction.id}|${paymentGateWayPayLoad.transaction.amount}|${paymentGateWayPayLoad.product}|${paymentGateWayPayLoad.user.firstName}|${paymentGateWayPayLoad.user.email}|||||||||||${merchantSalt}`,
+        )
+        .digest("hex");
+
+    addPaymentGateWayPayLoad(paymentGateWayPayLoad);
+
+    res.status(201).json(paymentGateWayPayLoad);
 });
 
 router.get("/exams/:examId", async (req, res) => {

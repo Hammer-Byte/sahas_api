@@ -1,5 +1,12 @@
 const libExpress = require("express");
-const { getAllExamSeries, getExamSeriesById, getExamSeriesByTitle, addExamSeries, updateExamSeriesById } = require("../db/exam_series");
+const {
+    getAllExamSeries,
+    getExamSeriesByCourseId,
+    getExamSeriesById,
+    getExamSeriesByTitle,
+    addExamSeries,
+    updateExamSeriesById,
+} = require("../db/exam_series");
 const { getAvailableExamsByCourseId, getExamsByExamSeriesId, addExam, updateExamById, deleteExamById, getExamById } = require("../db/exams");
 const {
     getExamQuestionsByExamId,
@@ -87,6 +94,14 @@ router.get("/courses/:courseId/exams", async (req, res) => {
     }
 
     res.status(200).json(await getAvailableExamsByCourseId({ course_id: req.params.courseId }));
+});
+
+router.get("/courses/:courseId", async (req, res) => {
+    if (!req.params.courseId) {
+        return res.status(400).json({ error: "Missing Course Id" });
+    }
+
+    res.status(200).json(await getExamSeriesByCourseId({ course_id: req.params.courseId }));
 });
 
 router.get("/exams/:examId", async (req, res) => {

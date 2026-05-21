@@ -550,84 +550,43 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
 
         `INSERT IGNORE INTO EXAM_SERIES (title, course_id, fees, start_at, end_at, active) VALUES
-            ('Mid Term Exam 2026', 7, 0, '2026-06-01 09:00:00', '2026-06-15 18:00:00', TRUE),
-            ('Final Exam 2026', 2, 0, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
-            ('Unit Test - March 2026', 7, 0, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
-
-        `TRUNCATE TABLE EXAMS`,
+            ('Exam Series - Upcoming 2026', 7, 0, '2026-07-01 09:00:00', '2026-07-31 18:00:00', TRUE),
+            ('Exam Series - Ongoing 2026', 7, 0, '2026-05-01 09:00:00', '2026-06-30 18:00:00', TRUE),
+            ('Exam Series - Finished 2026', 7, 0, '2026-01-15 09:00:00', '2026-03-31 18:00:00', TRUE)`,
 
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-06-02 09:00:00', '2026-06-02 11:00:00'
+            SELECT es.id, cs.subject_id, '2026-07-05 09:00:00', '2026-07-05 11:00:00'
             FROM EXAM_SERIES es
             INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 58
-            WHERE es.title = 'Mid Term Exam 2026' LIMIT 1`,
+            WHERE es.title = 'Exam Series - Upcoming 2026' LIMIT 1`,
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-06-03 14:00:00', '2026-06-03 16:00:00'
+            SELECT es.id, cs.subject_id, '2026-05-15 14:00:00', '2026-05-15 16:00:00'
             FROM EXAM_SERIES es
             INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 59
-            WHERE es.title = 'Mid Term Exam 2026' LIMIT 1`,
+            WHERE es.title = 'Exam Series - Ongoing 2026' LIMIT 1`,
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-07-15 09:00:00', '2026-07-15 12:00:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 55
-            WHERE es.title = 'Final Exam 2026' LIMIT 1`,
-        `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-07-15 14:00:00', '2026-07-15 17:00:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 52
-            WHERE es.title = 'Final Exam 2026' LIMIT 1`,
-        `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-03-10 10:00:00', '2026-03-10 10:45:00'
+            SELECT es.id, cs.subject_id, '2026-02-10 10:00:00', '2026-02-10 11:30:00'
             FROM EXAM_SERIES es
             INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 57
-            WHERE es.title = 'Unit Test - March 2026' LIMIT 1`,
-        `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-03-10 10:50:00', '2026-03-10 11:30:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id AND cs.subject_id = 58
-            WHERE es.title = 'Unit Test - March 2026' LIMIT 1`,
+            WHERE es.title = 'Exam Series - Finished 2026' LIMIT 1`,
 
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'What is the value of 15 + 27?', '40', '42', '44', '46', '42', NULL
+            SELECT e.id, 'Upcoming exam sample question?', 'A', 'B', 'C', 'D', 'B', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Mid Term Exam 2026' AND e.subject_id = 58
+            WHERE es.title = 'Exam Series - Upcoming 2026'
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Which unit is used to measure electric current?', 'Volt', 'Ampere', 'Ohm', 'Watt', 'Ampere', NULL
+            SELECT e.id, 'Ongoing exam sample question?', 'A', 'B', 'C', 'D', 'C', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Mid Term Exam 2026' AND e.subject_id = 58
+            WHERE es.title = 'Exam Series - Ongoing 2026'
             LIMIT 1`,
         `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Water boils at 100°C at standard pressure — true or false?', 'True', 'False', 'Only in vacuum', 'Depends on altitude', 'True', NULL
+            SELECT e.id, 'Finished exam sample question?', 'A', 'B', 'C', 'D', 'A', NULL
             FROM EXAMS e
             INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Mid Term Exam 2026' AND e.subject_id = 59
-            LIMIT 1`,
-        `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Solve for x: 3x - 9 = 0', 'x = 2', 'x = 3', 'x = 4', 'x = 5', 'x = 3', NULL
-            FROM EXAMS e
-            INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Final Exam 2026' AND e.subject_id = 55
-            LIMIT 1`,
-        `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Which gas is most abundant in Earth atmosphere?', 'Oxygen', 'Nitrogen', 'Carbon dioxide', 'Hydrogen', 'Nitrogen', NULL
-            FROM EXAMS e
-            INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Final Exam 2026' AND e.subject_id = 52
-            LIMIT 1`,
-        `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'What is 12 × 8?', '84', '92', '96', '104', '96', NULL
-            FROM EXAMS e
-            INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Unit Test - March 2026' AND e.subject_id = 57
-            LIMIT 1`,
-        `INSERT IGNORE INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Photosynthesis primarily occurs in which part of the plant?', 'Root', 'Stem', 'Leaf', 'Flower', 'Leaf', NULL
-            FROM EXAMS e
-            INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Unit Test - March 2026' AND e.subject_id = 58
+            WHERE es.title = 'Exam Series - Finished 2026'
             LIMIT 1`,
     ];
 

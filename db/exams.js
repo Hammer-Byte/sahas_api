@@ -56,8 +56,14 @@ function updateExamById({ id, subject_id, start_at, end_at }) {
 
 function getExamById({ id }) {
     return executeSQLQueryParameterized(
-        `SELECT EXAMS.*, SUBJECTS.title AS subject_title
+        `SELECT EXAMS.*,
+                SUBJECTS.title AS subject_title,
+                EXAM_SERIES.title AS exam_series_title,
+                EXAM_SERIES.start_at AS exam_series_start_at,
+                EXAM_SERIES.end_at AS exam_series_end_at,
+                EXAM_SERIES.course_id
          FROM EXAMS
+         INNER JOIN EXAM_SERIES ON EXAM_SERIES.id = EXAMS.exam_series_id
          LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
          WHERE EXAMS.id = ?`,
         [id],

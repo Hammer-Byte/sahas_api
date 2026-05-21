@@ -1,6 +1,28 @@
 const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
 
+function getAvailableExamsByCourseId({ course_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT EXAMS.*,
+                SUBJECTS.title AS subject_title,
+                EXAM_SERIES.title AS exam_series_title,
+                EXAM_SERIES.start_at AS exam_series_start_at,
+                EXAM_SERIES.end_at AS exam_series_end_at
+         FROM EXAMS
+         INNER JOIN EXAM_SERIES ON EXAM_SERIES.id = EXAMS.exam_series_id
+         LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
+         WHERE EXAM_SERIES.course_id = ?
+           AND EXAM_SERIES.active = TRUE
+           AND NOW() >= EXAM_SERIES.start_at
+           AND NOW() <= EXAM_SERIES.end_at
+         ORDER BY EXAMS.start_at ASC`,
+        [course_id],
+    ).catch((error) => {
+        logger.error(`getAvailableExamsByCourseId: ${error}`);
+        return [];
+    });
+}
+
 function getExamsByExamSeriesId({ exam_series_id }) {
     return executeSQLQueryParameterized(
         `SELECT EXAMS.*, SUBJECTS.title AS subject_title
@@ -47,6 +69,7 @@ function getExamById({ id }) {
 }
 
 module.exports = {
+    getAvailableExamsByCourseId,
     getExamsByExamSeriesId,
     addExam,
     updateExamById,

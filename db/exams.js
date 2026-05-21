@@ -13,8 +13,7 @@ function getAvailableExamsByCourseId({ course_id }) {
          LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
          WHERE EXAM_SERIES.course_id = ?
            AND EXAM_SERIES.active = TRUE
-           AND NOW() >= EXAM_SERIES.start_at
-           AND NOW() <= EXAM_SERIES.end_at
+           AND NOW() < EXAM_SERIES.end_at
          ORDER BY EXAMS.start_at ASC`,
         [course_id],
     ).catch((error) => {

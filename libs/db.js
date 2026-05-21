@@ -554,6 +554,8 @@ async function generateDBTables() {
             ('Final Exam 2026', 2, 0, '2026-07-15 09:00:00', '2026-07-15 17:00:00', FALSE),
             ('Unit Test - March 2026', 7, 0, '2026-03-10 10:00:00', '2026-03-10 11:30:00', TRUE)`,
 
+        `TRUNCATE TABLE EXAMS`,
+
         `INSERT IGNORE INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
             SELECT es.id, cs.subject_id, '2026-06-02 09:00:00', '2026-06-02 11:00:00'
             FROM EXAM_SERIES es

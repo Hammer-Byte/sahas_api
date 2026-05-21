@@ -350,10 +350,12 @@ router.get("/:id", async (req, res) => {
 
     examSeries.subjects = await getCourseSubjectsByCourseId({ course_id: examSeries.course_id });
     examSeries.exams = await getExamsByExamSeriesId({ exam_series_id: req.params.id });
-    examSeries.enrolled = !!(await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
-        user_id: req.user.id,
-        exam_series_id: req.params.id,
-    }));
+    examSeries.enrolled = req.user?.id
+        ? !!(await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+              user_id: req.user.id,
+              exam_series_id: req.params.id,
+          }))
+        : false;
     res.status(200).json(examSeries);
 });
 

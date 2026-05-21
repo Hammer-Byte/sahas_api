@@ -8,6 +8,19 @@ function getExamQuestionsByExamId({ exam_id }) {
     });
 }
 
+function getExamQuestionsForAttendByExamId({ exam_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT id, exam_id, question, choice_one, choice_two, choice_three, choice_four, media_url
+         FROM EXAM_QUESTIONS
+         WHERE exam_id = ?
+         ORDER BY id ASC`,
+        [exam_id],
+    ).catch((error) => {
+        logger.error(`getExamQuestionsForAttendByExamId: ${error}`);
+        return [];
+    });
+}
+
 function getExamQuestionById({ id }) {
     return executeSQLQueryParameterized(`SELECT * FROM EXAM_QUESTIONS WHERE id=?`, [id])
         .then((result) => (result.length > 0 ? result[0] : false))
@@ -59,6 +72,7 @@ function deleteExamQuestionById({ id }) {
 
 module.exports = {
     getExamQuestionsByExamId,
+    getExamQuestionsForAttendByExamId,
     getExamQuestionById,
     addExamQuestion,
     updateExamQuestionById,

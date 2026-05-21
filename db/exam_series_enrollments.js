@@ -19,7 +19,25 @@ function getExamSeriesEnrollmentByUserIdAndExamSeriesId({ user_id, exam_series_i
         .catch((error) => logger.error(`getExamSeriesEnrollmentByUserIdAndExamSeriesId: ${error}`));
 }
 
+function userHasExamAccessViaSeriesEnrollment({ user_id, exam_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT EXAM_SERIES_ENROLLMENTS.id
+         FROM EXAM_SERIES_ENROLLMENTS
+         INNER JOIN EXAMS ON EXAMS.exam_series_id = EXAM_SERIES_ENROLLMENTS.exam_series_id
+         WHERE EXAM_SERIES_ENROLLMENTS.user_id = ?
+           AND EXAMS.id = ?
+         LIMIT 1`,
+        [user_id, exam_id],
+    )
+        .then((result) => result.length > 0)
+        .catch((error) => {
+            logger.error(`userHasExamAccessViaSeriesEnrollment: ${error}`);
+            return false;
+        });
+}
+
 module.exports = {
     addExamSeriesEnrollment,
     getExamSeriesEnrollmentByUserIdAndExamSeriesId,
+    userHasExamAccessViaSeriesEnrollment,
 };

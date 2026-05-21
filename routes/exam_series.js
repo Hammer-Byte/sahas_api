@@ -20,6 +20,7 @@ const {
     addExamSeriesEnrollment,
     getExamSeriesEnrollmentByUserIdAndExamSeriesId,
 } = require("../db/exam_series_enrollments");
+const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { validateRequestBody } = require("sahas_utils");
 
 const router = libExpress.Router();
@@ -121,7 +122,13 @@ router.post("/enrollments", async (req, res) => {
         return res.status(400).json({ error: "Exam Series Not Exist" });
     }
 
-    if (Number(examSeries.fees) !== 0) {
+    const hasFreeExamSeries = Number(examSeries.fees) === 0;
+    const hasActiveCourseEnrollment = !!(await getEnrollmentByCourseIdAndUserId({
+        user_id: req.user.id,
+        course_id: examSeries.course_id,
+    }));
+
+    if (!hasFreeExamSeries && !hasActiveCourseEnrollment) {
         return res.status(400).json({ error: "Payment Required For This Exam Series" });
     }
 
@@ -263,6 +270,10 @@ router.get("/:id", async (req, res) => {
 
     examSeries.subjects = await getCourseSubjectsByCourseId({ course_id: examSeries.course_id });
     examSeries.exams = await getExamsByExamSeriesId({ exam_series_id: req.params.id });
+    examSeries.enrolled = !!(await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+        user_id: req.user.id,
+        exam_series_id: req.params.id,
+    }));
     res.status(200).json(examSeries);
 });
 

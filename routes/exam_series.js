@@ -24,6 +24,8 @@ const {
     addExamSeriesEnrollment,
     getExamSeriesEnrollmentByUserIdAndExamSeriesId,
 } = require("../db/exam_series_enrollments");
+const { getExamSubmissionMarksByExamSeriesId } = require("../db/exam_submissions");
+const { buildExamSeriesMeritList } = require("../libs/exam_series_merit");
 const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { validateRequestBody } = require("sahas_utils");
 
@@ -336,6 +338,49 @@ router.delete("/exam-questions/:id", async (req, res) => {
 
     await deleteExamQuestionById({ id: req.params.id });
     res.sendStatus(204);
+});
+
+router.get("/:examSeriesId/merit", async (req, res) => {
+    if (!req.params.examSeriesId) {
+        return res.status(400).json({ error: "Missing Exam Series Id" });
+    }
+
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const examSeries = await getExamSeriesById({ id: req.params.examSeriesId });
+    if (!examSeries) {
+        return res.status(400).json({ error: "Exam Series Not Exist" });
+    }
+
+    const isEnrolled = !!(await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+        user_id: req.user.id,
+        exam_series_id: req.params.examSeriesId,
+    }));
+
+    if (!isEnrolled) {
+        return res.status(403).json({ error: "Exam Series Enrollment Required" });
+    }
+
+    if (Date.now() <= new Date(examSeries.end_at).getTime()) {
+        return res.status(400).json({ error: "Merit Is Available After Exam Series Ends" });
+    }
+
+    const exams = await getExamsByExamSeriesId({ exam_series_id: req.params.examSeriesId });
+    const submissionMarks = await getExamSubmissionMarksByExamSeriesId({ exam_series_id: req.params.examSeriesId });
+    const merit_list = buildExamSeriesMeritList({ exams, submissionMarks });
+
+    res.status(200).json({
+        exam_series_id: Number(req.params.examSeriesId),
+        exam_series_title: examSeries.title,
+        total_exams: exams.length,
+        exams: exams.map((exam) => ({
+            id: exam.id,
+            subject_title: exam.subject_title,
+        })),
+        merit_list,
+    });
 });
 
 router.get("/:id", async (req, res) => {

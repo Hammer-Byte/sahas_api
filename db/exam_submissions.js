@@ -34,8 +34,27 @@ function addExamSubmission({ user_id, exam_id, question_id, submitted_answer, ma
         .catch((error) => logger.error(`addExamSubmission: ${error}`));
 }
 
+function getExamSubmissionMarksByExamSeriesId({ exam_series_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT EXAM_SUBMISSIONS.user_id,
+                USERS.full_name,
+                EXAM_SUBMISSIONS.exam_id,
+                SUM(EXAM_SUBMISSIONS.marks) AS exam_marks
+         FROM EXAM_SUBMISSIONS
+         INNER JOIN EXAMS ON EXAMS.id = EXAM_SUBMISSIONS.exam_id
+         INNER JOIN USERS ON USERS.id = EXAM_SUBMISSIONS.user_id
+         WHERE EXAMS.exam_series_id = ?
+         GROUP BY EXAM_SUBMISSIONS.user_id, USERS.full_name, EXAM_SUBMISSIONS.exam_id`,
+        [exam_series_id],
+    ).catch((error) => {
+        logger.error(`getExamSubmissionMarksByExamSeriesId: ${error}`);
+        return [];
+    });
+}
+
 module.exports = {
     getExamSubmissionsByUserIdAndExamId,
     userHasExamSubmissions,
     addExamSubmission,
+    getExamSubmissionMarksByExamSeriesId,
 };

@@ -574,10 +574,33 @@ async function generateDBTables() {
             WHERE es.title = 'Exam Series - Finished 2026'
             LIMIT 1`,
         `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-05-15 09:00:00', '2026-06-28 18:00:00'
+            SELECT es.id, cs.subject_id, '2026-05-01 09:00:00', '2026-05-10 18:00:00'
             FROM EXAM_SERIES es
             INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
-            WHERE es.title = 'Exam Series - Ongoing 2026'`,
+            WHERE es.title = 'Exam Series - Ongoing 2026'
+            ORDER BY cs.subject_id
+            LIMIT 1 OFFSET 0`,
+        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
+            SELECT es.id, cs.subject_id, '2026-05-05 09:00:00', '2026-05-14 18:00:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
+            WHERE es.title = 'Exam Series - Ongoing 2026'
+            ORDER BY cs.subject_id
+            LIMIT 1 OFFSET 1`,
+        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
+            SELECT es.id, cs.subject_id, '2026-05-18 09:00:00', '2026-05-25 18:00:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
+            WHERE es.title = 'Exam Series - Ongoing 2026'
+            ORDER BY cs.subject_id
+            LIMIT 1 OFFSET 2`,
+        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
+            SELECT es.id, cs.subject_id, '2026-06-20 09:00:00', '2026-06-28 18:00:00'
+            FROM EXAM_SERIES es
+            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
+            WHERE es.title = 'Exam Series - Ongoing 2026'
+            ORDER BY cs.subject_id
+            LIMIT 1 OFFSET 3`,
         `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
             SELECT es.id, cs.subject_id, '2026-07-05 09:00:00', '2026-07-05 11:00:00'
             FROM EXAM_SERIES es

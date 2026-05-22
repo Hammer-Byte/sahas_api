@@ -18,15 +18,19 @@ function addExamCandidature({ user_id, exam_id, identity, selfie }) {
         .catch((error) => logger.error(`addExamCandidature: ${error}`));
 }
 
-function markExamCandidatureSubmitted({ user_id, exam_id }) {
-    return executeSQLQueryParameterized(`UPDATE EXAM_CANDIDATURE SET submitted_on = NOW() WHERE user_id = ? AND exam_id = ?`, [
+function updateExamCandidatureByUserIdAndExamId({ user_id, exam_id, identity, selfie }) {
+    return executeSQLQueryParameterized(`UPDATE EXAM_CANDIDATURE SET identity = ?, selfie = ? WHERE user_id = ? AND exam_id = ?`, [
+        identity,
+        selfie,
         user_id,
         exam_id,
-    ]).catch((error) => logger.error(`markExamCandidatureSubmitted: ${error}`));
+    ])
+        .then((result) => result.affectedRows > 0)
+        .catch((error) => logger.error(`updateExamCandidatureByUserIdAndExamId: ${error}`));
 }
 
 module.exports = {
     getExamCandidatureByUserIdAndExamId,
     addExamCandidature,
-    markExamCandidatureSubmitted,
+    updateExamCandidatureByUserIdAndExamId,
 };

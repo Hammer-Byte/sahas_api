@@ -3,8 +3,12 @@ const { validateRequestBody } = require("sahas_utils");
 const { getExamById } = require("../db/exams");
 const { getExamQuestionsForAttendByExamId, getExamQuestionsByExamId } = require("../db/exam_questions");
 const { userHasExamAccessViaSeriesEnrollment } = require("../db/exam_series_enrollments");
-const { getExamCandidatureByUserIdAndExamId, addExamCandidature, markExamCandidatureSubmitted } = require("../db/exam_candidatures");
-const { addExamSubmission } = require("../db/exam_submissions");
+const {
+    getExamCandidatureByUserIdAndExamId,
+    addExamCandidature,
+    updateExamCandidatureByUserIdAndExamId,
+} = require("../db/exam_candidatures");
+const { addExamSubmission, userHasExamSubmissions } = require("../db/exam_submissions");
 
 const router = libExpress.Router();
 
@@ -47,12 +51,10 @@ router.get("/:id", async (req, res) => {
         return res.status(403).json({ error: "Exam Series Enrollment Required" });
     }
 
-    const candidature = await getExamCandidatureByUserIdAndExamId({
+    exam.attempted = await userHasExamSubmissions({
         user_id: req.user.id,
         exam_id: req.params.id,
     });
-
-    exam.attempted = !!candidature?.submitted_on;
 
     res.status(200).json(exam);
 });
@@ -97,7 +99,18 @@ router.post("/:id/candidature", async (req, res) => {
     });
 
     if (existingCandidature) {
-        return res.status(400).json({ error: "Exam Attempt Already Recorded" });
+        const updated = await updateExamCandidatureByUserIdAndExamId({
+            user_id: req.user.id,
+            exam_id: req.params.id,
+            identity: validatedRequestBody.identity,
+            selfie: validatedRequestBody.selfie,
+        });
+
+        if (!updated) {
+            return res.status(400).json({ error: "Failed To Update Exam Candidature" });
+        }
+
+        return res.status(200).json({ id: existingCandidature.id, updated: true });
     }
 
     const candidatureId = await addExamCandidature({
@@ -200,7 +213,7 @@ router.post("/:id/submissions", async (req, res) => {
         return res.status(400).json({ error: "Exam Submission Window Has Closed" });
     }
 
-    if (candidature.submitted_on) {
+    if (await userHasExamSubmissions({ user_id: req.user.id, exam_id: req.params.id })) {
         return res.status(400).json({ error: "Exam Submissions Already Recorded" });
     }
 
@@ -251,8 +264,6 @@ router.post("/:id/submissions", async (req, res) => {
             marks,
         });
     }
-
-    await markExamCandidatureSubmitted({ user_id: req.user.id, exam_id: req.params.id });
 
     res.status(201).json({ submissions: insertedSubmissions });
 });

@@ -47,6 +47,13 @@ router.get("/:id", async (req, res) => {
         return res.status(403).json({ error: "Exam Series Enrollment Required" });
     }
 
+    const candidature = await getExamCandidatureByUserIdAndExamId({
+        user_id: req.user.id,
+        exam_id: req.params.id,
+    });
+
+    exam.attempted = !!candidature?.submitted_on;
+
     res.status(200).json(exam);
 });
 

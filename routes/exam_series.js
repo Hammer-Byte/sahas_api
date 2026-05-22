@@ -1,6 +1,7 @@
 const libExpress = require("express");
 const libCrypto = require("crypto");
 const { readConfig } = require("../libs/config");
+const { fetchExamQuestionsFromCsvUrl } = require("../libs/exam_questions_csv");
 const { PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES, PAYMENT_GATEWAY_TYPE_EXAM_SERIES } = require("../constants");
 const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
 const {
@@ -298,6 +299,57 @@ router.post("/exams/:examId/questions", async (req, res) => {
     }
 
     res.status(201).json(await getExamQuestionById({ id: examQuestionId }));
+});
+
+router.post("/exam-questions/bulk", async (req, res) => {
+    const requiredBodyFields = ["exam_id", "csv_url"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const exam = await getExamById({ id: validatedRequestBody.exam_id });
+    if (!exam) {
+        return res.status(400).json({ error: "Exam Not Exist" });
+    }
+
+    let csvResult;
+    try {
+        csvResult = await fetchExamQuestionsFromCsvUrl({ csv_url: validatedRequestBody.csv_url });
+    } catch (error) {
+        return res.status(400).json({ error: "Failed To Read CSV File" });
+    }
+
+    if (csvResult.error) {
+        return res.status(400).json({ error: csvResult.error });
+    }
+
+    const insertedQuestions = [];
+
+    for (const questionRow of csvResult.questions) {
+        if (!isValidCorrectChoice(questionRow.correct_choice, questionRow)) {
+            return res.status(400).json({ error: "Correct choice must match one of the four options in CSV" });
+        }
+
+        const examQuestionId = await addExamQuestion({
+            exam_id: validatedRequestBody.exam_id,
+            ...questionRow,
+            media_url: null,
+            created_by: req.user?.id,
+        });
+
+        if (!examQuestionId) {
+            return res.status(400).json({ error: "Failed To Import Exam Questions" });
+        }
+
+        insertedQuestions.push(await getExamQuestionById({ id: examQuestionId }));
+    }
+
+    res.status(201).json({
+        count: insertedQuestions.length,
+        questions: insertedQuestions,
+    });
 });
 
 router.patch("/exam-questions", async (req, res) => {

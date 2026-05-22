@@ -578,78 +578,9 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (1, 2);`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (3, 2);`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
-
     ];
 
-    const examSeedQueries = [
-        `INSERT INTO EXAM_SERIES (title, course_id, fees, start_at, end_at, active) VALUES
-            ('Exam Series - Finished 2026', 9, 0, '2026-01-15 09:00:00', '2026-03-31 18:00:00', TRUE),
-            ('Exam Series - Ongoing 2026', 7, 0, '2026-05-01 09:00:00', '2026-06-30 18:00:00', TRUE),
-            ('Exam Series - Upcoming 2026', 8, 0, '2026-07-01 09:00:00', '2026-07-31 18:00:00', TRUE)`,
-
-        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-02-10 10:00:00', '2026-02-10 11:30:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
-            WHERE es.title = 'Exam Series - Finished 2026'
-            LIMIT 1`,
-        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-05-01 09:00:00', '2026-05-10 18:00:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
-            WHERE es.title = 'Exam Series - Ongoing 2026'
-            ORDER BY cs.subject_id
-            LIMIT 1 OFFSET 0`,
-        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-05-05 09:00:00', '2026-05-14 18:00:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
-            WHERE es.title = 'Exam Series - Ongoing 2026'
-            ORDER BY cs.subject_id
-            LIMIT 1 OFFSET 1`,
-        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-05-18 09:00:00', '2026-05-25 18:00:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
-            WHERE es.title = 'Exam Series - Ongoing 2026'
-            ORDER BY cs.subject_id
-            LIMIT 1 OFFSET 2`,
-        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-06-20 09:00:00', '2026-06-28 18:00:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
-            WHERE es.title = 'Exam Series - Ongoing 2026'
-            ORDER BY cs.subject_id
-            LIMIT 1 OFFSET 3`,
-        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at)
-            SELECT es.id, cs.subject_id, '2026-07-05 09:00:00', '2026-07-05 11:00:00'
-            FROM EXAM_SERIES es
-            INNER JOIN COURSE_SUBJECTS cs ON cs.course_id = es.course_id
-            WHERE es.title = 'Exam Series - Upcoming 2026'
-            LIMIT 1`,
-
-        `INSERT INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Finished exam sample question?', 'A', 'B', 'C', 'D', 'A', NULL
-            FROM EXAMS e
-            INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Exam Series - Finished 2026'`,
-        `INSERT INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, CONCAT('Ongoing exam sample question (subject ', e.subject_id, ')?'), 'A', 'B', 'C', 'D', 'C', NULL
-            FROM EXAMS e
-            INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Exam Series - Ongoing 2026'`,
-        `INSERT INTO EXAM_QUESTIONS (exam_id, question, choice_one, choice_two, choice_three, choice_four, correct_choice, media_url)
-            SELECT e.id, 'Upcoming exam sample question?', 'A', 'B', 'C', 'D', 'B', NULL
-            FROM EXAMS e
-            INNER JOIN EXAM_SERIES es ON es.id = e.exam_series_id
-            WHERE es.title = 'Exam Series - Upcoming 2026'`,
-    ];
-
-    await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
-
-    for (const query of examSeedQueries) {
-        await executeSQLQueryRaw(query);
-    }
+    return Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
 }
 
 // Utility function to execute SQL queries using promises

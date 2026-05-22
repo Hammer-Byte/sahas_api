@@ -557,11 +557,9 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (3, 2);`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
 
-        `TRUNCATE TABLE EXAM_QUESTIONS`,
-        `TRUNCATE TABLE EXAMS`,
-        `TRUNCATE TABLE EXAM_SERIES_ENROLLMENTS`,
-        `TRUNCATE TABLE EXAM_SERIES`,
+    ];
 
+    const examSeedQueries = [
         `INSERT INTO EXAM_SERIES (title, course_id, fees, start_at, end_at, active) VALUES
             ('Exam Series - Finished 2026', 9, 0, '2026-01-15 09:00:00', '2026-03-31 18:00:00', TRUE),
             ('Exam Series - Ongoing 2026', 7, 0, '2026-05-01 09:00:00', '2026-06-30 18:00:00', TRUE),
@@ -625,7 +623,11 @@ async function generateDBTables() {
             WHERE es.title = 'Exam Series - Upcoming 2026'`,
     ];
 
-    return Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
+    await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
+
+    for (const query of examSeedQueries) {
+        await executeSQLQueryRaw(query);
+    }
 }
 
 // Utility function to execute SQL queries using promises

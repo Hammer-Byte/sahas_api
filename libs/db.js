@@ -355,9 +355,21 @@ async function generateDBTables() {
             exam_id INT NOT NULL,
             identity VARCHAR(512) NOT NULL,
             selfie VARCHAR(512) NOT NULL,
+            submitted_on DATETIME NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_user_exam (user_id, exam_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS EXAM_SUBMISSIONS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            exam_id INT NOT NULL,
+            question_id INT NOT NULL,
+            submitted_answer VARCHAR(256) NOT NULL,
+            marks TINYINT NOT NULL DEFAULT 0,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_user_exam_question (user_id, exam_id, question_id)
         )`,
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_QUESTION_CATEGORIES (
             id INT AUTO_INCREMENT PRIMARY KEY,

@@ -24,6 +24,7 @@ const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const {
     addExamSeriesEnrollment,
     getExamSeriesEnrollmentByUserIdAndExamSeriesId,
+    getExamSeriesEnrollmentsByExamSeriesId,
 } = require("../db/exam_series_enrollments");
 const { getExamSubmissionMarksByExamSeriesId } = require("../db/exam_submissions");
 const { getExamSeriesResultRowsByUserIdAndExamSeriesId } = require("../db/exam_series_results");
@@ -392,6 +393,23 @@ router.delete("/exam-questions/:id", async (req, res) => {
 
     await deleteExamQuestionById({ id: req.params.id });
     res.sendStatus(204);
+});
+
+router.get("/:examSeriesId/enrollments", async (req, res) => {
+    if (!req.params.examSeriesId) {
+        return res.status(400).json({ error: "Missing Exam Series Id" });
+    }
+
+    const examSeries = await getExamSeriesById({ id: req.params.examSeriesId });
+    if (!examSeries) {
+        return res.status(400).json({ error: "Exam Series Not Exist" });
+    }
+
+    const enrollments = await getExamSeriesEnrollmentsByExamSeriesId({
+        exam_series_id: req.params.examSeriesId,
+    });
+
+    res.status(200).json(enrollments);
 });
 
 router.get("/:examSeriesId/result", async (req, res) => {

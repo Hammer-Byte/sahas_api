@@ -13,16 +13,20 @@ function getExamSeriesResultRowsByUserIdAndExamSeriesId({ user_id, exam_series_i
                 EXAM_QUESTIONS.question,
                 EXAM_QUESTIONS.correct_choice,
                 EXAM_SUBMISSIONS.submitted_answer,
-                EXAM_SUBMISSIONS.marks
+                EXAM_SUBMISSIONS.marks,
+                EXAM_SUBMISSIONS.created_on AS submission_end_timestamp,
+                EXAM_CANDIDATURE.created_on AS submission_start_timestamp
          FROM EXAMS
          LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
          LEFT JOIN EXAM_QUESTIONS ON EXAM_QUESTIONS.exam_id = EXAMS.id
          LEFT JOIN EXAM_SUBMISSIONS ON EXAM_SUBMISSIONS.exam_id = EXAMS.id
             AND EXAM_SUBMISSIONS.question_id = EXAM_QUESTIONS.id
             AND EXAM_SUBMISSIONS.user_id = ?
+         LEFT JOIN EXAM_CANDIDATURE ON EXAM_CANDIDATURE.exam_id = EXAMS.id
+            AND EXAM_CANDIDATURE.user_id = ?
          WHERE EXAMS.exam_series_id = ?
          ORDER BY EXAMS.start_at ASC, EXAM_QUESTIONS.id ASC`,
-        [user_id, exam_series_id],
+        [user_id, user_id, exam_series_id],
     ).catch((error) => {
         logger.error(`getExamSeriesResultRowsByUserIdAndExamSeriesId: ${error}`);
         return [];

@@ -10,6 +10,8 @@ function buildExamSeriesResult({ rows = [] }) {
                 subject_title: row.subject_title,
                 start_at: row.start_at,
                 end_at: row.end_at,
+                submission_start_timestamp: row.submission_start_timestamp ?? null,
+                submission_end_timestamp: row.submission_end_timestamp ?? null,
                 total_marks: 0,
                 questions: [],
             });

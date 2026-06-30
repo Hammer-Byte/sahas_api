@@ -19,7 +19,7 @@ function getCourseCategoryById({ id }) {
 
 //freeze
 function getCourseCategoryByTitle({ title }) {
-    return executeSQLQueryParameterized(`SELECT title from COURSE_CATEGORIES WHERE title=?`, [title])
+    return executeSQLQueryParameterized(`SELECT id, title from COURSE_CATEGORIES WHERE title=?`, [title])
         .then((result) => (result.length > 0 ? result[0] : false))
         .catch((error) => logger.error(`getCourseCategoryByTitle: ${error}`));
 }
@@ -38,6 +38,19 @@ function deleteCourseCategoryById({ id }) {
     });
 }
 
+function getCourseCategoryByTitleAndNotId({ title, id }) {
+    return executeSQLQueryParameterized(`SELECT id, title from COURSE_CATEGORIES WHERE title=? AND id!=?`, [title, id])
+        .then((result) => (result.length > 0 ? result[0] : false))
+        .catch((error) => logger.error(`getCourseCategoryByTitleAndNotId: ${error}`));
+}
+
+//freeze
+function updateCourseCategoryById({ id, title, image }) {
+    return executeSQLQueryParameterized("UPDATE COURSE_CATEGORIES SET title=?, image=? WHERE id=?", [title, image, id]).catch((error) => {
+        logger.error(`updateCourseCategoryById: ${error}`);
+    });
+}
+
 //freeze
 function updateCourseCategoryViewIndexById({ id, view_index }) {
     return executeSQLQueryParameterized("UPDATE COURSE_CATEGORIES SET view_index=? WHERE id=?", [view_index, id]).catch((error) => {
@@ -49,7 +62,9 @@ module.exports = {
     getAllCourseCategories,
     addCourseCategory,
     getCourseCategoryByTitle,
+    getCourseCategoryByTitleAndNotId,
     getCourseCategoryById,
     deleteCourseCategoryById,
+    updateCourseCategoryById,
     updateCourseCategoryViewIndexById,
 };

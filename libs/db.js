@@ -544,6 +544,7 @@ async function generateDBTables() {
         ('READ_COURSE_CATEGORY','View Course Category'),
         ('CREATE_COURSE_CATEGORY','Create Course Category'),
         ('DELETE_COURSE_CATEGORY','Delete Course Category'),
+        ('UPDATE_COURSE_CATEGORY','Update Course Category'),
         ('UPDATE_COURSE_CATEGORY_VIEW_INDEX','Update Course Category View Index'),
         ('READ_COURSE_BY_CATEGORY','View Course By Category'),
         

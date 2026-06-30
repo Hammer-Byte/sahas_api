@@ -26,6 +26,7 @@ const { requestService } = require("sahas_utils");
 const { getAllBranches } = require("../db/branches");
 const { getAllCourses } = require("../db/courses");
 const { getGlobalNotesByUserId } = require("../db/global_notes");
+const { getCounselingNotesByUserId } = require("../db/counseling_notes");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { addUserHistory, getUserHistoryById, updateUserHistoryById } = require("../db/user_history");
@@ -180,6 +181,16 @@ router.get("/:id/global-notes", requires_authority(AUTHORITIES.READ_GLOBAL_NOTE)
         return res.status(400).json({ error: "Missing User Id" });
     }
     const notes = await getGlobalNotesByUserId({ user_id: id });
+    res.status(200).json(notes);
+});
+
+// Get all counseling notes for a specific user
+router.get("/:id/counseling-notes", requires_authority(AUTHORITIES.READ_COUNSELING_NOTE), async (req, res) => {
+    const { id } = req.params;
+    if (!id) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+    const notes = await getCounselingNotesByUserId({ user_id: id });
     res.status(200).json(notes);
 });
 

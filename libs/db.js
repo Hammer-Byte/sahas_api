@@ -298,6 +298,26 @@ async function generateDBTables() {
                 ON DELETE CASCADE
                 ON UPDATE CASCADE
         )`,
+        `CREATE TABLE IF NOT EXISTS COUNSELING_NOTES (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            note VARCHAR(256) NOT NULL,
+            type VARCHAR(255) DEFAULT NULL,
+            attachment VARCHAR(128) DEFAULT NULL,
+            created_by INT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT fk_counseling_notes_user
+                FOREIGN KEY (user_id)
+                REFERENCES USERS(id)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE,
+            CONSTRAINT fk_counseling_notes_created_by
+                FOREIGN KEY (created_by)
+                REFERENCES USERS(id)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE
+        )`,
         `CREATE TABLE IF NOT EXISTS POLICIES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL UNIQUE,
@@ -467,6 +487,12 @@ async function generateDBTables() {
         ('READ_USER_STREAMING_DEVICES', 'View User Streaming Devices'),
         ('READ_USER_WALLET', 'View User Wallet'),
         ('READ_USER_GLOBAL_NOTES', 'View User Global Notes'),
+        ('READ_USER_COUNSELING_NOTES', 'View User Counseling Notes'),
+
+        ('CREATE_COUNSELING_NOTE', 'Create Counseling Note'),
+        ('READ_COUNSELING_NOTE', 'Read Counseling Note'),
+        ('UPDATE_COUNSELING_NOTE', 'Update Counseling Note'),
+        ('DELETE_COUNSELING_NOTE', 'Delete Counseling Note'),
 
         ('READ_CHAPTERS_TEST','View Chapter Tests'),
         ('DELETE_CHAPTERS','Delete Chapters'),

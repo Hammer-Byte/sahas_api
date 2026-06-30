@@ -100,7 +100,8 @@ async function generateDBTables() {
             finger_print VARCHAR(256) NOT NULL,
             active BOOLEAN NOT NULL DEFAULT TRUE,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_user_device (user_id, finger_print)
           )`,
         `CREATE TABLE IF NOT EXISTS BRANCHES (
             id INT AUTO_INCREMENT PRIMARY KEY,

@@ -67,6 +67,7 @@ router.post("/", async (req, res) => {
         await addInactiveToken({ user_id: user.id, otp, token: authentication_token, validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000) });
 
         //send otp through the mailed
+        //test
         requestService({
             requestServiceName: process.env.SERVICE_MAILER,
             onRequestStart: () => logger.info("Generating OTP"),

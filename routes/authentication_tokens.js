@@ -8,6 +8,7 @@ const { addInactiveToken, getTokenByOTP, activateToken } = require("../db/authen
 const { readConfig } = require("../libs/config");
 const { logger, validateRequestBody } = require("sahas_utils");
 const { getUserRolesByUserId } = require("../db/user_roles");
+const { getUpcomingExamByUserId } = require("../db/exams");
 
 const router = libExpress.Router();
 
@@ -22,6 +23,7 @@ async function populateRolesAndAuthorities(user) {
     const authorities = await getAuthoritiesByRoleIds(userRoles.map(({ role_id }) => role_id).join(","));
     user.roles = userRoles?.map(({ title }) => title);
     user.authorities = authorities?.map((authority) => authority.title);
+    user.upcoming_exam = (await getUpcomingExamByUserId({ user_id: user.id })) || null;
 }
 
 router.patch("/", async (req, res) => {

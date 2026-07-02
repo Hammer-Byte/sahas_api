@@ -243,7 +243,10 @@ router.post("/:id/submissions", async (req, res) => {
     for (const submission of submissions) {
         const questionId = Number(submission.question_id);
         const question = questionsById.get(questionId);
-        const marks = question.correct_choice === submission.submitted_answer ? 1 : 0;
+        const marks =
+            question.correct_choice === submission.submitted_answer
+                ? Number(exam.positive_marks)
+                : Number(exam.negative_marks);
 
         const submissionId = await addExamSubmission({
             user_id: req.user.id,

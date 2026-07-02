@@ -344,6 +344,8 @@ async function generateDBTables() {
             subject_id INT NOT NULL,
             start_at DATETIME NOT NULL,
             end_at DATETIME NOT NULL,
+            positive_marks DECIMAL(10,2) NOT NULL DEFAULT 1,
+            negative_marks DECIMAL(10,2) NOT NULL DEFAULT -1,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
@@ -387,7 +389,7 @@ async function generateDBTables() {
             exam_id INT NOT NULL,
             question_id INT NOT NULL,
             submitted_answer VARCHAR(256) NOT NULL,
-            marks TINYINT NOT NULL DEFAULT 0,
+            marks DECIMAL(10,2) NOT NULL DEFAULT 0,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_user_exam_question (user_id, exam_id, question_id)
@@ -608,7 +610,23 @@ async function generateDBTables() {
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (5, 2);`,
     ];
 
-    return Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
+    await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
+
+    const migrationQueries = [
+        "ALTER TABLE EXAMS ADD COLUMN positive_marks DECIMAL(10,2) NOT NULL DEFAULT 1",
+        "ALTER TABLE EXAMS ADD COLUMN negative_marks DECIMAL(10,2) NOT NULL DEFAULT -1",
+        "ALTER TABLE EXAM_SUBMISSIONS MODIFY COLUMN marks DECIMAL(10,2) NOT NULL DEFAULT 0",
+    ];
+
+    for (const query of migrationQueries) {
+        try {
+            await executeSQLQueryRaw(query);
+        } catch (error) {
+            if (error.code !== "ER_DUP_FIELDNAME") {
+                logger.error(`Migration failed: ${query} - ${error.message}`);
+            }
+        }
+    }
 }
 
 // Utility function to execute SQL queries using promises

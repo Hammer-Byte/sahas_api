@@ -35,10 +35,10 @@ function getExamsByExamSeriesId({ exam_series_id }) {
     });
 }
 
-function addExam({ exam_series_id, subject_id, start_at, end_at }) {
+function addExam({ exam_series_id, subject_id, start_at, end_at, positive_marks = 1, negative_marks = -1 }) {
     return executeSQLQueryParameterized(
-        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at) VALUES (?,?,?,?)`,
-        [exam_series_id, subject_id, start_at, end_at],
+        `INSERT INTO EXAMS (exam_series_id, subject_id, start_at, end_at, positive_marks, negative_marks) VALUES (?,?,?,?,?,?)`,
+        [exam_series_id, subject_id, start_at, end_at, positive_marks, negative_marks],
     )
         .then((result) => result.insertId)
         .catch((error) => logger.error(`addExam: ${error}`));
@@ -48,10 +48,11 @@ function deleteExamById({ id }) {
     return executeSQLQueryParameterized("DELETE FROM EXAMS WHERE id=?", [id]).catch((error) => logger.error(`deleteExamById: ${error}`));
 }
 
-function updateExamById({ id, subject_id, start_at, end_at }) {
-    return executeSQLQueryParameterized("UPDATE EXAMS SET subject_id=?, start_at=?, end_at=? WHERE id=?", [subject_id, start_at, end_at, id]).catch(
-        (error) => logger.error(`updateExamById: ${error}`),
-    );
+function updateExamById({ id, subject_id, start_at, end_at, positive_marks = 1, negative_marks = -1 }) {
+    return executeSQLQueryParameterized(
+        "UPDATE EXAMS SET subject_id=?, start_at=?, end_at=?, positive_marks=?, negative_marks=? WHERE id=?",
+        [subject_id, start_at, end_at, positive_marks, negative_marks, id],
+    ).catch((error) => logger.error(`updateExamById: ${error}`));
 }
 
 function getUpcomingExamByUserId({ user_id }) {

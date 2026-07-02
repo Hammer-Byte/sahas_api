@@ -27,6 +27,11 @@ const { getAllBranches } = require("../db/branches");
 const { getAllCourses } = require("../db/courses");
 const { getGlobalNotesByUserId } = require("../db/global_notes");
 const { getCounselingNotesByUserId } = require("../db/counseling_notes");
+const { getExamSeriesById } = require("../db/exam_series");
+const { getExamsByExamSeriesId } = require("../db/exams");
+const { getExamSeriesEnrollmentByUserIdAndExamSeriesId } = require("../db/exam_series_enrollments");
+const { getExamSubmissionsByUserIdAndExamSeriesId } = require("../db/exam_submissions");
+const { hasRequiredAuthority } = require("../utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { addUserHistory, getUserHistoryById, updateUserHistoryById } = require("../db/user_history");
@@ -94,6 +99,70 @@ router.get("/download", async (req, res) => {
             else logger.error(`Failed To Generate Users - Media Responded With ${JSON.stringify(generatedUsers)} - ${responseCode}`);
             return res.status(responseCode).json(generatedUsers);
         },
+    });
+});
+
+router.get("/:userId/exam-series/:examSeriesId/submissions", async (req, res) => {
+    if (!req.params.userId) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+
+    if (!req.params.examSeriesId) {
+        return res.status(400).json({ error: "Missing Exam Series Id" });
+    }
+
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const userId = Number(req.params.userId);
+    const examSeriesId = Number(req.params.examSeriesId);
+
+    const isSelf = req.user.id === userId;
+    if (!isSelf && !hasRequiredAuthority(req.user.authorities, AUTHORITIES.READ_USER)) {
+        return res.status(403).json({ error: `You Don't have authority ${AUTHORITIES.READ_USER} to perform this operation` });
+    }
+
+    const user = await getUserById({ id: userId });
+    if (!user) {
+        return res.status(400).json({ error: "User Not Exist" });
+    }
+
+    const examSeries = await getExamSeriesById({ id: examSeriesId });
+    if (!examSeries) {
+        return res.status(400).json({ error: "Exam Series Not Exist" });
+    }
+
+    const enrollment = await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
+        user_id: userId,
+        exam_series_id: examSeriesId,
+    });
+
+    if (!enrollment) {
+        return res.status(400).json({ error: "User Has Not Enrolled" });
+    }
+
+    const exams = await getExamsByExamSeriesId({ exam_series_id: examSeriesId });
+    const submissions = await getExamSubmissionsByUserIdAndExamSeriesId({
+        user_id: userId,
+        exam_series_id: examSeriesId,
+    });
+
+    const submissionsByExamId = submissions.reduce((map, submission) => {
+        if (!map.has(submission.exam_id)) {
+            map.set(submission.exam_id, []);
+        }
+        map.get(submission.exam_id).push(submission);
+        return map;
+    }, new Map());
+
+    res.status(200).json({
+        exam_series_id: examSeriesId,
+        user_id: userId,
+        exams: exams.map((exam) => ({
+            ...exam,
+            submissions: submissionsByExamId.get(exam.id) ?? [],
+        })),
     });
 });
 

@@ -73,11 +73,15 @@ router.post("/", async (req, res, next) => {
 });
 
 router.patch("/exams", async (req, res) => {
-    const requiredBodyFields = ["id", "subject_id", "start_at", "end_at"];
+    const requiredBodyFields = ["id", "subject_id", "start_at", "end_at", "positive_marks", "negative_marks"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (!isRequestBodyValid) {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    if (typeof validatedRequestBody.positive_marks !== "number" || typeof validatedRequestBody.negative_marks !== "number") {
+        return res.status(400).json({ error: "positive_marks and negative_marks must be numbers" });
     }
 
     const exam = await getExamById({ id: validatedRequestBody.id });
@@ -523,11 +527,15 @@ router.post("/:examSeriesId/exams", async (req, res) => {
         return res.status(400).json({ error: "Exam Series Not Exist" });
     }
 
-    const requiredBodyFields = ["subject_id", "start_at", "end_at"];
+    const requiredBodyFields = ["subject_id", "start_at", "end_at", "positive_marks", "negative_marks"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (!isRequestBodyValid) {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    if (typeof validatedRequestBody.positive_marks !== "number" || typeof validatedRequestBody.negative_marks !== "number") {
+        return res.status(400).json({ error: "positive_marks and negative_marks must be numbers" });
     }
 
     const examId = await addExam({
@@ -535,6 +543,8 @@ router.post("/:examSeriesId/exams", async (req, res) => {
         subject_id: validatedRequestBody.subject_id,
         start_at: validatedRequestBody.start_at,
         end_at: validatedRequestBody.end_at,
+        positive_marks: validatedRequestBody.positive_marks,
+        negative_marks: validatedRequestBody.negative_marks,
     });
 
     if (!examId) {

@@ -57,10 +57,12 @@ function updateExamById({ id, subject_id, start_at, end_at, positive_marks = 1, 
 
 function getUpcomingExamByUserId({ user_id }) {
     return executeSQLQueryParameterized(
-        `SELECT EXAMS.*
+        `SELECT EXAMS.*,
+                SUBJECTS.title AS subject_title
          FROM EXAMS
          INNER JOIN EXAM_SERIES ON EXAM_SERIES.id = EXAMS.exam_series_id
          INNER JOIN EXAM_SERIES_ENROLLMENTS ON EXAM_SERIES_ENROLLMENTS.exam_series_id = EXAM_SERIES.id
+         LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
          WHERE EXAM_SERIES_ENROLLMENTS.user_id = ?
            AND EXAM_SERIES.active = TRUE
            AND EXAMS.end_at > NOW()

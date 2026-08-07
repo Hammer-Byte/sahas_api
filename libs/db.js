@@ -211,6 +211,14 @@ async function generateDBTables() {
             redirect_url VARCHAR(256) DEFAULT NULL
         )
         `,
+        `CREATE TABLE IF NOT EXISTS COURSE_CAROUSEL (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            source VARCHAR(256) NOT NULL,
+            click_link VARCHAR(256) NULL,
+            view_index INT NOT NULL DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
         `CREATE TABLE IF NOT EXISTS SUBJECTS(
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(96) NOT NULL,

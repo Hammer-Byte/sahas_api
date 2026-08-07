@@ -7,6 +7,13 @@ const { removeBundledCoursesByCourseId, addBundledCourse, getBundledCoursesByCou
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { deleteCourseDialogByCourseId, addCourseDialog, getCourseDialogByCourseId } = require("../db/course_dialog");
+const {
+    getCourseCarouselByCourseId,
+    getCourseCarouselItemById,
+    addCourseCarouselItem,
+    deleteCourseCarouselItemById,
+    updateCourseCarouselItemById,
+} = require("../db/course_carousel");
 const { readConfig } = require("../libs/config");
 const { getDateByInterval } = require("../utils");
 const libCrypto = require("crypto");
@@ -95,6 +102,82 @@ router.put("/dialog", async (req, res) => {
     }
 });
 
+router.post(
+    "/carousel",
+    requires_authority(AUTHORITIES.UPDATE_COURSE),
+    async (req, res, next) => {
+        const requiredBodyFields = ["course_id", "source"];
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (!isRequestBodyValid) {
+            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+        req.body = validatedRequestBody;
+        next();
+    },
+    async (req, res) => {
+        const course = await getCourseById({ id: req.body.course_id });
+        if (!course) {
+            return res.status(400).json({ error: "Course Not Exist" });
+        }
+
+        const existing = await getCourseCarouselByCourseId({ course_id: req.body.course_id });
+        const view_index = existing?.length || 0;
+        const id = await addCourseCarouselItem({ ...req.body, view_index });
+        const item = await getCourseCarouselItemById({ id });
+
+        if (item) {
+            return res.status(201).json(item);
+        }
+        return res.status(400).json({ error: "Failed To Add Carousel Item" });
+    },
+);
+
+router.delete("/carousel/:id", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Carousel Id" });
+    }
+
+    const item = await getCourseCarouselItemById({ id: req.params.id });
+    if (!item) {
+        return res.status(400).json({ error: "Carousel Item Not Exist" });
+    }
+
+    await deleteCourseCarouselItemById({ id: req.params.id });
+    res.sendStatus(204);
+});
+
+router.patch(
+    "/carousel",
+    requires_authority(AUTHORITIES.UPDATE_COURSE),
+    async (req, res, next) => {
+        const requiredBodyFields = ["id", "source"];
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (!isRequestBodyValid) {
+            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+        req.body = validatedRequestBody;
+        next();
+    },
+    async (req, res) => {
+        const existing = await getCourseCarouselItemById({ id: req.body.id });
+        if (!existing) {
+            return res.status(400).json({ error: "Carousel Item Not Exist" });
+        }
+
+        await updateCourseCarouselItemById({
+            id: req.body.id,
+            source: req.body.source,
+            click_link: req.body.click_link || null,
+        });
+
+        const item = await getCourseCarouselItemById({ id: req.body.id });
+        if (item) {
+            return res.status(200).json(item);
+        }
+        return res.status(400).json({ error: "Failed To Update Carousel Item" });
+    },
+);
+
 //tested
 router.patch(
     "/",
@@ -141,6 +224,7 @@ router.get("/:id", requires_authority(AUTHORITIES.READ_COURSE), async (req, res)
         if (course?.is_bundle) course.bundledCourses = await getBundledCoursesByCourseId({ course_id: course.id });
 
         course.dialog = await getCourseDialogByCourseId({ course_id: course?.id });
+        course.carousel = await getCourseCarouselByCourseId({ course_id: course?.id });
 
         return res.status(200).json(course);
     }

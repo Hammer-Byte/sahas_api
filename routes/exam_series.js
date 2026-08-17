@@ -2,7 +2,8 @@ const libExpress = require("express");
 const libCrypto = require("crypto");
 const { readConfig } = require("../libs/config");
 const { fetchExamQuestionsFromCsvUrl } = require("../libs/exam_questions_csv");
-const { PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES, PAYMENT_GATEWAY_TYPE_EXAM_SERIES } = require("../constants");
+const { PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES, PAYMENT_GATEWAY_TYPE_EXAM_SERIES, AUTHORITIES } = require("../constants");
+const requires_authority = require("../middlewares/requires_authority");
 const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
 const {
     getAllExamSeries,
@@ -23,8 +24,10 @@ const {
 const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const {
     addExamSeriesEnrollment,
+    getExamSeriesEnrollmentById,
     getExamSeriesEnrollmentByUserIdAndExamSeriesId,
     getExamSeriesEnrollmentsByExamSeriesId,
+    deleteExamSeriesEnrollmentById,
 } = require("../db/exam_series_enrollments");
 const { getExamSubmissionMarksByExamSeriesId } = require("../db/exam_submissions");
 const { getExamSeriesResultRowsByUserIdAndExamSeriesId } = require("../db/exam_series_results");
@@ -170,6 +173,20 @@ router.post("/enrollments", async (req, res) => {
             exam_series_id: validatedRequestBody.exam_series_id,
         }),
     );
+});
+
+router.delete("/enrollments/:id", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_EXAMS), async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Enrollment Id" });
+    }
+
+    const enrollment = await getExamSeriesEnrollmentById({ id: req.params.id });
+    if (!enrollment) {
+        return res.status(400).json({ error: "Exam Series Enrollment Not Exist" });
+    }
+
+    await deleteExamSeriesEnrollmentById({ id: req.params.id });
+    res.sendStatus(204);
 });
 
 router.post("/payment-gateway-payloads", async (req, res) => {

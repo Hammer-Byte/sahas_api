@@ -10,6 +10,15 @@ function addExamSeriesEnrollment({ user_id, exam_series_id }) {
         .catch((error) => logger.error(`addExamSeriesEnrollment: ${error}`));
 }
 
+function getExamSeriesEnrollmentById({ id }) {
+    return executeSQLQueryParameterized(`SELECT * FROM EXAM_SERIES_ENROLLMENTS WHERE id = ?`, [id])
+        .then((result) => (result.length > 0 ? result[0] : false))
+        .catch((error) => {
+            logger.error(`getExamSeriesEnrollmentById: ${error}`);
+            return false;
+        });
+}
+
 function getExamSeriesEnrollmentByUserIdAndExamSeriesId({ user_id, exam_series_id }) {
     return executeSQLQueryParameterized(`SELECT * FROM EXAM_SERIES_ENROLLMENTS WHERE user_id = ? AND exam_series_id = ?`, [
         user_id,
@@ -56,9 +65,17 @@ function userHasExamAccessViaSeriesEnrollment({ user_id, exam_id }) {
         });
 }
 
+function deleteExamSeriesEnrollmentById({ id }) {
+    return executeSQLQueryParameterized(`DELETE FROM EXAM_SERIES_ENROLLMENTS WHERE id=?`, [id]).catch((error) =>
+        logger.error(`deleteExamSeriesEnrollmentById: ${error}`),
+    );
+}
+
 module.exports = {
     addExamSeriesEnrollment,
+    getExamSeriesEnrollmentById,
     getExamSeriesEnrollmentByUserIdAndExamSeriesId,
     getExamSeriesEnrollmentsByExamSeriesId,
+    deleteExamSeriesEnrollmentById,
     userHasExamAccessViaSeriesEnrollment,
 };

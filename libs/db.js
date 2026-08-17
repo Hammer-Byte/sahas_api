@@ -214,8 +214,8 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS COURSE_CAROUSEL (
             id INT AUTO_INCREMENT PRIMARY KEY,
             course_id INT NOT NULL,
-            source VARCHAR(256) NOT NULL,
-            click_link VARCHAR(256) NULL,
+            source VARCHAR(512) NOT NULL,
+            click_link VARCHAR(512) NULL,
             view_index INT NOT NULL DEFAULT 0,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
@@ -624,6 +624,8 @@ async function generateDBTables() {
         "ALTER TABLE EXAMS ADD COLUMN positive_marks DECIMAL(10,2) NOT NULL DEFAULT 1",
         "ALTER TABLE EXAMS ADD COLUMN negative_marks DECIMAL(10,2) NOT NULL DEFAULT -1",
         "ALTER TABLE EXAM_SUBMISSIONS MODIFY COLUMN marks DECIMAL(10,2) NOT NULL DEFAULT 0",
+        "ALTER TABLE COURSE_CAROUSEL MODIFY COLUMN source VARCHAR(512) NOT NULL",
+        "ALTER TABLE COURSE_CAROUSEL MODIFY COLUMN click_link VARCHAR(512) NULL",
     ];
 
     for (const query of migrationQueries) {

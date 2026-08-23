@@ -99,6 +99,7 @@ async function generateDBTables() {
             user_id INT NOT NULL,
             finger_print VARCHAR(256) NOT NULL,
             active BOOLEAN NOT NULL DEFAULT TRUE,
+            change_request_pending BOOLEAN NOT NULL DEFAULT FALSE,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_user_device (user_id, finger_print)
@@ -496,6 +497,7 @@ async function generateDBTables() {
         ('USE_CONTAINER_USER', 'Use User Profile Container'),
         ('WRIE_USER_BASICS', 'Write User Basic Profile'),
         ('READ_USER_STREAMING_DEVICES', 'View User Streaming Devices'),
+        ('MANAGE_USER_STREAMING_DEVICES', 'Manage User Streaming Device Change Requests'),
         ('READ_USER_WALLET', 'View User Wallet'),
         ('READ_USER_GLOBAL_NOTES', 'View User Global Notes'),
         ('READ_USER_COUNSELING_NOTES', 'View User Counseling Notes'),
@@ -626,6 +628,7 @@ async function generateDBTables() {
         "ALTER TABLE EXAM_SUBMISSIONS MODIFY COLUMN marks DECIMAL(10,2) NOT NULL DEFAULT 0",
         "ALTER TABLE COURSE_CAROUSEL MODIFY COLUMN source VARCHAR(512) NOT NULL",
         "ALTER TABLE COURSE_CAROUSEL MODIFY COLUMN click_link VARCHAR(512) NULL",
+        "ALTER TABLE USER_DEVICES ADD COLUMN change_request_pending BOOLEAN NOT NULL DEFAULT FALSE",
     ];
 
     for (const query of migrationQueries) {

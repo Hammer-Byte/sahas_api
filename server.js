@@ -41,6 +41,10 @@ const routers = {
         router: require("./routes/course_categories"),
     },
     "/courses": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/courses") },
+    "/course-dialog-content-views": {
+        middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
+        router: require("./routes/course_dialog_content_views"),
+    },
     "/course-subjects": {
         middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
         router: require("./routes/course_subjects"),

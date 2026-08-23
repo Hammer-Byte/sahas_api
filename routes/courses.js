@@ -6,7 +6,6 @@ const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { removeBundledCoursesByCourseId, addBundledCourse, getBundledCoursesByCourseId } = require("../db/bundled_courses");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
-const { deleteCourseDialogByCourseId, addCourseDialog, getCourseDialogByCourseId } = require("../db/course_dialog");
 const {
     getCourseCarouselByCourseId,
     getCourseCarouselItemById,
@@ -14,6 +13,16 @@ const {
     deleteCourseCarouselItemById,
     updateCourseCarouselItemById,
 } = require("../db/course_carousel");
+const {
+    getCourseDialogContentsByCourseId,
+    getCourseDialogContentById,
+    getEligibleCourseDialogContentsByCourseId,
+    getAllCoursesWithDialogContents,
+    addCourseDialogContent,
+    updateCourseDialogContentById,
+    updateCourseDialogContentViewIndexById,
+    deleteCourseDialogContentById,
+} = require("../db/course_dialog_contents");
 const { readConfig } = require("../libs/config");
 const { getDateByInterval } = require("../utils");
 const libCrypto = require("crypto");
@@ -81,25 +90,6 @@ router.patch("/view_indexes", requires_authority(AUTHORITIES.UPDATE_COURSE_VIEW_
     }
 
     return res.status(400).json({ error: "Missing Courses" });
-});
-
-//tested
-router.put("/dialog", async (req, res) => {
-    const requiredBodyFields = ["course_id", "media_url"];
-
-    try {
-        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
-        if (isRequestBodyValid) {
-            await deleteCourseDialogByCourseId(validatedRequestBody);
-            addCourseDialog(validatedRequestBody);
-            res.status(200).json(validatedRequestBody);
-        } else {
-            res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-        }
-    } catch (error) {
-        logger.error(error);
-        res.status(400).json({ error });
-    }
 });
 
 router.post(
@@ -178,6 +168,140 @@ router.patch(
     },
 );
 
+router.get("/dialog-contents", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    const courses = await getAllCoursesWithDialogContents();
+    return res.status(200).json(courses);
+});
+
+router.post(
+    "/dialog-contents",
+    requires_authority(AUTHORITIES.UPDATE_COURSE),
+    async (req, res, next) => {
+        const requiredBodyFields = ["course_id", "content", "start_date", "end_date", "frequency"];
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (!isRequestBodyValid) {
+            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+        req.body = validatedRequestBody;
+        next();
+    },
+    async (req, res) => {
+        const course = await getCourseById({ id: req.body.course_id });
+        if (!course) {
+            return res.status(400).json({ error: "Course Not Exist" });
+        }
+
+        const existing = await getCourseDialogContentsByCourseId({ course_id: req.body.course_id });
+        const view_index = req.body.view_index ?? existing?.length ?? 0;
+
+        const id = await addCourseDialogContent({
+            course_id: req.body.course_id,
+            content: req.body.content,
+            start_date: req.body.start_date,
+            end_date: req.body.end_date,
+            daily: !!req.body.daily,
+            frequency: req.body.frequency,
+            active: req.body.active !== false,
+            view_index,
+        });
+
+        const item = await getCourseDialogContentById({ id });
+        if (item) {
+            return res.status(201).json(item);
+        }
+
+        return res.status(400).json({ error: "Failed To Add Dialog Content" });
+    },
+);
+
+router.patch(
+    "/dialog-contents",
+    requires_authority(AUTHORITIES.UPDATE_COURSE),
+    async (req, res, next) => {
+        const requiredBodyFields = ["id", "content", "start_date", "end_date", "frequency"];
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (!isRequestBodyValid) {
+            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+        req.body = validatedRequestBody;
+        next();
+    },
+    async (req, res) => {
+        const existing = await getCourseDialogContentById({ id: req.body.id });
+        if (!existing) {
+            return res.status(400).json({ error: "Content Not Exist" });
+        }
+
+        await updateCourseDialogContentById({
+            id: req.body.id,
+            content: req.body.content,
+            start_date: req.body.start_date,
+            end_date: req.body.end_date,
+            daily: req.body.daily !== undefined ? !!req.body.daily : existing.daily,
+            frequency: req.body.frequency,
+            active: req.body.active !== undefined ? !!req.body.active : existing.active,
+            view_index: req.body.view_index ?? existing.view_index,
+        });
+
+        const item = await getCourseDialogContentById({ id: req.body.id });
+        if (item) {
+            return res.status(200).json(item);
+        }
+
+        return res.status(400).json({ error: "Failed To Update Dialog Content" });
+    },
+);
+
+router.patch("/:courseId/dialog-contents/view_indexes", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    if (!req.params.courseId) {
+        return res.status(400).json({ error: "Missing Course Id" });
+    }
+
+    const course = await getCourseById({ id: req.params.courseId });
+    if (!course) {
+        return res.status(400).json({ error: "Course Not Exist" });
+    }
+
+    if (req.body?.length) {
+        req.body.forEach(updateCourseDialogContentViewIndexById);
+        return res.sendStatus(200);
+    }
+
+    return res.status(400).json({ error: "Missing Dialog Contents" });
+});
+
+router.delete("/dialog-contents/:id", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Content Id" });
+    }
+
+    const content = await getCourseDialogContentById({ id: req.params.id });
+    if (!content) {
+        return res.status(400).json({ error: "Content Not Exist" });
+    }
+
+    await deleteCourseDialogContentById({ id: req.params.id });
+    res.sendStatus(204);
+});
+
+router.get("/:courseId/dialog-contents", requires_authority(AUTHORITIES.READ_COURSE), async (req, res) => {
+    if (!req.params.courseId) {
+        return res.status(400).json({ error: "Missing Course Id" });
+    }
+
+    const course = await getCourseById({ id: req.params.courseId });
+    if (!course) {
+        return res.status(400).json({ error: "Course Not Exist" });
+    }
+
+    const contents = await getEligibleCourseDialogContentsByCourseId({
+        course_id: req.params.courseId,
+        user_id: req.user.id,
+    });
+
+    return res.status(200).json(contents);
+});
+
 //tested
 router.patch(
     "/",
@@ -223,7 +347,6 @@ router.get("/:id", requires_authority(AUTHORITIES.READ_COURSE), async (req, res)
 
         if (course?.is_bundle) course.bundledCourses = await getBundledCoursesByCourseId({ course_id: course.id });
 
-        course.dialog = await getCourseDialogByCourseId({ course_id: course?.id });
         course.carousel = await getCourseCarouselByCourseId({ course_id: course?.id });
 
         return res.status(200).json(course);

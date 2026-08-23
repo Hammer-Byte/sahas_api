@@ -198,19 +198,6 @@ async function generateDBTables() {
             bundled_course_id INT NOT NULL,
             UNIQUE KEY unique_course_bundled_course (course_id, bundled_course_id)
         )`,
-        `
-        CREATE TABLE IF NOT EXISTS COURSE_DIALOG(
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            course_id INT NOT NULL,
-            title VARCHAR(96) NOT NULL,
-            heading VARCHAR(96) NOT NULL,
-            description VARCHAR(256) NOT NULL,
-            active BOOLEAN NOT NULL DEFAULT TRUE,
-            media_url VARCHAR(128) NULL UNIQUE,
-            note VARCHAR(128) NOT NULL,
-            redirect_url VARCHAR(256) DEFAULT NULL
-        )
-        `,
         `CREATE TABLE IF NOT EXISTS COURSE_CAROUSEL (
             id INT AUTO_INCREMENT PRIMARY KEY,
             course_id INT NOT NULL,
@@ -218,6 +205,29 @@ async function generateDBTables() {
             click_link VARCHAR(512) NULL,
             view_index INT NOT NULL DEFAULT 0,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS COURSE_DIALOG_CONTENTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            content VARCHAR(512) NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            daily BOOLEAN NOT NULL DEFAULT FALSE,
+            frequency INT NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT TRUE,
+            view_index INT NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_course_dialog_content_course (course_id, view_index, active),
+            INDEX idx_course_dialog_content_dates (start_date, end_date, active)
+        )`,
+        `CREATE TABLE IF NOT EXISTS COURSE_DIALOG_CONTENT_VIEWS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            content_id INT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_course_dialog_views_user_content (user_id, content_id),
+            INDEX idx_course_dialog_views_content_created (content_id, created_at)
         )`,
         `CREATE TABLE IF NOT EXISTS SUBJECTS(
             id INT AUTO_INCREMENT PRIMARY KEY,

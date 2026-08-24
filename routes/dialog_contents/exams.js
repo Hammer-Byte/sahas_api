@@ -3,27 +3,27 @@ const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../../middlewares/requires_authority");
 const { AUTHORITIES } = require("../../constants");
 const { getExamById } = require("../../db/exams");
+const { getCourseById } = require("../../db/courses");
+const { getNonBundleCoursesForPromoDialogAdmin } = require("../../db/course_dialog_contents");
 const {
-    getExamDialogContentsBySubjectId,
+    getExamDialogContentsByCourseId,
     getExamDialogContentById,
-    getEligibleExamDialogContentsBySubjectId,
-    getAllSubjectsWithDialogContents,
+    getEligibleExamDialogContentsByCourseId,
     addExamDialogContent,
     updateExamDialogContentById,
     updateExamDialogContentViewIndexById,
     deleteExamDialogContentById,
 } = require("../../db/exam_dialog_contents");
-const { getSubjectById } = require("../../db/subjects");
 const { userHasExamAccessViaSeriesEnrollment } = require("../../db/exam_series_enrollments");
 
 const router = libExpress.Router();
 
 router.get("/", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
     try {
-        const subjects = await getAllSubjectsWithDialogContents();
-        return res.status(200).json(subjects);
+        const courses = await getNonBundleCoursesForPromoDialogAdmin();
+        return res.status(200).json(courses);
     } catch (error) {
-        return res.status(500).json({ error: "Couldn't load exam promo dialogs" });
+        return res.status(500).json({ error: "Couldn't load exam promo dialog courses" });
     }
 });
 
@@ -31,7 +31,7 @@ router.post(
     "/",
     requires_authority(AUTHORITIES.UPDATE_COURSE),
     async (req, res, next) => {
-        const requiredBodyFields = ["subject_id", "content", "start_date", "end_date", "frequency"];
+        const requiredBodyFields = ["course_id", "content", "start_date", "end_date", "frequency"];
         const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
         if (!isRequestBodyValid) {
             return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
@@ -40,16 +40,16 @@ router.post(
         next();
     },
     async (req, res) => {
-        const subject = await getSubjectById({ id: req.body.subject_id });
-        if (!subject) {
-            return res.status(400).json({ error: "Subject Not Exist" });
+        const course = await getCourseById({ id: req.body.course_id });
+        if (!course) {
+            return res.status(400).json({ error: "Course Not Exist" });
         }
 
-        const existing = await getExamDialogContentsBySubjectId({ subject_id: req.body.subject_id });
+        const existing = await getExamDialogContentsByCourseId({ course_id: req.body.course_id });
         const view_index = req.body.view_index ?? existing?.length ?? 0;
 
         const id = await addExamDialogContent({
-            subject_id: req.body.subject_id,
+            course_id: req.body.course_id,
             content: req.body.content,
             redirect_url: req.body.redirect_url ?? null,
             start_date: req.body.start_date,
@@ -110,14 +110,14 @@ router.patch(
     },
 );
 
-router.patch("/subjects/:subjectId/view_indexes", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
-    if (!req.params.subjectId) {
-        return res.status(400).json({ error: "Missing Subject Id" });
+router.patch("/:courseId/view_indexes", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    if (!req.params.courseId) {
+        return res.status(400).json({ error: "Missing Course Id" });
     }
 
-    const subject = await getSubjectById({ id: req.params.subjectId });
-    if (!subject) {
-        return res.status(400).json({ error: "Subject Not Exist" });
+    const course = await getCourseById({ id: req.params.courseId });
+    if (!course) {
+        return res.status(400).json({ error: "Course Not Exist" });
     }
 
     if (req.body?.length) {
@@ -140,6 +140,20 @@ router.delete("/:contentId", requires_authority(AUTHORITIES.UPDATE_COURSE), asyn
 
     await deleteExamDialogContentById({ id: req.params.contentId });
     res.sendStatus(204);
+});
+
+router.get("/:courseId/contents", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    if (!req.params.courseId) {
+        return res.status(400).json({ error: "Missing Course Id" });
+    }
+
+    const course = await getCourseById({ id: req.params.courseId });
+    if (!course) {
+        return res.status(400).json({ error: "Course Not Exist" });
+    }
+
+    const contents = await getExamDialogContentsByCourseId({ course_id: req.params.courseId });
+    return res.status(200).json(contents);
 });
 
 router.get("/:examId", async (req, res) => {
@@ -165,8 +179,12 @@ router.get("/:examId", async (req, res) => {
         return res.status(403).json({ error: "Exam Series Enrollment Required" });
     }
 
-    const contents = await getEligibleExamDialogContentsBySubjectId({
-        subject_id: exam.subject_id,
+    if (!exam.course_id) {
+        return res.status(200).json([]);
+    }
+
+    const contents = await getEligibleExamDialogContentsByCourseId({
+        course_id: exam.course_id,
         user_id: req.user.id,
     });
 

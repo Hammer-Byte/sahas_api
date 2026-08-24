@@ -233,7 +233,7 @@ async function generateDBTables() {
         )`,
         `CREATE TABLE IF NOT EXISTS EXAM_DIALOG_CONTENTS (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            subject_id INT NOT NULL,
+            course_id INT NOT NULL,
             content VARCHAR(512) NOT NULL,
             redirect_url VARCHAR(512) NULL,
             start_date DATE NOT NULL,
@@ -245,7 +245,7 @@ async function generateDBTables() {
             \`interval\` INT NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_exam_dialog_content_subject (subject_id, view_index, active),
+            INDEX idx_exam_dialog_content_course (course_id, view_index, active),
             INDEX idx_exam_dialog_content_dates (start_date, end_date, active)
         )`,
         `CREATE TABLE IF NOT EXISTS EXAM_DIALOG_CONTENT_VIEWS (

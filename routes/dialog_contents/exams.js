@@ -48,30 +48,18 @@ router.post(
         const existing = await getExamDialogContentsByCourseId({ course_id: req.body.course_id });
         const view_index = req.body.view_index ?? existing?.length ?? 0;
 
-        let id;
-        try {
-            id = await addExamDialogContent({
-                course_id: req.body.course_id,
-                content: req.body.content,
-                redirect_url: req.body.redirect_url ?? null,
-                start_date: req.body.start_date,
-                end_date: req.body.end_date,
-                daily: !!req.body.daily,
-                frequency: req.body.frequency,
-                active: req.body.active !== false,
-                view_index,
-                interval: req.body.interval ?? 0,
-            });
-        } catch (addError) {
-            // #region agent log
-            require("fs").appendFileSync("/home/nisarg/Workspace/sahas/sahas_ui/.cursor/debug-e0c060.log", JSON.stringify({ sessionId: "e0c060", hypothesisId: "C", location: "exams.js:POST/", message: "add content failed", data: { courseId: req.body.course_id, error: addError?.message }, timestamp: Date.now() }) + "\n");
-            // #endregion
-            throw addError;
-        }
-
-        // #region agent log
-        require("fs").appendFileSync("/home/nisarg/Workspace/sahas/sahas_ui/.cursor/debug-e0c060.log", JSON.stringify({ sessionId: "e0c060", hypothesisId: "C", location: "exams.js:POST/", message: "add content success", data: { courseId: req.body.course_id, contentId: id }, timestamp: Date.now() }) + "\n");
-        // #endregion
+        const id = await addExamDialogContent({
+            course_id: req.body.course_id,
+            content: req.body.content,
+            redirect_url: req.body.redirect_url ?? null,
+            start_date: req.body.start_date,
+            end_date: req.body.end_date,
+            daily: !!req.body.daily,
+            frequency: req.body.frequency,
+            active: req.body.active !== false,
+            view_index,
+            interval: req.body.interval ?? 0,
+        });
 
         const item = await getExamDialogContentById({ id });
         if (item) {
@@ -188,16 +176,10 @@ router.get("/:examId", async (req, res) => {
     });
 
     if (!hasExamAccess) {
-        // #region agent log
-        require("fs").appendFileSync("/home/nisarg/Workspace/sahas/sahas_ui/.cursor/debug-e0c060.log", JSON.stringify({ sessionId: "e0c060", hypothesisId: "B", location: "exams.js:GET/:examId", message: "student fetch denied", data: { examId: req.params.examId, userId: req.user.id, hasExamAccess }, timestamp: Date.now() }) + "\n");
-        // #endregion
         return res.status(403).json({ error: "Exam Series Enrollment Required" });
     }
 
     if (!exam.course_id) {
-        // #region agent log
-        require("fs").appendFileSync("/home/nisarg/Workspace/sahas/sahas_ui/.cursor/debug-e0c060.log", JSON.stringify({ sessionId: "e0c060", hypothesisId: "B", location: "exams.js:GET/:examId", message: "exam missing course_id", data: { examId: req.params.examId, examSeriesId: exam.exam_series_id }, timestamp: Date.now() }) + "\n");
-        // #endregion
         return res.status(200).json([]);
     }
 
@@ -205,10 +187,6 @@ router.get("/:examId", async (req, res) => {
         course_id: exam.course_id,
         user_id: req.user.id,
     });
-
-    // #region agent log
-    require("fs").appendFileSync("/home/nisarg/Workspace/sahas/sahas_ui/.cursor/debug-e0c060.log", JSON.stringify({ sessionId: "e0c060", hypothesisId: "B", location: "exams.js:GET/:examId", message: "student fetch result", data: { examId: req.params.examId, courseId: exam.course_id, contentsCount: contents?.length ?? 0, contentIds: (contents ?? []).map((c) => c.id) }, timestamp: Date.now() }) + "\n");
-    // #endregion
 
     return res.status(200).json(contents);
 });

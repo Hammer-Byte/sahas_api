@@ -5,7 +5,6 @@ const { AUTHORITIES } = require("../../constants");
 const { getCourseDialogContentById, addCourseDialogContentView } = require("../../db/course_dialog_contents");
 const { getCourseById } = require("../../db/courses");
 const { getExamDialogContentById, addExamDialogContentView } = require("../../db/exam_dialog_contents");
-const { getSubjectById } = require("../../db/subjects");
 const { getDashboardDialogContentById, addDashboardDialogContentView } = require("../../db/dashboard_dialog_contents");
 const { getSelfTestDialogContentById, addSelfTestDialogContentView } = require("../../db/self_test_dialog_contents");
 
@@ -54,12 +53,9 @@ router.post("/exams", async (req, res) => {
         return res.status(400).json({ error: "Content Not Exist" });
     }
 
-    const subject = await getSubjectById({ id: content.subject_id });
-    // #region agent log
-    require("fs").appendFileSync("/home/nisarg/Workspace/sahas/sahas_ui/.cursor/debug-e0c060.log", JSON.stringify({ sessionId: "e0c060", hypothesisId: "A", location: "views.js:POST/exams", message: "view tracking check", data: { contentId: content.id, courseId: content.course_id, subjectId: content.subject_id, subjectFound: !!subject }, timestamp: Date.now() }) + "\n");
-    // #endregion
-    if (!subject) {
-        return res.status(400).json({ error: "Subject Not Exist" });
+    const course = await getCourseById({ id: content.course_id });
+    if (!course) {
+        return res.status(400).json({ error: "Course Not Exist" });
     }
 
     const viewId = await addExamDialogContentView({ user_id: req.user.id, content_id: content.id });

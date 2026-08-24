@@ -50,25 +50,6 @@ router.post("/dashboard/carousel-images", async (req, res) => {
     }
 });
 
-router.put("/dashboard/dialog", async (req, res) => {
-    const requiredBodyFields = ["media_url"];
-
-    try {
-        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
-        if (isRequestBodyValid) {
-            const config = await readConfig("template");
-            config.dash_board.dialog = validatedRequestBody;
-            writeConfig("template", config);
-            res.status(200).json(validatedRequestBody);
-        } else {
-            res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-        }
-    } catch (error) {
-        logger.error(error);
-        res.status(400).json({ error });
-    }
-});
-
 router.put("/stream-selection", async (req, res) => {
     const requiredBodyFields = ["external_attendees","fees"];
 

@@ -2,7 +2,6 @@ const libExpress = require("express");
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../../middlewares/requires_authority");
 const { AUTHORITIES } = require("../../constants");
-const { hasRequiredAuthority } = require("../../utils");
 const {
     getAllDashboardDialogContents,
     getDashboardDialogContentById,
@@ -15,12 +14,12 @@ const {
 
 const router = libExpress.Router();
 
-router.get("/", async (req, res) => {
-    if (hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.UPDATE_COURSE)) {
-        const contents = await getAllDashboardDialogContents();
-        return res.status(200).json(contents);
-    }
+router.get("/contents", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    const contents = await getAllDashboardDialogContents();
+    return res.status(200).json(contents);
+});
 
+router.get("/", async (req, res) => {
     if (!req.user?.id) {
         return res.status(401).json({ error: "Authentication Required" });
     }

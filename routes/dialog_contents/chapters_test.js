@@ -15,10 +15,14 @@ const {
 
 const router = libExpress.Router();
 
+router.get("/contents", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    const contents = await getAllSelfTestDialogContents();
+    return res.status(200).json(contents);
+});
+
 router.get("/", async (req, res) => {
-    if (hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.UPDATE_COURSE)) {
-        const contents = await getAllSelfTestDialogContents();
-        return res.status(200).json(contents);
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
     }
 
     if (!hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.READ_CHAPTERS_TEST)) {

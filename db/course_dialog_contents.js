@@ -107,6 +107,23 @@ function updateCourseDialogContentViewIndexById({ id, view_index }) {
     );
 }
 
+function getNonBundleCoursesForPromoDialogAdmin() {
+    return executeSQLQueryParameterized(
+        `SELECT
+            c.id,
+            c.title,
+            c.category_id,
+            cc.title AS category_title
+        FROM COURSES c
+        LEFT JOIN COURSE_CATEGORIES cc ON cc.id = c.category_id
+        WHERE c.is_bundle = FALSE
+        ORDER BY cc.view_index ASC, c.view_index ASC, c.id ASC`,
+    ).catch((error) => {
+        logger.error(`getNonBundleCoursesForPromoDialogAdmin: ${error}`);
+        throw error;
+    });
+}
+
 function getAllCoursesWithDialogContents() {
     return executeSQLQueryParameterized(
         `SELECT
@@ -170,7 +187,7 @@ function getAllCoursesWithDialogContents() {
         })
         .catch((error) => {
             logger.error(`getAllCoursesWithDialogContents: ${error}`);
-            return [];
+            throw error;
         });
 }
 
@@ -178,6 +195,7 @@ module.exports = {
     getCourseDialogContentsByCourseId,
     getCourseDialogContentById,
     getEligibleCourseDialogContentsByCourseId,
+    getNonBundleCoursesForPromoDialogAdmin,
     getAllCoursesWithDialogContents,
     addCourseDialogContent,
     updateCourseDialogContentById,

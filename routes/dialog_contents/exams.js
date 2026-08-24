@@ -19,8 +19,12 @@ const { userHasExamAccessViaSeriesEnrollment } = require("../../db/exam_series_e
 const router = libExpress.Router();
 
 router.get("/", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
-    const subjects = await getAllSubjectsWithDialogContents();
-    return res.status(200).json(subjects);
+    try {
+        const subjects = await getAllSubjectsWithDialogContents();
+        return res.status(200).json(subjects);
+    } catch (error) {
+        return res.status(500).json({ error: "Couldn't load exam promo dialogs" });
+    }
 });
 
 router.post(

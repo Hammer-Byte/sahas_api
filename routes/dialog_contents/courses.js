@@ -7,7 +7,7 @@ const {
     getCourseDialogContentsByCourseId,
     getCourseDialogContentById,
     getEligibleCourseDialogContentsByCourseId,
-    getAllCoursesWithDialogContents,
+    getNonBundleCoursesForPromoDialogAdmin,
     addCourseDialogContent,
     updateCourseDialogContentById,
     updateCourseDialogContentViewIndexById,
@@ -17,8 +17,12 @@ const {
 const router = libExpress.Router();
 
 router.get("/", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
-    const courses = await getAllCoursesWithDialogContents();
-    return res.status(200).json(courses);
+    try {
+        const courses = await getNonBundleCoursesForPromoDialogAdmin();
+        return res.status(200).json(courses);
+    } catch (error) {
+        return res.status(500).json({ error: "Couldn't load promo dialog courses" });
+    }
 });
 
 router.post(
@@ -134,6 +138,20 @@ router.delete("/:contentId", requires_authority(AUTHORITIES.UPDATE_COURSE), asyn
 
     await deleteCourseDialogContentById({ id: req.params.contentId });
     res.sendStatus(204);
+});
+
+router.get("/:courseId/contents", requires_authority(AUTHORITIES.UPDATE_COURSE), async (req, res) => {
+    if (!req.params.courseId) {
+        return res.status(400).json({ error: "Missing Course Id" });
+    }
+
+    const course = await getCourseById({ id: req.params.courseId });
+    if (!course) {
+        return res.status(400).json({ error: "Course Not Exist" });
+    }
+
+    const contents = await getCourseDialogContentsByCourseId({ course_id: req.params.courseId });
+    return res.status(200).json(contents);
 });
 
 router.get("/:courseId", requires_authority(AUTHORITIES.READ_COURSE), async (req, res) => {

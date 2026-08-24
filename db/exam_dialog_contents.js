@@ -165,7 +165,7 @@ function getAllSubjectsWithDialogContents() {
         })
         .catch((error) => {
             logger.error(`getAllSubjectsWithDialogContents: ${error}`);
-            return [];
+            throw error;
         });
 }
 

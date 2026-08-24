@@ -57,10 +57,13 @@ function addExamDialogContent({
     return executeSQLQueryParameterized(
         `INSERT INTO EXAM_DIALOG_CONTENTS (subject_id, content, redirect_url, start_date, end_date, daily, frequency, active, view_index, \`interval\`)
         VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        [subject_id, content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval],
+        [subject_id, content, redirect_url ?? null, start_date, end_date, daily, frequency, active, view_index, interval ?? 0],
     )
         .then((result) => result.insertId)
-        .catch((error) => logger.error(`addExamDialogContent: ${error}`));
+        .catch((error) => {
+            logger.error(`addExamDialogContent: ${error}`);
+            throw error;
+        });
 }
 
 function updateExamDialogContentById({
@@ -79,7 +82,7 @@ function updateExamDialogContentById({
         `UPDATE EXAM_DIALOG_CONTENTS
         SET content=?, redirect_url=?, start_date=?, end_date=?, daily=?, frequency=?, active=?, view_index=?, \`interval\`=?
         WHERE id=?`,
-        [content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval, id],
+        [content, redirect_url ?? null, start_date, end_date, daily, frequency, active, view_index, interval ?? 0, id],
     ).catch((error) => logger.error(`updateExamDialogContentById: ${error}`));
 }
 

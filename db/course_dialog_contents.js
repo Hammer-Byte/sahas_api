@@ -57,10 +57,13 @@ function addCourseDialogContent({
     return executeSQLQueryParameterized(
         `INSERT INTO COURSE_DIALOG_CONTENTS (course_id, content, redirect_url, start_date, end_date, daily, frequency, active, view_index, \`interval\`)
         VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        [course_id, content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval],
+        [course_id, content, redirect_url ?? null, start_date, end_date, daily, frequency, active, view_index, interval ?? 0],
     )
         .then((result) => result.insertId)
-        .catch((error) => logger.error(`addCourseDialogContent: ${error}`));
+        .catch((error) => {
+            logger.error(`addCourseDialogContent: ${error}`);
+            throw error;
+        });
 }
 
 function updateCourseDialogContentById({
@@ -79,7 +82,7 @@ function updateCourseDialogContentById({
         `UPDATE COURSE_DIALOG_CONTENTS
         SET content=?, redirect_url=?, start_date=?, end_date=?, daily=?, frequency=?, active=?, view_index=?, \`interval\`=?
         WHERE id=?`,
-        [content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval, id],
+        [content, redirect_url ?? null, start_date, end_date, daily, frequency, active, view_index, interval ?? 0, id],
     ).catch((error) => logger.error(`updateCourseDialogContentById: ${error}`));
 }
 

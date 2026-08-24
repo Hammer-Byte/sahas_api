@@ -54,10 +54,13 @@ function addDashboardDialogContent({
     return executeSQLQueryParameterized(
         `INSERT INTO DASHBOARD_DIALOG_CONTENTS (content, redirect_url, start_date, end_date, daily, frequency, active, view_index, \`interval\`)
         VALUES (?,?,?,?,?,?,?,?,?)`,
-        [content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval],
+        [content, redirect_url ?? null, start_date, end_date, daily, frequency, active, view_index, interval ?? 0],
     )
         .then((result) => result.insertId)
-        .catch((error) => logger.error(`addDashboardDialogContent: ${error}`));
+        .catch((error) => {
+            logger.error(`addDashboardDialogContent: ${error}`);
+            throw error;
+        });
 }
 
 function updateDashboardDialogContentById({
@@ -76,7 +79,7 @@ function updateDashboardDialogContentById({
         `UPDATE DASHBOARD_DIALOG_CONTENTS
         SET content=?, redirect_url=?, start_date=?, end_date=?, daily=?, frequency=?, active=?, view_index=?, \`interval\`=?
         WHERE id=?`,
-        [content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval, id],
+        [content, redirect_url ?? null, start_date, end_date, daily, frequency, active, view_index, interval ?? 0, id],
     ).catch((error) => logger.error(`updateDashboardDialogContentById: ${error}`));
 }
 

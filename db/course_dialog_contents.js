@@ -45,17 +45,19 @@ function getEligibleCourseDialogContentsByCourseId({ course_id, user_id }) {
 function addCourseDialogContent({
     course_id,
     content,
+    redirect_url = null,
     start_date,
     end_date,
     daily = false,
     frequency,
     active = true,
     view_index = 0,
+    interval = 0,
 }) {
     return executeSQLQueryParameterized(
-        `INSERT INTO COURSE_DIALOG_CONTENTS (course_id, content, start_date, end_date, daily, frequency, active, view_index)
-        VALUES (?,?,?,?,?,?,?,?)`,
-        [course_id, content, start_date, end_date, daily, frequency, active, view_index],
+        `INSERT INTO COURSE_DIALOG_CONTENTS (course_id, content, redirect_url, start_date, end_date, daily, frequency, active, view_index, \`interval\`)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [course_id, content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval],
     )
         .then((result) => result.insertId)
         .catch((error) => logger.error(`addCourseDialogContent: ${error}`));
@@ -64,18 +66,20 @@ function addCourseDialogContent({
 function updateCourseDialogContentById({
     id,
     content,
+    redirect_url = null,
     start_date,
     end_date,
     daily,
     frequency,
     active,
     view_index,
+    interval = 0,
 }) {
     return executeSQLQueryParameterized(
         `UPDATE COURSE_DIALOG_CONTENTS
-        SET content=?, start_date=?, end_date=?, daily=?, frequency=?, active=?, view_index=?
+        SET content=?, redirect_url=?, start_date=?, end_date=?, daily=?, frequency=?, active=?, view_index=?, \`interval\`=?
         WHERE id=?`,
-        [content, start_date, end_date, daily, frequency, active, view_index, id],
+        [content, redirect_url, start_date, end_date, daily, frequency, active, view_index, interval, id],
     ).catch((error) => logger.error(`updateCourseDialogContentById: ${error}`));
 }
 
@@ -114,12 +118,14 @@ function getAllCoursesWithDialogContents() {
             cc.view_index AS category_view_index,
             dc.id AS content_id,
             dc.content,
+            dc.redirect_url,
             dc.start_date,
             dc.end_date,
             dc.daily,
             dc.frequency,
             dc.active,
             dc.view_index AS content_view_index,
+            dc.\`interval\` AS content_interval,
             dc.created_at,
             dc.updated_at
         FROM COURSES c
@@ -146,12 +152,14 @@ function getAllCoursesWithDialogContents() {
                         id: row.content_id,
                         course_id: row.id,
                         content: row.content,
+                        redirect_url: row.redirect_url,
                         start_date: row.start_date,
                         end_date: row.end_date,
                         daily: row.daily,
                         frequency: row.frequency,
                         active: row.active,
                         view_index: row.content_view_index,
+                        interval: row.content_interval,
                         created_at: row.created_at,
                         updated_at: row.updated_at,
                     });

@@ -55,6 +55,9 @@ router.post("/exams", async (req, res) => {
     }
 
     const subject = await getSubjectById({ id: content.subject_id });
+    // #region agent log
+    require("fs").appendFileSync("/home/nisarg/Workspace/sahas/sahas_ui/.cursor/debug-e0c060.log", JSON.stringify({ sessionId: "e0c060", hypothesisId: "A", location: "views.js:POST/exams", message: "view tracking check", data: { contentId: content.id, courseId: content.course_id, subjectId: content.subject_id, subjectFound: !!subject }, timestamp: Date.now() }) + "\n");
+    // #endregion
     if (!subject) {
         return res.status(400).json({ error: "Subject Not Exist" });
     }

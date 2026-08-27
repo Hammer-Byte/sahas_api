@@ -1,10 +1,10 @@
 const libExpress = require("express");
 const libCrypto = require("crypto");
-const { readConfig } = require("../libs/config");
 const { fetchExamQuestionsFromCsvUrl } = require("../libs/exam_questions_csv");
-const { PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES, PAYMENT_GATEWAY_TYPE_EXAM_SERIES, AUTHORITIES } = require("../constants");
+const { PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES, PAYMENT_GATEWAY_TYPE_EXAM_SERIES, AUTHORITIES, PAYMENT_RESULT_API_PATH } = require("../constants");
 const requires_authority = require("../middlewares/requires_authority");
 const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
+const { getConfigByKey } = require("../db/configs");
 const {
     getAllExamSeries,
     getExamSeriesByCourseId,
@@ -215,7 +215,13 @@ router.post("/payment-gateway-payloads", async (req, res) => {
         return res.status(400).json({ error: "Already Enrolled In This Exam Series" });
     }
 
-    const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
+    const cgst = Number(await getConfigByKey("payment_cgst"));
+    const sgst = Number(await getConfigByKey("payment_sgst"));
+    const merchantKey = process.env.PAYU_MERCHANT_KEY;
+    const merchantSalt = process.env.PAYU_MERCHANT_SALT;
+    const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
+    const url = process.env.PAYU_URL;
+    const resultAPI = PAYMENT_RESULT_API_PATH;
 
     const paymentGateWayPayLoad = {
         type: PAYMENT_GATEWAY_TYPE_EXAM_SERIES,

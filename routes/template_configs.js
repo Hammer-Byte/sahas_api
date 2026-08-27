@@ -1,28 +1,52 @@
 const libExpress = require("express");
-const { readConfig, writeConfig } = require("../libs/config");
-const { logger } = require("sahas_utils");
+const { logger, validateRequestBody } = require("sahas_utils");
 const { getAllBranches } = require("../db/branches");
 const { getAllCourses } = require("../db/courses");
 const { getAllRoles } = require("../db/roles");
 const { getAllAuthorities } = require("../db/authorities");
-const { validateRequestBody } = require("sahas_utils");
-const router = libExpress.Router();
-const { v4: uuidv4 } = require("uuid");
 const { getAllChapterTypes } = require("../db/chapter_types");
 const { getAllStreamSelectionSuggestions } = require("../db/stream_selection_suggestions");
+const { getConfigByKey, writeConfigByKey } = require("../db/configs");
+const {
+    getAllDashboardCarouselItems,
+    addDashboardCarouselItem,
+    getDashboardCarouselItemById,
+    deleteDashboardCarouselItemById,
+} = require("../db/dashboard_carousel");
+const { PAYMENT_TYPES, ENROLLMENT_HANDLERS, NOTE_TYPES, MEDIA_TYPES } = require("../constants");
 
-//Template Config
+const router = libExpress.Router();
+
 router.get("/", async (req, res) => {
-    let config = {};
-    //configs
+    let config = {
+        global: {
+            paymentTypes: PAYMENT_TYPES,
+            enrollmentHandlers: ENROLLMENT_HANDLERS,
+        },
+        user: {
+            note_types: NOTE_TYPES,
+        },
+        chapter: {
+            media_types: MEDIA_TYPES,
+        },
+        dash_board: {
+            carousel_images: [],
+        },
+        stream_selection: {},
+    };
+
     try {
-        config = await readConfig("template");
         config.global.branches = await getAllBranches();
         config.global.courses = await getAllCourses();
         config.global.roles = await getAllRoles();
         config.global.authorities = await getAllAuthorities();
         config.global.chapter_types = await getAllChapterTypes();
-        config.stream_selection.suggestions = await getAllStreamSelectionSuggestions();
+        config.dash_board.carousel_images = await getAllDashboardCarouselItems();
+        config.stream_selection = {
+            fees: Number(await getConfigByKey("stream_selection_fees")),
+            external_attendees: (await getConfigByKey("stream_selection_external_attendees")) === "true",
+            suggestions: await getAllStreamSelectionSuggestions(),
+        };
     } catch (error) {
         logger.error(error);
     } finally {
@@ -33,40 +57,39 @@ router.get("/", async (req, res) => {
 router.post("/dashboard/carousel-images", async (req, res) => {
     const requiredBodyFields = ["click_link", "source"];
 
-    try {
-        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
-        if (isRequestBodyValid) {
-            const config = await readConfig("template");
-            validatedRequestBody.id = uuidv4();
-            config.dash_board.carousel_images = [...config.dash_board.carousel_images, validatedRequestBody];
-            writeConfig("template", config);
-            res.status(201).json(validatedRequestBody);
-        } else {
-            res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-        }
-    } catch (error) {
-        logger.error(error);
-        res.status(400).json({ error });
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
+
+    const existing = await getAllDashboardCarouselItems();
+    const view_index = existing?.length || 0;
+    const id = await addDashboardCarouselItem({ ...validatedRequestBody, view_index });
+    const item = await getDashboardCarouselItemById({ id });
+
+    if (item) {
+        return res.status(201).json(item);
+    }
+    return res.status(400).json({ error: "Failed To Add Carousel Item" });
 });
 
 router.put("/stream-selection", async (req, res) => {
-    const requiredBodyFields = ["external_attendees","fees"];
+    const requiredBodyFields = ["external_attendees", "fees"];
 
-    try {
-        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
-        if (isRequestBodyValid) {
-            const config = await readConfig("template");
-            config.stream_selection = validatedRequestBody;
-            writeConfig("template", config);
-            res.status(200).json(validatedRequestBody);
-        } else {
-            res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-        }
-    } catch (error) {
-        logger.error(error);
-        res.status(400).json({ error });
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
+
+    await writeConfigByKey("stream_selection_fees", validatedRequestBody.fees);
+    await writeConfigByKey("stream_selection_external_attendees", validatedRequestBody.external_attendees ? "true" : "false");
+
+    return res.status(200).json({
+        fees: Number(validatedRequestBody.fees),
+        external_attendees: !!validatedRequestBody.external_attendees,
+    });
 });
 
 router.delete("/dashboard/carousel-images/:id", async (req, res) => {
@@ -74,15 +97,13 @@ router.delete("/dashboard/carousel-images/:id", async (req, res) => {
         return res.status(400).json({ error: "Missing Carousel Image Id" });
     }
 
-    try {
-        const config = await readConfig("template");
-        config.dash_board.carousel_images = config?.dash_board?.carousel_images?.filter((carouselImage) => carouselImage?.id !== req.params.id);
-        writeConfig("template", config);
-        res.sendStatus(204);
-    } catch (error) {
-        logger.error(error);
-        res.status(400).json({ error });
+    const item = await getDashboardCarouselItemById({ id: req.params.id });
+    if (!item) {
+        return res.status(400).json({ error: "Carousel Item Not Exist" });
     }
+
+    await deleteDashboardCarouselItemById({ id: req.params.id });
+    res.sendStatus(204);
 });
 
 module.exports = router;

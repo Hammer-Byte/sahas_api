@@ -2,8 +2,8 @@ const libExpress = require("express");
 const { verifyPaymentGatewayPayLoadStatus, getFormattedDate } = require("../utils");
 const { requestService } = require("sahas_utils");
 const { validateRequestBody } = require("sahas_utils");
-const { readConfig } = require("../libs/config");
 const { getAllNonVerifiedPaymentGateWayPayLoads } = require("../db/payment_gateway_payloads");
+const { getConfigByKey } = require("../db/configs");
 const { logger } = require("sahas_utils");
 const { addEnrollment } = require("../db/enrollments");
 const libMoment = require("moment");
@@ -26,7 +26,8 @@ router.get("/:id", async (req, res) => {
     }
 
     //get config before we check all transcations
-    const { payment: { cgst, sgst } = {} } = await readConfig("app");
+    const cgst = Number(await getConfigByKey("payment_cgst"));
+    const sgst = Number(await getConfigByKey("payment_sgst"));
 
     //verify status with payment gateway
     const verifiedPaymentGatewayPayLoads = await Promise.all(getAllNonVerifiedPaymentGateWayPayLoads()?.map(verifyPaymentGatewayPayLoadStatus));

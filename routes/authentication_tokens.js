@@ -5,7 +5,7 @@ const { getUserByEmail, addUserByEmail, getUserById, getAuthoritiesByRoleIds } =
 const libValidator = require("validator");
 const { generateToken } = require("../utils");
 const { addInactiveToken, getTokenByOTP, activateToken } = require("../db/authentication_tokens");
-const { readConfig } = require("../libs/config");
+const { getConfigByKey } = require("../db/configs");
 const { logger, validateRequestBody } = require("sahas_utils");
 const { getUserRolesByUserId } = require("../db/user_roles");
 const { getUpcomingExamByUserId } = require("../db/exams");
@@ -42,7 +42,8 @@ router.patch("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-    const { authentication: { token_validity, otp_validity } = {} } = await readConfig("app");
+    const token_validity = Number(await getConfigByKey("auth_token_validity"));
+    const otp_validity = Number(await getConfigByKey("auth_otp_validity"));
 
     if (!token_validity || !otp_validity) {
         return res.status(500).json({ error: "Missing Configuration token_validity or otp_validity" });

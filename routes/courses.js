@@ -5,7 +5,7 @@ const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { removeBundledCoursesByCourseId, addBundledCourse, getBundledCoursesByCourseId } = require("../db/bundled_courses");
 const requires_authority = require("../middlewares/requires_authority");
-const { AUTHORITIES } = require("../constants");
+const { AUTHORITIES, PAYMENT_RESULT_API_PATH } = require("../constants");
 const {
     getCourseCarouselByCourseId,
     getCourseCarouselItemById,
@@ -13,13 +13,13 @@ const {
     deleteCourseCarouselItemById,
     updateCourseCarouselItemById,
 } = require("../db/course_carousel");
-const { readConfig } = require("../libs/config");
 const { getDateByInterval } = require("../utils");
 const libCrypto = require("crypto");
 const { getWalletBalanceByUserId } = require("../db/wallet_transactions");
 const { getCouponCodeCourseByCouponCodeAndCourseId } = require("../db/coupon_code_courses");
 const { getUserByEmail } = require("../db/users");
 const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
+const { getConfigByKey } = require("../db/configs");
 
 
 
@@ -218,7 +218,13 @@ router.post("/payment-gateway-payloads", async (req, res) => {
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
-    const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
+    const cgst = Number(await getConfigByKey("payment_cgst"));
+    const sgst = Number(await getConfigByKey("payment_sgst"));
+    const merchantKey = process.env.PAYU_MERCHANT_KEY;
+    const merchantSalt = process.env.PAYU_MERCHANT_SALT;
+    const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
+    const url = process.env.PAYU_URL;
+    const resultAPI = PAYMENT_RESULT_API_PATH;
 
     //if already existing enrollment is there then do not give back the payment hash
 

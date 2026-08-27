@@ -44,8 +44,7 @@ const {
 const parseGuestUser = require("../middlewares/parse_guest_user");
 const { addInactiveToken } = require("../db/authentication_tokens");
 const { generateToken } = require("../utils");
-const { readConfig } = require("../libs/config");
-
+const { getConfigByKey } = require("../db/configs");
 
 const router = libExpress.Router();
 
@@ -324,8 +323,7 @@ router.patch(
     "/stream-selection-test-allowed",
     parseGuestUser,
     async (req, res, next) => {
-        const { stream_selection = {} } = await readConfig("template");
-        const amount = Number(stream_selection?.fees)
+        const amount = Number(await getConfigByKey("stream_selection_fees"));
 
         if (amount > 0) {
             return res.status(400).json({ error: "Amount is not valid to enroll into stream selection test" });
@@ -416,7 +414,7 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_USER), async (req, res) =
 router.post("/guest", async (req, res) => {
     const requiredBodyFields = ["full_name", "email", "phone", "address"];
 
-    const { authentication: { token_validity } = {} } = await readConfig("app");
+    const token_validity = Number(await getConfigByKey("auth_token_validity"));
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 

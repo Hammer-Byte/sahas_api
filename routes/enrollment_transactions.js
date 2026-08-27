@@ -7,7 +7,7 @@ const {
     getEnrollmentTransactionsForInterval,
     updateEnrollmentTransactionVerificationById,
 } = require("../db/enrollment_transactions");
-const { readConfig } = require("../libs/config");
+const { getConfigByKey } = require("../db/configs");
 const { requestService } = require("sahas_utils");
 const router = libExpress.Router();
 const libNumbersToWords = require("number-to-words");
@@ -166,7 +166,8 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_ENROLLMENT_TRANSACTION), 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        const { payment: { cgst, sgst } = {} } = await readConfig("app");
+        const cgst = Number(await getConfigByKey("payment_cgst"));
+        const sgst = Number(await getConfigByKey("payment_sgst"));
 
         const enrollmentTransactionId = await addEnrollmentTransaction({
             ...validatedRequestBody,

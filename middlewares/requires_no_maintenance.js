@@ -1,12 +1,10 @@
 const { REQUEST_DENIED, SERVER_UNDER_MAINTENANCE } = require("../constants");
-const { readConfig } = require("../libs/config");
+const { getConfigByKey } = require("../db/configs");
 const { logger } = require("sahas_utils");
 
 module.exports = async (req, res, next) => {
-    const { general: { under_maintance } = {} } = await readConfig("app");
-
     //if maintenance mode is disabled, then allow the request to proceed
-    if (under_maintance === false) {
+    if ((await getConfigByKey("under_maintenance")) !== "true") {
         return next();
     }
     logger.error(`${REQUEST_DENIED} - ${SERVER_UNDER_MAINTENANCE}`);

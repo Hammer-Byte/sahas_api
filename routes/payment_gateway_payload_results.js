@@ -1,7 +1,7 @@
 const libExpress = require("express");
 const { validateRequestBody } = require("sahas_utils");
 const { logger } = require("sahas_utils");
-const { readConfig } = require("../libs/config");
+const { PAYMENT_POST_ROUTE } = require("../constants");
 const { getUserByEmail, patchUserStreamSelectionTestAllowedById } = require("../db/users");
 
 const router = libExpress.Router();
@@ -15,7 +15,8 @@ router.post("/", async (req, res) => {
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        const { paymentGateWay: { redirectionHost, postPaymentRoute } = {} } = await readConfig("app");
+        const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
+        const postPaymentRoute = PAYMENT_POST_ROUTE;
 
         if (validatedRequestBody.productinfo === "Stream Selection Test") {
             const user = await getUserByEmail({ email: req.body.email });

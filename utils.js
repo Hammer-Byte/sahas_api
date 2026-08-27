@@ -2,7 +2,7 @@ const libFs = require("fs");
 const libPath = require("path");
 const libCrypto = require("crypto");
 const { logger } = require("sahas_utils");
-const { readConfig } = require("./libs/config");
+const { PAYU_VERIFICATION_COMMAND } = require("./constants");
 const libMoment = require("moment");
 
 const prepareDirectories = (directories) => {
@@ -40,16 +40,18 @@ function generateSHA512(targetString) {
 const getDeviceDescriptionByFingerPrint = (fingerPrint) => Buffer.from(fingerPrint, "base64").toString("utf8");
 
 async function requestPayUVerification(transaction) {
-    const { paymentGateWay: { verificationAPI, merchantKey, merchantSalt, verificationAPICommand } = {} } = await readConfig("app");
+    const merchantKey = process.env.PAYU_MERCHANT_KEY;
+    const merchantSalt = process.env.PAYU_MERCHANT_SALT;
+    const verificationAPI = process.env.PAYU_VERIFICATION_URL;
 
     if (transaction.pay > 0) {
         const headers = new Headers();
         headers.append("Content-Type", "application/x-www-form-urlencoded");
         const urlencoded = new URLSearchParams();
         urlencoded.append("key", merchantKey);
-        urlencoded.append("command", command);
+        urlencoded.append("command", PAYU_VERIFICATION_COMMAND);
         urlencoded.append("var1", transaction.id);
-        urlencoded.append("hash", generateSHA512(`${merchantKey}|${verificationAPICommand}|${transaction.id}|${merchantSalt}`));
+        urlencoded.append("hash", generateSHA512(`${merchantKey}|${PAYU_VERIFICATION_COMMAND}|${transaction.id}|${merchantSalt}`));
 
         const fetchOptions = {
             method: "POST",
@@ -71,15 +73,17 @@ async function requestPayUVerification(transaction) {
 
 async function verifyPaymentGatewayPayLoadStatus(paymentGateWayPayLoad) {
     if (paymentGateWayPayLoad?.transaction?.amount > 0) {
-        const { paymentGateWay: { verificationAPI, merchantKey, merchantSalt } = {} } = await readConfig("app");
+        const merchantKey = process.env.PAYU_MERCHANT_KEY;
+        const merchantSalt = process.env.PAYU_MERCHANT_SALT;
+        const verificationAPI = process.env.PAYU_VERIFICATION_URL;
 
         const headers = new Headers();
         headers.append("Content-Type", "application/x-www-form-urlencoded");
         const urlencoded = new URLSearchParams();
         urlencoded.append("key", merchantKey);
-        urlencoded.append("command", "verify_payment");
+        urlencoded.append("command", PAYU_VERIFICATION_COMMAND);
         urlencoded.append("var1", paymentGateWayPayLoad?.transaction?.id);
-        urlencoded.append("hash", generateSHA512(`${merchantKey}|verify_payment|${paymentGateWayPayLoad?.transaction?.id}|${merchantSalt}`));
+        urlencoded.append("hash", generateSHA512(`${merchantKey}|${PAYU_VERIFICATION_COMMAND}|${paymentGateWayPayLoad?.transaction?.id}|${merchantSalt}`));
 
         const fetchOptions = {
             method: "POST",

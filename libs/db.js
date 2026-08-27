@@ -553,6 +553,28 @@ async function generateDBTables() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
+        `CREATE TABLE IF NOT EXISTS CONFIGS (
+            config_key VARCHAR(64) PRIMARY KEY,
+            config_value VARCHAR(512) NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS DASHBOARD_CAROUSEL_ITEMS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            source VARCHAR(512) NOT NULL,
+            click_link VARCHAR(512) NULL,
+            view_index INT NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
+
+        `INSERT IGNORE INTO CONFIGS (config_key, config_value) VALUES
+        ('under_maintenance', 'false'),
+        ('auth_otp_validity', '5'),
+        ('auth_token_validity', '30'),
+        ('payment_cgst', '9'),
+        ('payment_sgst', '9'),
+        ('stream_selection_fees', '99'),
+        ('stream_selection_external_attendees', 'true')`,
 
         `INSERT IGNORE INTO BRANCHES (id, title, address, description, active, created_on, updated_at) VALUES
         (1, 'Head Office', '123 Main Street, Mumbai', 'Main corporate branch', 1, '2025-08-10 23:05:32', '2025-08-10 23:05:32'),

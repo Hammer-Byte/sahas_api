@@ -7,7 +7,8 @@ const { logger, requestService } = require("sahas_utils");
 const { patchUserStreamSelectionTestAllowedById } = require("../db/users");
 const parseGuestUser = require("../middlewares/parse_guest_user");
 const { getFormattedDate } = require("../utils");
-const { readConfig } = require("../libs/config");
+const { PAYMENT_RESULT_API_PATH } = require("../constants");
+const { getConfigByKey } = require("../db/configs");
 
 const libCrypto = require("crypto");
 const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
@@ -231,10 +232,15 @@ router.post("/", parseGuestUser, async (req, res) => {
 
 router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
 
-    const { payment: { cgst, sgst } = {}, paymentGateWay: { merchantKey, merchantSalt, redirectionHost, resultAPI, url } = {} } = await readConfig("app");
+    const cgst = Number(await getConfigByKey("payment_cgst"));
+    const sgst = Number(await getConfigByKey("payment_sgst"));
+    const merchantKey = process.env.PAYU_MERCHANT_KEY;
+    const merchantSalt = process.env.PAYU_MERCHANT_SALT;
+    const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
+    const url = process.env.PAYU_URL;
+    const resultAPI = PAYMENT_RESULT_API_PATH;
 
-    const { stream_selection = {} } = await readConfig("template");
-
+    const fees = Number(await getConfigByKey("stream_selection_fees"));
 
     const paymentGateWayPayLoad = {
         paymentGateWay: {
@@ -245,7 +251,7 @@ router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
             id: libCrypto.randomUUID(),
             successURL: redirectionHost.concat(resultAPI),
             failureURL: redirectionHost.concat(resultAPI),
-            amount: Number(stream_selection?.fees),
+            amount: Number(fees),
         },
         user: {
             email: req.user.email,

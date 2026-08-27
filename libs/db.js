@@ -727,32 +727,6 @@ async function generateDBTables() {
     ];
 
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
-
-    const migrationQueries = [
-        "ALTER TABLE EXAMS ADD COLUMN positive_marks DECIMAL(10,2) NOT NULL DEFAULT 1",
-        "ALTER TABLE EXAMS ADD COLUMN negative_marks DECIMAL(10,2) NOT NULL DEFAULT -1",
-        "ALTER TABLE EXAM_SUBMISSIONS MODIFY COLUMN marks DECIMAL(10,2) NOT NULL DEFAULT 0",
-        "ALTER TABLE COURSE_CAROUSEL MODIFY COLUMN source VARCHAR(512) NOT NULL",
-        "ALTER TABLE COURSE_CAROUSEL MODIFY COLUMN click_link VARCHAR(512) NULL",
-        "ALTER TABLE COURSE_DIALOG_CONTENTS ADD COLUMN redirect_url VARCHAR(512) NULL",
-        "ALTER TABLE COURSE_DIALOG_CONTENTS ADD COLUMN `interval` INT NOT NULL DEFAULT 0",
-        "ALTER TABLE EXAM_DIALOG_CONTENTS ADD COLUMN redirect_url VARCHAR(512) NULL",
-        "ALTER TABLE EXAM_DIALOG_CONTENTS ADD COLUMN `interval` INT NOT NULL DEFAULT 0",
-        "ALTER TABLE DASHBOARD_DIALOG_CONTENTS ADD COLUMN redirect_url VARCHAR(512) NULL",
-        "ALTER TABLE DASHBOARD_DIALOG_CONTENTS ADD COLUMN `interval` INT NOT NULL DEFAULT 0",
-        "ALTER TABLE SELF_TEST_DIALOG_CONTENTS ADD COLUMN redirect_url VARCHAR(512) NULL",
-        "ALTER TABLE SELF_TEST_DIALOG_CONTENTS ADD COLUMN `interval` INT NOT NULL DEFAULT 0",
-    ];
-
-    for (const query of migrationQueries) {
-        try {
-            await executeSQLQueryRaw(query);
-        } catch (error) {
-            if (error.code !== "ER_DUP_FIELDNAME") {
-                logger.error(`Migration failed: ${query} - ${error.message}`);
-            }
-        }
-    }
 }
 
 // Utility function to execute SQL queries using promises

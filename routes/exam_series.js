@@ -221,7 +221,6 @@ router.post("/payment-gateway-payloads", async (req, res) => {
     const merchantSalt = process.env.PAYU_MERCHANT_SALT;
     const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
     const url = process.env.PAYU_URL;
-    const resultAPI = PAYMENT_RESULT_API_PATH;
 
     const paymentGateWayPayLoad = {
         type: PAYMENT_GATEWAY_TYPE_EXAM_SERIES,
@@ -233,8 +232,8 @@ router.post("/payment-gateway-payloads", async (req, res) => {
         },
         transaction: {
             id: libCrypto.randomUUID(),
-            successURL: redirectionHost.concat(resultAPI),
-            failureURL: redirectionHost.concat(resultAPI),
+            successURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
+            failureURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
             amount: Number(examSeries.fees),
         },
         user: {

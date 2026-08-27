@@ -127,79 +127,11 @@ function getNonBundleCoursesForPromoDialogAdmin() {
     });
 }
 
-function getAllCoursesWithDialogContents() {
-    return executeSQLQueryParameterized(
-        `SELECT
-            c.id,
-            c.title,
-            c.category_id,
-            c.view_index AS course_view_index,
-            cc.title AS category_title,
-            cc.view_index AS category_view_index,
-            dc.id AS content_id,
-            dc.content,
-            dc.redirect_url,
-            dc.start_date,
-            dc.end_date,
-            dc.daily,
-            dc.frequency,
-            dc.active,
-            dc.view_index AS content_view_index,
-            dc.\`interval\` AS content_interval,
-            dc.created_at,
-            dc.updated_at
-        FROM COURSES c
-        LEFT JOIN COURSE_CATEGORIES cc ON cc.id = c.category_id
-        LEFT JOIN COURSE_DIALOG_CONTENTS dc ON dc.course_id = c.id
-        ORDER BY cc.view_index ASC, c.view_index ASC, dc.view_index ASC, dc.id ASC`,
-    )
-        .then((rows) => {
-            const coursesMap = new Map();
-
-            for (const row of rows) {
-                if (!coursesMap.has(row.id)) {
-                    coursesMap.set(row.id, {
-                        id: row.id,
-                        title: row.title,
-                        category_id: row.category_id,
-                        category_title: row.category_title,
-                        dialog_contents: [],
-                    });
-                }
-
-                if (row.content_id) {
-                    coursesMap.get(row.id).dialog_contents.push({
-                        id: row.content_id,
-                        course_id: row.id,
-                        content: row.content,
-                        redirect_url: row.redirect_url,
-                        start_date: row.start_date,
-                        end_date: row.end_date,
-                        daily: row.daily,
-                        frequency: row.frequency,
-                        active: row.active,
-                        view_index: row.content_view_index,
-                        interval: row.content_interval,
-                        created_at: row.created_at,
-                        updated_at: row.updated_at,
-                    });
-                }
-            }
-
-            return Array.from(coursesMap.values());
-        })
-        .catch((error) => {
-            logger.error(`getAllCoursesWithDialogContents: ${error}`);
-            throw error;
-        });
-}
-
 module.exports = {
     getCourseDialogContentsByCourseId,
     getCourseDialogContentById,
     getEligibleCourseDialogContentsByCourseId,
     getNonBundleCoursesForPromoDialogAdmin,
-    getAllCoursesWithDialogContents,
     addCourseDialogContent,
     updateCourseDialogContentById,
     updateCourseDialogContentViewIndexById,

@@ -5,9 +5,7 @@ const { updateSubjectById, addSubject, getAllSubjects, getSubjectById } = requir
 const {
     addCourseSubject,
     getCourseSubjectById,
-    getCourseSubjectByCourseIdAndSubjectId,
     getSubjectByCourseIdAndTitle,
-    getCourseSubjectBySubjectId,
 } = require("../db/course_subjects");
 const { getChaptersBySubjectId } = require("../db/chapters");
 const { getTestConfigurationByChapterId } = require("../db/test_configurations");

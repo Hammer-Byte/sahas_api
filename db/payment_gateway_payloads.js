@@ -12,9 +12,4 @@ function getAllNonVerifiedPaymentGateWayPayLoads() {
     return nonVerifiedPaymentGateWayPayLoads;
 }
 
-//freeze
-function getPaymentGateWayPayLoadById({ id }) {
-    return paymentGateWayPayLoads?.find(({ transaction }) => transaction?.id == id);
-}
-
-module.exports = { addPaymentGateWayPayLoad, getAllNonVerifiedPaymentGateWayPayLoads, getPaymentGateWayPayLoadById };
+module.exports = { addPaymentGateWayPayLoad, getAllNonVerifiedPaymentGateWayPayLoads };

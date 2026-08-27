@@ -1,5 +1,5 @@
 const libExpress = require("express");
-const { addStreamSelectionTest, addStreamSelectionTestAnswer, updateStreamSelectionTestResultById, getLatestStreamSelectionTestByUserId, getStreamSelectionTestAnswersByStreamSelectionTestId, updateStreamSelectionTestReportUrlById, getStreamSelectionTests } = require("../db/stream_selection_tests");
+const { addStreamSelectionTest, addStreamSelectionTestAnswer, getLatestStreamSelectionTestByUserId, getStreamSelectionTestAnswersByStreamSelectionTestId, updateStreamSelectionTestReportUrlById, getStreamSelectionTests } = require("../db/stream_selection_tests");
 const openai = require("../libs/openai");
 const router = libExpress.Router();
 const { setTimeout } = require("timers/promises");
@@ -238,7 +238,6 @@ router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
     const merchantSalt = process.env.PAYU_MERCHANT_SALT;
     const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
     const url = process.env.PAYU_URL;
-    const resultAPI = PAYMENT_RESULT_API_PATH;
 
     const fees = Number(await getConfigByKey("stream_selection_fees"));
 
@@ -249,9 +248,9 @@ router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
         },
         transaction: {
             id: libCrypto.randomUUID(),
-            successURL: redirectionHost.concat(resultAPI),
-            failureURL: redirectionHost.concat(resultAPI),
-            amount: Number(fees),
+            successURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
+            failureURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
+            amount: fees,
         },
         user: {
             email: req.user.email,

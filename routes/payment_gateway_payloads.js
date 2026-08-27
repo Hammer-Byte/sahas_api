@@ -1,10 +1,8 @@
 const libExpress = require("express");
 const { verifyPaymentGatewayPayLoadStatus, getFormattedDate } = require("../utils");
-const { requestService } = require("sahas_utils");
-const { validateRequestBody } = require("sahas_utils");
+const { requestService, logger } = require("sahas_utils");
 const { getAllNonVerifiedPaymentGateWayPayLoads } = require("../db/payment_gateway_payloads");
 const { getConfigByKey } = require("../db/configs");
-const { logger } = require("sahas_utils");
 const { addEnrollment } = require("../db/enrollments");
 const libMoment = require("moment");
 const { addEnrollmentCourse } = require("../db/enrollment_courses");

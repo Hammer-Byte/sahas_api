@@ -8,7 +8,6 @@ const {
     getCouponCodeCourseById,
 } = require("../db/coupon_code_courses");
 const router = libExpress.Router();
-const { logger } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 

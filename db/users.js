@@ -46,29 +46,6 @@ function getUserByAuthenticationToken(token) {
     );
 }
 
-function getGroupsById(id) {
-    return executeSQLQueryParameterized("SELECT DISTINCT(title) FROM USER_GROUPS WHERE user_id=?", [id])
-        .then((groups) => (groups && groups.length > 0 ? groups.map((row) => row.title) : []))
-        .catch((error) => {
-            logger.error(`getGroupsById: ${error}`);
-            return false;
-        });
-}
-
-//get user by transaction id
-function getUserByTransactionId(transactionId) {
-    return executeSQLQueryParameterized(`SELECT * FROM USERS INNER JOIN USER_TRANSACTIONS ON USERS.id=USER_TRANSACTIONS.user_id WHERE USER_TRANSACTIONS.id=?`, [
-        transactionId,
-    ])
-        .then((results) => {
-            return results.length > 0 ? results[0] : null;
-        })
-        .catch((error) => {
-            logger.error(`getUserByTransactionId: ${error}`);
-            return [];
-        });
-}
-
 //freeze
 function getUserById({ id }) {
     return executeSQLQueryParameterized(`SELECT * FROM USERS WHERE id = ?`, [id])
@@ -262,8 +239,6 @@ module.exports = {
     getCountUsersBySearchAndFilters,
     getUserByEmail,
     getUserByAuthenticationToken,
-    getGroupsById,
-    getUserByTransactionId,
     addUserByEmail,
     getUserById,
     getAuthoritiesByRoleIds,

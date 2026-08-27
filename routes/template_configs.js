@@ -13,7 +13,8 @@ const {
     getDashboardCarouselItemById,
     deleteDashboardCarouselItemById,
 } = require("../db/dashboard_carousel");
-const { PAYMENT_TYPES, ENROLLMENT_HANDLERS, NOTE_TYPES, MEDIA_TYPES } = require("../constants");
+const { PAYMENT_TYPES, ENROLLMENT_HANDLERS, NOTE_TYPES, MEDIA_TYPES, AUTHORITIES } = require("../constants");
+const requires_authority = require("../middlewares/requires_authority");
 
 const router = libExpress.Router();
 
@@ -54,27 +55,32 @@ router.get("/", async (req, res) => {
     }
 });
 
-router.post("/dashboard/carousel-images", async (req, res) => {
-    const requiredBodyFields = ["click_link", "source"];
+router.post(
+    "/dashboard/carousel-images",
+    requires_authority(AUTHORITIES.CREATE_CAROUSEL),
+    async (req, res, next) => {
+        const requiredBodyFields = ["click_link", "source"];
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (!isRequestBodyValid) {
+            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+        req.body = validatedRequestBody;
+        next();
+    },
+    async (req, res) => {
+        const existing = await getAllDashboardCarouselItems();
+        const view_index = existing?.length || 0;
+        const id = await addDashboardCarouselItem({ ...req.body, view_index });
+        const item = await getDashboardCarouselItemById({ id });
 
-    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (item) {
+            return res.status(201).json(item);
+        }
+        return res.status(400).json({ error: "Failed To Add Carousel Item" });
+    },
+);
 
-    if (!isRequestBodyValid) {
-        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
-    }
-
-    const existing = await getAllDashboardCarouselItems();
-    const view_index = existing?.length || 0;
-    const id = await addDashboardCarouselItem({ ...validatedRequestBody, view_index });
-    const item = await getDashboardCarouselItemById({ id });
-
-    if (item) {
-        return res.status(201).json(item);
-    }
-    return res.status(400).json({ error: "Failed To Add Carousel Item" });
-});
-
-router.put("/stream-selection", async (req, res) => {
+router.put("/stream-selection", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) => {
     const requiredBodyFields = ["external_attendees", "fees"];
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
@@ -92,7 +98,7 @@ router.put("/stream-selection", async (req, res) => {
     });
 });
 
-router.delete("/dashboard/carousel-images/:id", async (req, res) => {
+router.delete("/dashboard/carousel-images/:id", requires_authority(AUTHORITIES.DELETE_CAROUSEL), async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Carousel Image Id" });
     }

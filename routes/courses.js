@@ -1,6 +1,6 @@
 const libExpress = require("express");
 const { addCourse, getCourseById, deleteCourseById, updateCourseViewIndexById, updateCourseById, getCourseByCategoryIdAndTitle } = require("../db/courses");
-const { validateRequestBody, logger } = require("sahas_utils");
+const { validateRequestBody } = require("sahas_utils");
 const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { removeBundledCoursesByCourseId, addBundledCourse, getBundledCoursesByCourseId } = require("../db/bundled_courses");
@@ -224,7 +224,6 @@ router.post("/payment-gateway-payloads", async (req, res) => {
     const merchantSalt = process.env.PAYU_MERCHANT_SALT;
     const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
     const url = process.env.PAYU_URL;
-    const resultAPI = PAYMENT_RESULT_API_PATH;
 
     //if already existing enrollment is there then do not give back the payment hash
 
@@ -239,8 +238,8 @@ router.post("/payment-gateway-payloads", async (req, res) => {
             },
             transaction: {
                 id: libCrypto.randomUUID(),
-                successURL: redirectionHost.concat(resultAPI),
-                failureURL: redirectionHost.concat(resultAPI),
+                successURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
+                failureURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
                 amount: Number(course.fees),
             },
             user: {

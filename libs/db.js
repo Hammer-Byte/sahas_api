@@ -586,7 +586,8 @@ async function generateDBTables() {
         ('MANAGE_COURSES', 'Manage Course Content'),
 
         ('MANAGE_USER_INQUIRIES', 'Manage User Inquiries'),
-        ('MANAGE_FEATURE_CAROUSEL', 'Manage Carousel Items'),
+        ('CREATE_CAROUSEL', 'Create Carousel Items'),
+        ('DELETE_CAROUSEL', 'Delete Carousel Items'),
         ('USE_EMPLOYEE_CORNER', 'Employee Corner Visibility'),
         ('USE_PAGE_MY_EXPENSES', 'Page For Expense Submission'),
         ('USE_PAGE_MANAGE_EXAMS', 'Page For Exam Paper'),

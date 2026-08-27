@@ -1,6 +1,5 @@
 const libExpress = require("express");
 const {
-    deleteEnrollmentCourseByEnrollmentCourseId,
     addEnrollmentCourse,
     getEnrollmentCourseById,
     deleteEnrollmentCourseById,

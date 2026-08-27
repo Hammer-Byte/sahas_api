@@ -1,4 +1,4 @@
-const { executeSQLQueryParameterized, executeSQLQueryRaw } = require("../libs/db");
+const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
 
 //freeze

@@ -416,6 +416,10 @@ router.post("/guest", async (req, res) => {
 
     const token_validity = Number(await getConfigByKey("auth_token_validity"));
 
+    if (!token_validity) {
+        return res.status(500).json({ error: "Missing Configuration token_validity" });
+    }
+
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {

@@ -85,13 +85,6 @@ function deleteStreamSelectionQuestionById({ id }) {
     );
 }
 
-//freeze
-function deleteStreamSelectionQuestionOptionsByQuestionId({ question_id }) {
-    return executeSQLQueryParameterized("DELETE FROM STREAM_SELECTION_QUESTION_OPTIONS WHERE question_id=?", [question_id]).catch((error) =>
-        logger.error(`deleteStreamSelectionQuestionById: ${error}`),
-    );
-}
-
 module.exports = {
     addStreamSelectionQuestion,
     addStreamSelectionQuestionOption,
@@ -99,7 +92,6 @@ module.exports = {
     getStreamSelectionQuestionOptionsByQuestionId,
     getAllStreamSelectionQuestions,
     deleteStreamSelectionQuestionById,
-    deleteStreamSelectionQuestionOptionsByQuestionId,
     getStreamSelectionQuestionsByCategoryId,
     updateStreamSelectionQuestionById,
     removeStreamSelectionQuestionOptionByQuestionId,

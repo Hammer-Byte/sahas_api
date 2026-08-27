@@ -1,5 +1,4 @@
 const libExpress = require("express");
-const { deleteInquiryNoteById } = require("../db/inquiry_notes");
 const { validateRequestBody } = require("sahas_utils");
 const { addMedia, getMediaById, deleteMediaById, updateMediaViewIndexById, updateMediaById, getMediaByChapterIdTypeAndTitle } = require("../db/media");
 const requires_active_device = require("../middlewares/requires_active_device");

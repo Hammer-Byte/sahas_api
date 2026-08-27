@@ -1,7 +1,7 @@
 const libExpress = require("express");
 const axios = require("axios");
 const { parse } = require("csv-parse/sync");
-const { validateRequestBody, logger } = require("sahas_utils");
+const { validateRequestBody } = require("sahas_utils");
 const { getSubjectById } = require("../db/subjects");
 const {
     addChapter,

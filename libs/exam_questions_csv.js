@@ -54,6 +54,5 @@ async function fetchExamQuestionsFromCsvUrl({ csv_url }) {
 }
 
 module.exports = {
-    BULK_CSV_FIELDS,
     fetchExamQuestionsFromCsvUrl,
 };

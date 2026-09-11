@@ -54,7 +54,7 @@ function deleteBatchById({ id }) {
 function getBatchesByUserId({ user_id }) {
     return executeSQLQueryParameterized(
         `SELECT BATCHES.*, BRANCHES.title AS branch_title, BATCH_USERS.created_on AS assigned_on,
-                BATCH_USERS.roll_no, BATCH_USERS.prn_gr
+                BATCH_USERS.roll_no
          FROM BATCH_USERS
          INNER JOIN BATCHES ON BATCHES.id = BATCH_USERS.batch_id
          LEFT JOIN BRANCHES ON BATCHES.branch_id = BRANCHES.id
@@ -67,17 +67,35 @@ function getBatchesByUserId({ user_id }) {
     });
 }
 
-const BATCH_USER_SELECT = `SELECT BATCH_USERS.id, BATCH_USERS.batch_id, BATCH_USERS.user_id, BATCH_USERS.roll_no, BATCH_USERS.prn_gr,
+const BATCH_USER_SELECT = `SELECT BATCH_USERS.id, BATCH_USERS.batch_id, BATCH_USERS.user_id, BATCH_USERS.roll_no,
                 BATCH_USERS.created_on AS assigned_on,
                 USERS.full_name, USERS.email, USERS.phone, USERS.active
          FROM BATCH_USERS
          INNER JOIN USERS ON USERS.id = BATCH_USERS.user_id`;
 
 function getUsersByBatchId({ batch_id }) {
-    return executeSQLQueryParameterized(`${BATCH_USER_SELECT} WHERE BATCH_USERS.batch_id = ? ORDER BY BATCH_USERS.id DESC`, [batch_id]).catch((error) => {
+    return executeSQLQueryParameterized(
+        `${BATCH_USER_SELECT} WHERE BATCH_USERS.batch_id = ? ORDER BY BATCH_USERS.roll_no ASC, BATCH_USERS.id ASC`,
+        [batch_id],
+    ).catch((error) => {
         logger.error(`getUsersByBatchId: ${error}`);
         return [];
     });
+}
+
+function getNextRollNo({ batch_id }) {
+    return executeSQLQueryParameterized(`SELECT COALESCE(MAX(roll_no), 0) + 1 AS next_roll FROM BATCH_USERS WHERE batch_id = ?`, [batch_id])
+        .then((result) => Number(result?.[0]?.next_roll) || 1)
+        .catch((error) => {
+            logger.error(`getNextRollNo: ${error}`);
+            return 1;
+        });
+}
+
+function updateBatchUserRollNoById({ id, roll_no }) {
+    return executeSQLQueryParameterized("UPDATE BATCH_USERS SET roll_no=? WHERE id=?", [roll_no, id]).catch((error) =>
+        logger.error(`updateBatchUserRollNoById: ${error}`),
+    );
 }
 
 function getBatchUserById({ id }) {
@@ -107,12 +125,11 @@ function isUserInBatch({ batch_id, user_id }) {
         });
 }
 
-function addUserToBatch({ batch_id, user_id, roll_no = null, prn_gr = null, created_by = null }) {
-    return executeSQLQueryParameterized(`INSERT INTO BATCH_USERS (batch_id, user_id, roll_no, prn_gr, created_by) VALUES (?,?,?,?,?)`, [
+function addUserToBatch({ batch_id, user_id, roll_no, created_by = null }) {
+    return executeSQLQueryParameterized(`INSERT INTO BATCH_USERS (batch_id, user_id, roll_no, created_by) VALUES (?,?,?,?)`, [
         batch_id,
         user_id,
-        roll_no || null,
-        prn_gr || null,
+        roll_no,
         created_by,
     ])
         .then((result) => result.insertId)
@@ -127,7 +144,7 @@ function removeUserFromBatch({ batch_id, user_id }) {
 
 function getBatchAttendanceByDate({ batch_id, attendance_date }) {
     return executeSQLQueryParameterized(
-        `SELECT USERS.id AS user_id, USERS.full_name, BATCH_ATTENDANCE.status
+        `SELECT USERS.id AS user_id, USERS.full_name, BATCH_USERS.roll_no, BATCH_ATTENDANCE.status
          FROM BATCH_USERS
          INNER JOIN USERS ON USERS.id = BATCH_USERS.user_id
          LEFT JOIN BATCH_ATTENDANCE
@@ -135,7 +152,7 @@ function getBatchAttendanceByDate({ batch_id, attendance_date }) {
           AND BATCH_ATTENDANCE.user_id = BATCH_USERS.user_id
           AND BATCH_ATTENDANCE.attendance_date = ?
          WHERE BATCH_USERS.batch_id = ?
-         ORDER BY USERS.full_name ASC`,
+         ORDER BY BATCH_USERS.roll_no ASC, BATCH_USERS.id ASC`,
         [attendance_date, batch_id],
     ).catch((error) => {
         logger.error(`getBatchAttendanceByDate: ${error}`);
@@ -202,7 +219,9 @@ module.exports = {
     getAssignableBatchesForUser,
     isUserAssignable,
     isUserInBatch,
+    getNextRollNo,
     addUserToBatch,
+    updateBatchUserRollNoById,
     removeUserFromBatch,
     getBatchAttendanceByDate,
     deleteBatchAttendanceByDate,

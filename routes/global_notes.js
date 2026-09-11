@@ -13,7 +13,12 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req,
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        const globalNoteId = await addGlobalNote({ ...validatedRequestBody,  created_by: req.user.id });
+        const globalNoteId = await addGlobalNote({
+            ...validatedRequestBody,
+            type: req.body.type ?? null,
+            attachment: req.body.attachment ?? null,
+            created_by: req.user.id,
+        });
         res.status(201).json(await getGlobalNoteById({ id: globalNoteId }));
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
@@ -27,7 +32,12 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_GLOBAL_NOTE), async (req
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        await updateGlobalNoteById(validatedRequestBody);
+        await updateGlobalNoteById({
+            id: validatedRequestBody.id,
+            note: validatedRequestBody.note,
+            type: req.body.type ?? null,
+            attachment: req.body.attachment ?? null,
+        });
         res.status(200).json(await getGlobalNoteById({ id: validatedRequestBody.id }));
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });

@@ -26,26 +26,32 @@ function deleteGlobalNoteById({ id }) {
     });
 }
 
-async function addGlobalNote({ user_id, note, type=null, created_by }) {
-    return executeSQLQueryParameterized("INSERT INTO GLOBAL_NOTES(user_id, note, type, created_by) VALUES(?,?,?,?)", [user_id, note, type, created_by])
+async function addGlobalNote({ user_id, note, type = null, attachment = null, created_by }) {
+    return executeSQLQueryParameterized("INSERT INTO GLOBAL_NOTES(user_id, note, type, attachment, created_by) VALUES(?,?,?,?,?)", [
+        user_id,
+        note,
+        type,
+        attachment,
+        created_by,
+    ])
         .then((result) => result.insertId)
         .catch((error) => {
             logger.error(`addGlobalNote: ${error}`);
         });
 }
 
-async function addGlobalNotesForUsers({ user_ids, note, type = null, created_by }) {
+async function addGlobalNotesForUsers({ user_ids, note, type = null, attachment = null, created_by }) {
     if (!user_ids?.length) {
         return 0;
     }
 
-    const placeholders = user_ids.map(() => "(?,?,?,?)").join(",");
+    const placeholders = user_ids.map(() => "(?,?,?,?,?)").join(",");
     const parameters = [];
     for (const user_id of user_ids) {
-        parameters.push(user_id, note, type, created_by);
+        parameters.push(user_id, note, type, attachment, created_by);
     }
 
-    return executeSQLQueryParameterized(`INSERT INTO GLOBAL_NOTES(user_id, note, type, created_by) VALUES ${placeholders}`, parameters)
+    return executeSQLQueryParameterized(`INSERT INTO GLOBAL_NOTES(user_id, note, type, attachment, created_by) VALUES ${placeholders}`, parameters)
         .then((result) => result.affectedRows)
         .catch((error) => {
             logger.error(`addGlobalNotesForUsers: ${error}`);
@@ -53,8 +59,8 @@ async function addGlobalNotesForUsers({ user_ids, note, type = null, created_by 
         });
 }
 
-function updateGlobalNoteById({ id, note ,type=null}) {
-    return executeSQLQueryParameterized("UPDATE GLOBAL_NOTES SET note=?, type=? WHERE id=?", [note, type, id]).catch((error) => {
+function updateGlobalNoteById({ id, note, type = null, attachment = null }) {
+    return executeSQLQueryParameterized("UPDATE GLOBAL_NOTES SET note=?, type=?, attachment=? WHERE id=?", [note, type, attachment, id]).catch((error) => {
         logger.error(`updateGlobalNoteById: ${error}`);
     });
 }

@@ -12,7 +12,9 @@ const {
     getBatchUserById,
     isUserAssignable,
     isUserInBatch,
+    getNextRollNo,
     addUserToBatch,
+    updateBatchUserRollNoById,
     removeUserFromBatch,
     getBatchAttendanceByDate,
     deleteBatchAttendanceByDate,
@@ -144,6 +146,7 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
         user_ids,
         note: validatedRequestBody.note,
         type: req.body.type ?? null,
+        attachment: req.body.attachment ?? null,
         created_by: req.user.id,
     });
 
@@ -219,11 +222,11 @@ router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (r
         return res.status(400).json({ error: "User Already In Batch" });
     }
 
+    const roll_no = await getNextRollNo({ batch_id: req.params.id });
     const id = await addUserToBatch({
         batch_id: req.params.id,
         user_id: validatedRequestBody.user_id,
-        roll_no: req.body.roll_no || null,
-        prn_gr: req.body.prn_gr || null,
+        roll_no,
         created_by: req.user?.id,
     });
 
@@ -233,6 +236,36 @@ router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (r
     }
 
     return res.status(400).json({ error: "Failed To Assign User To Batch" });
+});
+
+router.patch("/:id/users/roll_nos", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Batch Id" });
+    }
+
+    if (!req.body?.length) {
+        return res.status(400).json({ error: "Missing Students" });
+    }
+
+    const batch = await getBatchById({ id: req.params.id });
+    if (!batch) {
+        return res.status(400).json({ error: "Batch Not Exist" });
+    }
+
+    const batchUsers = await getUsersByBatchId({ batch_id: req.params.id });
+    const batchUserIds = new Set(batchUsers.map((user) => Number(user.id)));
+
+    for (const item of req.body) {
+        if (!item?.id || item.roll_no === undefined || item.roll_no === null) {
+            return res.status(400).json({ error: "Missing Student Id Or Roll No" });
+        }
+        if (!batchUserIds.has(Number(item.id))) {
+            return res.status(400).json({ error: "Student Not In Batch" });
+        }
+    }
+
+    req.body.forEach(updateBatchUserRollNoById);
+    return res.sendStatus(200);
 });
 
 router.delete("/:id/users/:userId", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {

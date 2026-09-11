@@ -142,15 +142,23 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
         }
     }
 
-    const count = await addGlobalNotesForUsers({
-        user_ids,
-        note: validatedRequestBody.note,
-        type: req.body.type ?? null,
-        attachment: req.body.attachment ?? null,
-        created_by: req.user.id,
-    });
+    try {
+        const count = await addGlobalNotesForUsers({
+            user_ids,
+            note: validatedRequestBody.note,
+            type: req.body.type ?? null,
+            attachment: req.body.attachment ?? null,
+            created_by: req.user.id,
+        });
 
-    return res.status(201).json({ count });
+        if (!count) {
+            return res.status(400).json({ error: "Failed To Add Global Notes" });
+        }
+
+        return res.status(201).json({ count });
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Global Notes" });
+    }
 });
 
 router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNSELING_NOTE), async (req, res) => {
@@ -184,15 +192,23 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
         }
     }
 
-    const count = await addCounselingNotesForUsers({
-        user_ids,
-        note: validatedRequestBody.note,
-        type: req.body.type ?? null,
-        attachment: req.body.attachment ?? null,
-        created_by: req.user.id,
-    });
+    try {
+        const count = await addCounselingNotesForUsers({
+            user_ids,
+            note: validatedRequestBody.note,
+            type: req.body.type ?? null,
+            attachment: req.body.attachment ?? null,
+            created_by: req.user.id,
+        });
 
-    return res.status(201).json({ count });
+        if (!count) {
+            return res.status(400).json({ error: "Failed To Add Counseling Notes" });
+        }
+
+        return res.status(201).json({ count });
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Counseling Notes" });
+    }
 });
 
 router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {

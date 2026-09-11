@@ -37,6 +37,7 @@ async function addCounselingNote({ user_id, note, type = null, attachment = null
         .then((result) => result.insertId)
         .catch((error) => {
             logger.error(`addCounselingNote: ${error}`);
+            throw error;
         });
 }
 
@@ -45,18 +46,16 @@ async function addCounselingNotesForUsers({ user_ids, note, type = null, attachm
         return 0;
     }
 
-    const placeholders = user_ids.map(() => "(?,?,?,?,?)").join(",");
-    const parameters = [];
+    let count = 0;
     for (const user_id of user_ids) {
-        parameters.push(user_id, note, type, attachment, created_by);
+        const id = await addCounselingNote({ user_id, note, type, attachment, created_by });
+        if (!id) {
+            throw new Error(`Failed To Add Counseling Note For User ${user_id}`);
+        }
+        count += 1;
     }
 
-    return executeSQLQueryParameterized(`INSERT INTO COUNSELING_NOTES(user_id, note, type, attachment, created_by) VALUES ${placeholders}`, parameters)
-        .then((result) => result.affectedRows)
-        .catch((error) => {
-            logger.error(`addCounselingNotesForUsers: ${error}`);
-            return 0;
-        });
+    return count;
 }
 
 function updateCounselingNoteById({ id, note, type = null, attachment = null }) {

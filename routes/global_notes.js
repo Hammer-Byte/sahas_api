@@ -12,16 +12,20 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req,
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
-    if (isRequestBodyValid) {
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    try {
         const globalNoteId = await addGlobalNote({
             ...validatedRequestBody,
             type: req.body.type ?? null,
             attachment: req.body.attachment ?? null,
             created_by: req.user.id,
         });
-        res.status(201).json(await getGlobalNoteById({ id: globalNoteId }));
-    } else {
-        res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        return res.status(201).json(await getGlobalNoteById({ id: globalNoteId }));
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Global Note" });
     }
 });
 

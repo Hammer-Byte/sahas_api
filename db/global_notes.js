@@ -37,6 +37,7 @@ async function addGlobalNote({ user_id, note, type = null, attachment = null, cr
         .then((result) => result.insertId)
         .catch((error) => {
             logger.error(`addGlobalNote: ${error}`);
+            throw error;
         });
 }
 
@@ -45,18 +46,16 @@ async function addGlobalNotesForUsers({ user_ids, note, type = null, attachment 
         return 0;
     }
 
-    const placeholders = user_ids.map(() => "(?,?,?,?,?)").join(",");
-    const parameters = [];
+    let count = 0;
     for (const user_id of user_ids) {
-        parameters.push(user_id, note, type, attachment, created_by);
+        const id = await addGlobalNote({ user_id, note, type, attachment, created_by });
+        if (!id) {
+            throw new Error(`Failed To Add Global Note For User ${user_id}`);
+        }
+        count += 1;
     }
 
-    return executeSQLQueryParameterized(`INSERT INTO GLOBAL_NOTES(user_id, note, type, attachment, created_by) VALUES ${placeholders}`, parameters)
-        .then((result) => result.affectedRows)
-        .catch((error) => {
-            logger.error(`addGlobalNotesForUsers: ${error}`);
-            return 0;
-        });
+    return count;
 }
 
 function updateGlobalNoteById({ id, note, type = null, attachment = null }) {

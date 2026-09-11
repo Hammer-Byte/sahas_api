@@ -12,16 +12,20 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_COUNSELING_NOTE), async (
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
-    if (isRequestBodyValid) {
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    try {
         const counselingNoteId = await addCounselingNote({
             ...validatedRequestBody,
             type: req.body.type ?? null,
             attachment: req.body.attachment ?? null,
             created_by: req.user.id,
         });
-        res.status(201).json(await getCounselingNoteById({ id: counselingNoteId }));
-    } else {
-        res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        return res.status(201).json(await getCounselingNoteById({ id: counselingNoteId }));
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Counseling Note" });
     }
 });
 

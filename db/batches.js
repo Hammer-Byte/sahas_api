@@ -53,7 +53,8 @@ function deleteBatchById({ id }) {
 
 function getBatchesByUserId({ user_id }) {
     return executeSQLQueryParameterized(
-        `SELECT BATCHES.*, BRANCHES.title AS branch_title, BATCH_USERS.created_on AS assigned_on
+        `SELECT BATCHES.*, BRANCHES.title AS branch_title, BATCH_USERS.created_on AS assigned_on,
+                BATCH_USERS.roll_no, BATCH_USERS.prn_gr
          FROM BATCH_USERS
          INNER JOIN BATCHES ON BATCHES.id = BATCH_USERS.batch_id
          LEFT JOIN BRANCHES ON BATCHES.branch_id = BRANCHES.id
@@ -66,8 +67,9 @@ function getBatchesByUserId({ user_id }) {
     });
 }
 
-const BATCH_USER_SELECT = `SELECT BATCH_USERS.id, BATCH_USERS.batch_id, BATCH_USERS.user_id, BATCH_USERS.created_on AS assigned_on,
-                USERS.full_name, USERS.email, USERS.phone, USERS.roll_no, USERS.prn_gr, USERS.active
+const BATCH_USER_SELECT = `SELECT BATCH_USERS.id, BATCH_USERS.batch_id, BATCH_USERS.user_id, BATCH_USERS.roll_no, BATCH_USERS.prn_gr,
+                BATCH_USERS.created_on AS assigned_on,
+                USERS.full_name, USERS.email, USERS.phone, USERS.active
          FROM BATCH_USERS
          INNER JOIN USERS ON USERS.id = BATCH_USERS.user_id`;
 
@@ -87,47 +89,8 @@ function getBatchUserById({ id }) {
         });
 }
 
-function getAssignableUsersForBatch({ batch_id, search, limit = 10 }) {
-    if (!search) {
-        return Promise.resolve([]);
-    }
-
-    const like = `%${search}%`;
-
-    return executeSQLQueryParameterized(
-        `SELECT USERS.id, USERS.full_name, USERS.email, USERS.phone, USERS.roll_no, USERS.prn_gr, USERS.active
-         FROM USERS
-         WHERE (
-            (USERS.roll_no IS NOT NULL AND USERS.roll_no != '')
-            OR (USERS.prn_gr IS NOT NULL AND USERS.prn_gr != '')
-         )
-         AND USERS.id NOT IN (SELECT user_id FROM BATCH_USERS WHERE batch_id = ?)
-         AND (
-            USERS.full_name LIKE ?
-            OR USERS.email LIKE ?
-            OR USERS.phone LIKE ?
-            OR USERS.roll_no LIKE ?
-            OR USERS.prn_gr LIKE ?
-         )
-         ORDER BY USERS.id DESC
-         LIMIT ?`,
-        [batch_id, like, like, like, like, like, Number(limit) || 10],
-    ).catch((error) => {
-        logger.error(`getAssignableUsersForBatch: ${error}`);
-        return [];
-    });
-}
-
 function isUserAssignable({ user_id }) {
-    return executeSQLQueryParameterized(
-        `SELECT id FROM USERS
-         WHERE id = ?
-         AND (
-            (roll_no IS NOT NULL AND roll_no != '')
-            OR (prn_gr IS NOT NULL AND prn_gr != '')
-         )`,
-        [user_id],
-    )
+    return executeSQLQueryParameterized(`SELECT id FROM USERS WHERE id = ?`, [user_id])
         .then((result) => result.length > 0)
         .catch((error) => {
             logger.error(`isUserAssignable: ${error}`);
@@ -144,8 +107,14 @@ function isUserInBatch({ batch_id, user_id }) {
         });
 }
 
-function addUserToBatch({ batch_id, user_id, created_by = null }) {
-    return executeSQLQueryParameterized(`INSERT INTO BATCH_USERS (batch_id, user_id, created_by) VALUES (?,?,?)`, [batch_id, user_id, created_by])
+function addUserToBatch({ batch_id, user_id, roll_no = null, prn_gr = null, created_by = null }) {
+    return executeSQLQueryParameterized(`INSERT INTO BATCH_USERS (batch_id, user_id, roll_no, prn_gr, created_by) VALUES (?,?,?,?,?)`, [
+        batch_id,
+        user_id,
+        roll_no || null,
+        prn_gr || null,
+        created_by,
+    ])
         .then((result) => result.insertId)
         .catch((error) => logger.error(`addUserToBatch: ${error}`));
 }
@@ -158,7 +127,7 @@ function removeUserFromBatch({ batch_id, user_id }) {
 
 function getBatchAttendanceByDate({ batch_id, attendance_date }) {
     return executeSQLQueryParameterized(
-        `SELECT USERS.id AS user_id, USERS.full_name, USERS.roll_no, BATCH_ATTENDANCE.status
+        `SELECT USERS.id AS user_id, USERS.full_name, BATCH_ATTENDANCE.status
          FROM BATCH_USERS
          INNER JOIN USERS ON USERS.id = BATCH_USERS.user_id
          LEFT JOIN BATCH_ATTENDANCE
@@ -230,7 +199,6 @@ module.exports = {
     getBatchesByUserId,
     getUsersByBatchId,
     getBatchUserById,
-    getAssignableUsersForBatch,
     getAssignableBatchesForUser,
     isUserAssignable,
     isUserInBatch,

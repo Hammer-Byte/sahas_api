@@ -10,7 +10,6 @@ const {
     deleteBatchById,
     getUsersByBatchId,
     getBatchUserById,
-    getAssignableUsersForBatch,
     isUserAssignable,
     isUserInBatch,
     addUserToBatch,
@@ -40,24 +39,6 @@ router.get("/:id/users", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES)
     }
 
     return res.status(200).json(await getUsersByBatchId({ batch_id: req.params.id }));
-});
-
-router.get("/:id/assignable-users", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
-    }
-
-    const batch = await getBatchById({ id: req.params.id });
-    if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
-    }
-
-    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
-    if (!search) {
-        return res.status(200).json([]);
-    }
-
-    return res.status(200).json(await getAssignableUsersForBatch({ batch_id: req.params.id, search, limit: 10 }));
 });
 
 router.get("/:id/attendance", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
@@ -133,11 +114,15 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
         return res.status(400).json({ error: "Missing Batch Id" });
     }
 
-    const requiredBodyFields = ["note"];
+    const requiredBodyFields = ["note", "user_ids"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (!isRequestBodyValid) {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    if (!Array.isArray(validatedRequestBody.user_ids) || !validatedRequestBody.user_ids.length) {
+        return res.status(400).json({ error: "Select At Least One Student" });
     }
 
     const batch = await getBatchById({ id: req.params.id });
@@ -145,9 +130,14 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
         return res.status(400).json({ error: "Batch Not Exist" });
     }
 
-    const user_ids = await getBatchUserIds({ batch_id: req.params.id });
-    if (!user_ids.length) {
-        return res.status(400).json({ error: "No Students In Batch" });
+    const batchUserIds = await getBatchUserIds({ batch_id: req.params.id });
+    const batchUserIdSet = new Set(batchUserIds.map((id) => Number(id)));
+    const user_ids = validatedRequestBody.user_ids.map((id) => Number(id));
+
+    for (const user_id of user_ids) {
+        if (!batchUserIdSet.has(user_id)) {
+            return res.status(400).json({ error: "User Not In Batch" });
+        }
     }
 
     const count = await addGlobalNotesForUsers({
@@ -165,11 +155,15 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
         return res.status(400).json({ error: "Missing Batch Id" });
     }
 
-    const requiredBodyFields = ["note"];
+    const requiredBodyFields = ["note", "user_ids"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (!isRequestBodyValid) {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    if (!Array.isArray(validatedRequestBody.user_ids) || !validatedRequestBody.user_ids.length) {
+        return res.status(400).json({ error: "Select At Least One Student" });
     }
 
     const batch = await getBatchById({ id: req.params.id });
@@ -177,9 +171,14 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
         return res.status(400).json({ error: "Batch Not Exist" });
     }
 
-    const user_ids = await getBatchUserIds({ batch_id: req.params.id });
-    if (!user_ids.length) {
-        return res.status(400).json({ error: "No Students In Batch" });
+    const batchUserIds = await getBatchUserIds({ batch_id: req.params.id });
+    const batchUserIdSet = new Set(batchUserIds.map((id) => Number(id)));
+    const user_ids = validatedRequestBody.user_ids.map((id) => Number(id));
+
+    for (const user_id of user_ids) {
+        if (!batchUserIdSet.has(user_id)) {
+            return res.status(400).json({ error: "User Not In Batch" });
+        }
     }
 
     const count = await addCounselingNotesForUsers({
@@ -212,7 +211,7 @@ router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (r
 
     const assignable = await isUserAssignable({ user_id: validatedRequestBody.user_id });
     if (!assignable) {
-        return res.status(400).json({ error: "User Not Assignable To Batch" });
+        return res.status(400).json({ error: "User Not Exist" });
     }
 
     const alreadyInBatch = await isUserInBatch({ batch_id: req.params.id, user_id: validatedRequestBody.user_id });
@@ -223,6 +222,8 @@ router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (r
     const id = await addUserToBatch({
         batch_id: req.params.id,
         user_id: validatedRequestBody.user_id,
+        roll_no: req.body.roll_no || null,
+        prn_gr: req.body.prn_gr || null,
         created_by: req.user?.id,
     });
 

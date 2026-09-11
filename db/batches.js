@@ -210,6 +210,19 @@ function getBatchAttendanceByDate({ batch_id, attendance_date }) {
     });
 }
 
+function getUserBatchAttendanceByDateRange({ user_id, batch_id, start_date, end_date }) {
+    return executeSQLQueryParameterized(
+        `SELECT batch_id, user_id, attendance_date, status
+         FROM BATCH_ATTENDANCE
+         WHERE user_id = ? AND batch_id = ? AND attendance_date BETWEEN ? AND ?
+         ORDER BY attendance_date ASC`,
+        [user_id, batch_id, start_date, end_date],
+    ).catch((error) => {
+        logger.error(`getUserBatchAttendanceByDateRange: ${error}`);
+        return [];
+    });
+}
+
 function deleteBatchAttendanceByDate({ batch_id, attendance_date }) {
     return executeSQLQueryParameterized(`DELETE FROM BATCH_ATTENDANCE WHERE batch_id=? AND attendance_date=?`, [batch_id, attendance_date]).catch((error) =>
         logger.error(`deleteBatchAttendanceByDate: ${error}`),
@@ -278,6 +291,7 @@ module.exports = {
     updateBatchUserRollNoById,
     removeUserFromBatch,
     getBatchAttendanceByDate,
+    getUserBatchAttendanceByDateRange,
     deleteBatchAttendanceByDate,
     addBatchAttendanceRecords,
     getBatchUserIds,

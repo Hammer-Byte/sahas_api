@@ -35,7 +35,7 @@ const { hasRequiredAuthority } = require("../utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { addUserHistory, getUserHistoryById, updateUserHistoryById } = require("../db/user_history");
-const { getBatchesByUserId, getAssignableBatchesForUser } = require("../db/batches");
+const { getBatchesByUserId, getAssignableBatchesForUser, isUserInBatch, getUserBatchAttendanceByDateRange } = require("../db/batches");
 const {
     getLatestStreamSelectionTestByUserId,
     getStreamSelectionTestsByUserId,
@@ -265,6 +265,44 @@ router.get("/:id/batches", requires_authority(AUTHORITIES.READ_USER), async (req
     }
 
     res.status(200).json(await getBatchesByUserId({ user_id: id }));
+});
+
+router.get("/:id/batches/:batchId/attendance", requires_authority(AUTHORITIES.READ_USER), async (req, res) => {
+    const { id, batchId } = req.params;
+    if (!id || !batchId) {
+        return res.status(400).json({ error: "Missing User Id Or Batch Id" });
+    }
+
+    const user = await getUserById({ id });
+    if (!user) {
+        return res.status(400).json({ error: "User Not Exist" });
+    }
+
+    const inBatch = await isUserInBatch({ batch_id: batchId, user_id: id });
+    if (!inBatch) {
+        return res.status(400).json({ error: "User Not In Batch" });
+    }
+
+    const start_date = typeof req.query.start_date === "string" ? req.query.start_date.trim() : "";
+    const end_date = typeof req.query.end_date === "string" ? req.query.end_date.trim() : "";
+    if (!start_date || !end_date) {
+        return res.status(400).json({ error: "Missing Start Date Or End Date" });
+    }
+
+    const records = await getUserBatchAttendanceByDateRange({
+        user_id: id,
+        batch_id: batchId,
+        start_date,
+        end_date,
+    });
+
+    return res.status(200).json({
+        user_id: Number(id),
+        batch_id: Number(batchId),
+        start_date,
+        end_date,
+        records,
+    });
 });
 
 router.get("/:id/assignable-batches", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {

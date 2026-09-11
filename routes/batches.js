@@ -63,7 +63,7 @@ router.get("/:id/users", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES)
     return res.status(200).json(await getUsersByBatchId({ batch_id: req.params.id }));
 });
 
-router.get("/:id/attendance", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+router.get("/:id/attendance", requires_authority(AUTHORITIES.MANAGE_BATCH_ATTENDANCE), async (req, res) => {
     const batch = await requireBatchController(req, res);
     if (!batch) {
         return;
@@ -78,7 +78,7 @@ router.get("/:id/attendance", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BAT
     return res.status(200).json({ attendance_date, students });
 });
 
-router.post("/:id/attendance", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+router.post("/:id/attendance", requires_authority(AUTHORITIES.MANAGE_BATCH_ATTENDANCE), async (req, res) => {
     const batch = await requireBatchController(req, res);
     if (!batch) {
         return;
@@ -215,7 +215,7 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
     }
 });
 
-router.get("/:id/controllers", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+router.get("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
     const batch = await requireBatchController(req, res);
     if (!batch) {
         return;
@@ -224,7 +224,7 @@ router.get("/:id/controllers", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BA
     return res.status(200).json(await getBatchControllers({ batch_id: req.params.id }));
 });
 
-router.post("/:id/controllers", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+router.post("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
     const batch = await requireBatchController(req, res);
     if (!batch) {
         return;
@@ -262,7 +262,7 @@ router.post("/:id/controllers", requires_authority(AUTHORITIES.UPDATE_BATCH), as
     return res.status(201).json(added || { id, batch_id: Number(req.params.id), user_id: Number(validatedRequestBody.user_id) });
 });
 
-router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+router.post("/:id/users", requires_authority(AUTHORITIES.ASSIGN_BATCH_STUDENT), async (req, res) => {
     const batch = await requireBatchController(req, res);
     if (!batch) {
         return;
@@ -301,7 +301,7 @@ router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (r
     return res.status(400).json({ error: "Failed To Assign User To Batch" });
 });
 
-router.patch("/:id/users/roll_nos", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+router.patch("/:id/users/roll_nos", requires_authority(AUTHORITIES.ASSIGN_BATCH_STUDENT), async (req, res) => {
     const batch = await requireBatchController(req, res);
     if (!batch) {
         return;
@@ -327,7 +327,7 @@ router.patch("/:id/users/roll_nos", requires_authority(AUTHORITIES.UPDATE_BATCH)
     return res.sendStatus(200);
 });
 
-router.delete("/:id/users/:userId", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+router.delete("/:id/users/:userId", requires_authority(AUTHORITIES.ASSIGN_BATCH_STUDENT), async (req, res) => {
     if (!req.params.userId) {
         return res.status(400).json({ error: "Missing Batch Id Or User Id" });
     }

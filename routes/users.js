@@ -305,7 +305,7 @@ router.get("/:id/batches/:batchId/attendance", requires_authority(AUTHORITIES.RE
     });
 });
 
-router.get("/:id/assignable-batches", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+router.get("/:id/assignable-batches", requires_authority(AUTHORITIES.ASSIGN_BATCH_STUDENT), async (req, res) => {
     const { id } = req.params;
     if (!id) {
         return res.status(400).json({ error: "Missing User Id" });

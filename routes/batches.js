@@ -3,7 +3,7 @@ const { validateRequestBody } = require("sahas_utils");
 const { AUTHORITIES } = require("../constants");
 const requires_authority = require("../middlewares/requires_authority");
 const {
-    getAllBatches,
+    getBatchesByControllerUserId,
     getBatchById,
     addBatch,
     updateBatchById,
@@ -12,6 +12,9 @@ const {
     getBatchUserById,
     isUserAssignable,
     isUserInBatch,
+    isBatchController,
+    addBatchController,
+    getBatchControllers,
     getNextRollNo,
     addUserToBatch,
     updateBatchUserRollNoById,
@@ -26,26 +29,44 @@ const { addCounselingNotesForUsers } = require("../db/counseling_notes");
 
 const router = libExpress.Router();
 
-router.get("/", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-    res.status(200).json(await getAllBatches());
-});
-
-router.get("/:id/users", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+async function requireBatchController(req, res) {
     if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
+        res.status(400).json({ error: "Missing Batch Id" });
+        return false;
     }
 
     const batch = await getBatchById({ id: req.params.id });
     if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
+        res.status(400).json({ error: "Batch Not Exist" });
+        return false;
+    }
+
+    const canControl = await isBatchController({ batch_id: req.params.id, user_id: req.user?.id });
+    if (!canControl) {
+        res.status(403).json({ error: "You Do Not Control This Batch" });
+        return false;
+    }
+
+    return batch;
+}
+
+router.get("/", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+    res.status(200).json(await getBatchesByControllerUserId({ user_id: req.user.id }));
+});
+
+router.get("/:id/users", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     return res.status(200).json(await getUsersByBatchId({ batch_id: req.params.id }));
 });
 
 router.get("/:id/attendance", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     const attendance_date = typeof req.query.date === "string" ? req.query.date.trim() : "";
@@ -53,18 +74,14 @@ router.get("/:id/attendance", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BAT
         return res.status(400).json({ error: "Missing Attendance Date" });
     }
 
-    const batch = await getBatchById({ id: req.params.id });
-    if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
-    }
-
     const students = await getBatchAttendanceByDate({ batch_id: req.params.id, attendance_date });
     return res.status(200).json({ attendance_date, students });
 });
 
 router.post("/:id/attendance", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     const requiredBodyFields = ["attendance_date", "records"];
@@ -83,11 +100,6 @@ router.post("/:id/attendance", requires_authority(AUTHORITIES.UPDATE_BATCH), asy
         if (!record?.user_id || !["PRESENT", "ABSENT"].includes(record?.status)) {
             return res.status(400).json({ error: "Invalid Attendance Record" });
         }
-    }
-
-    const batch = await getBatchById({ id: req.params.id });
-    if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
     }
 
     const batchUserIds = await getBatchUserIds({ batch_id: req.params.id });
@@ -112,8 +124,9 @@ router.post("/:id/attendance", requires_authority(AUTHORITIES.UPDATE_BATCH), asy
 });
 
 router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     const requiredBodyFields = ["note", "user_ids"];
@@ -125,11 +138,6 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
 
     if (!Array.isArray(validatedRequestBody.user_ids) || !validatedRequestBody.user_ids.length) {
         return res.status(400).json({ error: "Select At Least One Student" });
-    }
-
-    const batch = await getBatchById({ id: req.params.id });
-    if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
     }
 
     const batchUserIds = await getBatchUserIds({ batch_id: req.params.id });
@@ -162,8 +170,9 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
 });
 
 router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNSELING_NOTE), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     const requiredBodyFields = ["note", "user_ids"];
@@ -175,11 +184,6 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
 
     if (!Array.isArray(validatedRequestBody.user_ids) || !validatedRequestBody.user_ids.length) {
         return res.status(400).json({ error: "Select At Least One Student" });
-    }
-
-    const batch = await getBatchById({ id: req.params.id });
-    if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
     }
 
     const batchUserIds = await getBatchUserIds({ batch_id: req.params.id });
@@ -211,9 +215,19 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
     }
 });
 
-router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
+router.get("/:id/controllers", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
+    }
+
+    return res.status(200).json(await getBatchControllers({ batch_id: req.params.id }));
+});
+
+router.post("/:id/controllers", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     const requiredBodyFields = ["user_id"];
@@ -223,9 +237,42 @@ router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (r
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
 
-    const batch = await getBatchById({ id: req.params.id });
+    const assignable = await isUserAssignable({ user_id: validatedRequestBody.user_id });
+    if (!assignable) {
+        return res.status(400).json({ error: "User Not Exist" });
+    }
+
+    const alreadyController = await isBatchController({ batch_id: req.params.id, user_id: validatedRequestBody.user_id });
+    if (alreadyController) {
+        return res.status(400).json({ error: "User Already Controls This Batch" });
+    }
+
+    const id = await addBatchController({
+        batch_id: req.params.id,
+        user_id: validatedRequestBody.user_id,
+        created_by: req.user?.id,
+    });
+
+    if (!id) {
+        return res.status(400).json({ error: "Failed To Add Controller" });
+    }
+
+    const controllers = await getBatchControllers({ batch_id: req.params.id });
+    const added = controllers.find((controller) => Number(controller.user_id) === Number(validatedRequestBody.user_id));
+    return res.status(201).json(added || { id, batch_id: Number(req.params.id), user_id: Number(validatedRequestBody.user_id) });
+});
+
+router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+    const batch = await requireBatchController(req, res);
     if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
+        return;
+    }
+
+    const requiredBodyFields = ["user_id"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
 
     const assignable = await isUserAssignable({ user_id: validatedRequestBody.user_id });
@@ -255,17 +302,13 @@ router.post("/:id/users", requires_authority(AUTHORITIES.UPDATE_BATCH), async (r
 });
 
 router.patch("/:id/users/roll_nos", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     if (!req.body?.length) {
         return res.status(400).json({ error: "Missing Students" });
-    }
-
-    const batch = await getBatchById({ id: req.params.id });
-    if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
     }
 
     const batchUsers = await getUsersByBatchId({ batch_id: req.params.id });
@@ -285,13 +328,13 @@ router.patch("/:id/users/roll_nos", requires_authority(AUTHORITIES.UPDATE_BATCH)
 });
 
 router.delete("/:id/users/:userId", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
-    if (!req.params.id || !req.params.userId) {
+    if (!req.params.userId) {
         return res.status(400).json({ error: "Missing Batch Id Or User Id" });
     }
 
-    const batch = await getBatchById({ id: req.params.id });
+    const batch = await requireBatchController(req, res);
     if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
+        return;
     }
 
     const existing = await isUserInBatch({ batch_id: req.params.id, user_id: req.params.userId });
@@ -304,13 +347,9 @@ router.delete("/:id/users/:userId", requires_authority(AUTHORITIES.UPDATE_BATCH)
 });
 
 router.get("/:id", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
-    }
-
-    const batch = await getBatchById({ id: req.params.id });
+    const batch = await requireBatchController(req, res);
     if (!batch) {
-        return res.status(400).json({ error: "Batch Not Exist" });
+        return;
     }
 
     return res.status(200).json(batch);
@@ -325,8 +364,17 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_BATCH), async (req, res) 
     }
 
     const id = await addBatch({ ...validatedRequestBody, created_by: req.user?.id });
-    const batch = await getBatchById({ id });
+    if (!id) {
+        return res.status(400).json({ error: "Failed To Add Batch" });
+    }
 
+    await addBatchController({
+        batch_id: id,
+        user_id: req.user.id,
+        created_by: req.user.id,
+    });
+
+    const batch = await getBatchById({ id });
     if (batch) {
         return res.status(201).json(batch);
     }
@@ -347,18 +395,19 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res)
         return res.status(400).json({ error: "Batch Not Exist" });
     }
 
+    const canControl = await isBatchController({ batch_id: validatedRequestBody.id, user_id: req.user?.id });
+    if (!canControl) {
+        return res.status(403).json({ error: "You Do Not Control This Batch" });
+    }
+
     await updateBatchById(validatedRequestBody);
     return res.status(200).json(await getBatchById({ id: validatedRequestBody.id }));
 });
 
 router.delete("/:id", requires_authority(AUTHORITIES.DELETE_BATCH), async (req, res) => {
-    if (!req.params.id) {
-        return res.status(400).json({ error: "Missing Batch Id" });
-    }
-
-    const existing = await getBatchById({ id: req.params.id });
-    if (!existing) {
-        return res.status(400).json({ error: "Batch Not Exist" });
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
     }
 
     await deleteBatchById({ id: req.params.id });

@@ -21,6 +21,7 @@ async function generateDBTables() {
             full_name VARCHAR(36) NULL,
             email VARCHAR(48) NOT NULL UNIQUE,
             phone VARCHAR(13) NULL UNIQUE,
+            guardian_phone VARCHAR(13) NULL,
             image VARCHAR(64) NULL UNIQUE,
             address VARCHAR(256) NULL,
             branch_id INT NULL,
@@ -602,6 +603,16 @@ async function generateDBTables() {
             UNIQUE KEY unique_batch_user_date (batch_id, user_id, attendance_date),
             INDEX idx_batch_attendance_batch_date (batch_id, attendance_date)
         )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_CONTROLLERS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            batch_id INT NOT NULL,
+            user_id INT NOT NULL,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_batch_controller (batch_id, user_id),
+            INDEX idx_batch_controllers_batch (batch_id),
+            INDEX idx_batch_controllers_user (user_id)
+        )`,
 
         `INSERT IGNORE INTO CONFIGS (config_key, config_value) VALUES
         ('under_maintenance', 'false'),
@@ -633,6 +644,9 @@ async function generateDBTables() {
         ('DELETE_BATCH', 'Delete Batch'),
         ('USE_ADMIN_CORNER', 'Admin Corner Visibility'),
         ('USE_PAGE_MANAGE_BRANCHES', 'Page For Managing Branches'),
+        ('CREATE_BRANCH', 'Create Branch'),
+        ('UPDATE_BRANCH', 'Update Branch'),
+        ('DELETE_BRANCH', 'Delete Branch'),
         ('USE_PAGE_MANAGE_STREAMING_DEVICES_REQUESTS', 'Page For Managing Streaming Device Requests'),
         ('USE_PAGE_FINANCIALS', 'Page For Managing Financials'),
         ('USE_PAGE_ANALYTICS', 'Page For Analytics'),

@@ -175,13 +175,14 @@ function getCountUsersBySearchAndFilters(search, appliedFilters) {
 }
 
 //freeze
-function updateUserById({ id, email, full_name, phone, image, address, branch_id, stream_selection_test_allowed = false, active }) {
+function updateUserById({ id, email, full_name, phone, guardian_phone = null, image, address, branch_id, stream_selection_test_allowed = false, active }) {
     return executeSQLQueryParameterized(
-        `UPDATE USERS SET email=?, full_name=?,phone=?,image=?,address=?,branch_id=?,stream_selection_test_allowed=?,active=? WHERE id = ?`,
+        `UPDATE USERS SET email=?, full_name=?,phone=?,guardian_phone=?,image=?,address=?,branch_id=?,stream_selection_test_allowed=?,active=? WHERE id = ?`,
         [
             email?.toLowerCase(),
             full_name,
             phone,
+            guardian_phone || null,
             image || null,
             address,
             branch_id,
@@ -212,10 +213,10 @@ function patchUserStreamSelectionTestAllowedById({ id, stream_selection_test_all
 }
 
 //freeze
-function addUser({ email, full_name, phone, image = null, address, branch_id = null }) {
+function addUser({ email, full_name, phone, guardian_phone = null, image = null, address, branch_id = null }) {
     return executeSQLQueryParameterized(
-        `INSERT INTO USERS(email, full_name, phone, image, address, branch_id) VALUES(?,?,?,?,?,?)`,
-        [email?.toLowerCase(), full_name, phone, image, address, branch_id],
+        `INSERT INTO USERS(email, full_name, phone, guardian_phone, image, address, branch_id) VALUES(?,?,?,?,?,?,?)`,
+        [email?.toLowerCase(), full_name, phone, guardian_phone || null, image, address, branch_id],
     )
         .then((result) => {
             result?.affectedRows && addDefaultRoleToUser(result?.insertId);

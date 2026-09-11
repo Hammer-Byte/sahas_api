@@ -13,6 +13,55 @@ function getAllBatches() {
     });
 }
 
+function getBatchesByControllerUserId({ user_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT BATCHES.*, BRANCHES.title AS branch_title
+         FROM BATCH_CONTROLLERS
+         INNER JOIN BATCHES ON BATCHES.id = BATCH_CONTROLLERS.batch_id
+         LEFT JOIN BRANCHES ON BATCHES.branch_id = BRANCHES.id
+         WHERE BATCH_CONTROLLERS.user_id = ?
+         ORDER BY BATCHES.id DESC`,
+        [user_id],
+    ).catch((error) => {
+        logger.error(`getBatchesByControllerUserId: ${error}`);
+        return [];
+    });
+}
+
+function isBatchController({ batch_id, user_id }) {
+    return executeSQLQueryParameterized(`SELECT id FROM BATCH_CONTROLLERS WHERE batch_id = ? AND user_id = ?`, [batch_id, user_id])
+        .then((result) => result.length > 0)
+        .catch((error) => {
+            logger.error(`isBatchController: ${error}`);
+            return false;
+        });
+}
+
+function addBatchController({ batch_id, user_id, created_by = null }) {
+    return executeSQLQueryParameterized(`INSERT INTO BATCH_CONTROLLERS (batch_id, user_id, created_by) VALUES (?,?,?)`, [
+        batch_id,
+        user_id,
+        created_by,
+    ])
+        .then((result) => result.insertId)
+        .catch((error) => logger.error(`addBatchController: ${error}`));
+}
+
+function getBatchControllers({ batch_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT BATCH_CONTROLLERS.id, BATCH_CONTROLLERS.batch_id, BATCH_CONTROLLERS.user_id, BATCH_CONTROLLERS.created_on,
+                USERS.full_name, USERS.email, USERS.phone
+         FROM BATCH_CONTROLLERS
+         INNER JOIN USERS ON USERS.id = BATCH_CONTROLLERS.user_id
+         WHERE BATCH_CONTROLLERS.batch_id = ?
+         ORDER BY BATCH_CONTROLLERS.id ASC`,
+        [batch_id],
+    ).catch((error) => {
+        logger.error(`getBatchControllers: ${error}`);
+        return [];
+    });
+}
+
 function getBatchById({ id }) {
     return executeSQLQueryParameterized(
         `SELECT BATCHES.*, BRANCHES.title AS branch_title
@@ -47,6 +96,7 @@ function updateBatchById({ id, title, description = null, branch_id = null, star
 function deleteBatchById({ id }) {
     return executeSQLQueryParameterized(`DELETE FROM BATCH_ATTENDANCE WHERE batch_id=?`, [id])
         .then(() => executeSQLQueryParameterized(`DELETE FROM BATCH_USERS WHERE batch_id=?`, [id]))
+        .then(() => executeSQLQueryParameterized(`DELETE FROM BATCH_CONTROLLERS WHERE batch_id=?`, [id]))
         .then(() => executeSQLQueryParameterized(`DELETE FROM BATCHES WHERE id=?`, [id]))
         .catch((error) => logger.error(`deleteBatchById: ${error}`));
 }
@@ -209,6 +259,7 @@ function getAssignableBatchesForUser({ user_id }) {
 
 module.exports = {
     getAllBatches,
+    getBatchesByControllerUserId,
     getBatchById,
     addBatch,
     updateBatchById,
@@ -219,6 +270,9 @@ module.exports = {
     getAssignableBatchesForUser,
     isUserAssignable,
     isUserInBatch,
+    isBatchController,
+    addBatchController,
+    getBatchControllers,
     getNextRollNo,
     addUserToBatch,
     updateBatchUserRollNoById,

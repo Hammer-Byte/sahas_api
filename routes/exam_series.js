@@ -51,11 +51,11 @@ function isValidCorrectChoice(correct_choice, { choice_one, choice_two, choice_t
     return [choice_one, choice_two, choice_three, choice_four].map(normalizeChoice).includes(normalizedCorrectChoice);
 }
 
-router.get("/", async (req, res) => {
+router.get("/", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_EXAMS), async (req, res) => {
     res.status(200).json(await getAllExamSeries());
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", requires_authority(AUTHORITIES.CREATE_EXAM_SERIES), async (req, res, next) => {
     const requiredBodyFields = ["title", "course_id", "fees", "start_at", "end_at", "active"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
@@ -75,7 +75,7 @@ router.post("/", async (req, res, next) => {
     res.status(201).json(await getExamSeriesById({ id: examSeriesId }));
 });
 
-router.patch("/exams", async (req, res) => {
+router.patch("/exams", requires_authority(AUTHORITIES.UPDATE_EXAM), async (req, res) => {
     const requiredBodyFields = ["id", "subject_id", "start_at", "end_at", "positive_marks", "negative_marks"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
@@ -96,7 +96,7 @@ router.patch("/exams", async (req, res) => {
     res.status(200).json(await getExamById({ id: validatedRequestBody.id }));
 });
 
-router.delete("/exams/:id", async (req, res) => {
+router.delete("/exams/:id", requires_authority(AUTHORITIES.DELETE_EXAM), async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Exam Id" });
     }
@@ -175,7 +175,7 @@ router.post("/enrollments", async (req, res) => {
     );
 });
 
-router.delete("/enrollments/:id", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_EXAMS), async (req, res) => {
+router.delete("/enrollments/:id", requires_authority(AUTHORITIES.MANAGE_EXAM_ENROLLMENTS), async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Enrollment Id" });
     }
@@ -296,7 +296,7 @@ router.get("/exams/:examId/questions", async (req, res) => {
     res.status(200).json(await getExamQuestionsByExamId({ exam_id: req.params.examId }));
 });
 
-router.post("/exams/:examId/questions", async (req, res) => {
+router.post("/exams/:examId/questions", requires_authority(AUTHORITIES.CREATE_EXAM_QUESTION), async (req, res) => {
     if (!req.params.examId) {
         return res.status(400).json({ error: "Missing Exam Id" });
     }
@@ -330,7 +330,7 @@ router.post("/exams/:examId/questions", async (req, res) => {
     res.status(201).json(await getExamQuestionById({ id: examQuestionId }));
 });
 
-router.post("/exam-questions/bulk", async (req, res) => {
+router.post("/exam-questions/bulk", requires_authority(AUTHORITIES.CREATE_EXAM_QUESTION), async (req, res) => {
     const requiredBodyFields = ["exam_id", "csv_url"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
@@ -381,7 +381,7 @@ router.post("/exam-questions/bulk", async (req, res) => {
     });
 });
 
-router.patch("/exam-questions", async (req, res) => {
+router.patch("/exam-questions", requires_authority(AUTHORITIES.UPDATE_EXAM_QUESTION), async (req, res) => {
     const requiredBodyFields = ["id", ...EXAM_QUESTION_REQUIRED_FIELDS];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
@@ -407,7 +407,7 @@ router.patch("/exam-questions", async (req, res) => {
     res.status(200).json(await getExamQuestionById({ id: validatedRequestBody.id }));
 });
 
-router.delete("/exam-questions/:id", async (req, res) => {
+router.delete("/exam-questions/:id", requires_authority(AUTHORITIES.DELETE_EXAM_QUESTION), async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Exam Question Id" });
     }
@@ -421,7 +421,7 @@ router.delete("/exam-questions/:id", async (req, res) => {
     res.sendStatus(204);
 });
 
-router.get("/:examSeriesId/enrollments", async (req, res) => {
+router.get("/:examSeriesId/enrollments", requires_authority(AUTHORITIES.MANAGE_EXAM_ENROLLMENTS), async (req, res) => {
     if (!req.params.examSeriesId) {
         return res.status(400).json({ error: "Missing Exam Series Id" });
     }
@@ -539,7 +539,7 @@ router.get("/:id", async (req, res) => {
     res.status(200).json(examSeries);
 });
 
-router.post("/:examSeriesId/exams", async (req, res) => {
+router.post("/:examSeriesId/exams", requires_authority(AUTHORITIES.CREATE_EXAM), async (req, res) => {
     if (!req.params.examSeriesId) {
         return res.status(400).json({ error: "Missing Exam Series Id" });
     }
@@ -589,7 +589,7 @@ router.get("/:examSeriesId/exams", async (req, res) => {
     res.status(200).json(await getExamsByExamSeriesId({ exam_series_id: req.params.examSeriesId }));
 });
 
-router.patch("/", async (req, res) => {
+router.patch("/", requires_authority(AUTHORITIES.UPDATE_EXAM_SERIES), async (req, res) => {
     const requiredBodyFields = ["id", "title", "course_id", "fees", "start_at", "end_at", "active"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 

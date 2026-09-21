@@ -613,6 +613,37 @@ async function generateDBTables() {
             INDEX idx_batch_controllers_batch (batch_id),
             INDEX idx_batch_controllers_user (user_id)
         )`,
+        `CREATE TABLE IF NOT EXISTS USER_TASK_STATUSES (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(64) NOT NULL UNIQUE,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS USER_TASKS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(128) NOT NULL,
+            description VARCHAR(1024) NULL,
+            user_id INT NOT NULL,
+            status_id INT NOT NULL,
+            attachment VARCHAR(512) NULL,
+            created_by INT NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user_tasks_user (user_id),
+            INDEX idx_user_tasks_created_by (created_by),
+            INDEX idx_user_tasks_status (status_id),
+            INDEX idx_user_tasks_created_on (created_on)
+        )`,
+        `CREATE TABLE IF NOT EXISTS USER_TASK_COMMENTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            task_id INT NOT NULL,
+            comment VARCHAR(1024) NOT NULL,
+            attachment VARCHAR(512) NULL,
+            created_by INT NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user_task_comments_task (task_id),
+            INDEX idx_user_task_comments_created_by (created_by)
+        )`,
 
         `INSERT IGNORE INTO CONFIGS (config_key, config_value) VALUES
         ('under_maintenance', 'false'),
@@ -627,6 +658,12 @@ async function generateDBTables() {
         (1, 'Head Office', '123 Main Street, Mumbai', 'Main corporate branch', 1, '2025-08-10 23:05:32', '2025-08-10 23:05:32'),
         (2, 'Ahmedabad Branch', '45 Riverfront Road, Ahmedabad', 'Serves Gujarat region', 1, '2025-08-10 23:05:32', '2025-08-10 23:05:32'),
         (3, 'Bangalore Branch', '88 MG Road, Bangalore', 'South India operations', 1, '2025-08-10 23:05:32', '2025-08-10 23:05:32')`,
+
+        `INSERT IGNORE INTO USER_TASK_STATUSES (id, title) VALUES
+        (1, 'Open'),
+        (2, 'In Progress'),
+        (3, 'Completed'),
+        (4, 'Cancelled')`,
 
         `INSERT IGNORE INTO AUTHORITIES (title, description) VALUES
         ('MANAGE_OTHER_USERS', 'Manage Other User Profile'),
@@ -654,6 +691,8 @@ async function generateDBTables() {
         ('ASSIGN_BATCH_STUDENT', 'Assign Student To Batch'),
         ('MANAGE_BATCH_ATTENDANCE', 'Manage Batch Attendance'),
         ('MANAGE_BATCH_CONTROLLER', 'Manage Batch Controllers'),
+        ('USE_PAGE_TASKS', 'Page For Managing Tasks'),
+        ('CREATE_USER_TASK', 'Create User Task'),
         ('USE_ADMIN_CORNER', 'Admin Corner Visibility'),
         ('USE_PAGE_MANAGE_BRANCHES', 'Page For Managing Branches'),
         ('CREATE_BRANCH', 'Create Branch'),

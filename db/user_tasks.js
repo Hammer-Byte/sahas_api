@@ -3,6 +3,7 @@ const { logger } = require("sahas_utils");
 
 const TASK_SELECT = `SELECT USER_TASKS.*,
             ASSIGNEE.full_name AS user_full_name,
+            ASSIGNEE.email AS user_email,
             CREATOR.full_name AS created_by_full_name,
             USER_TASK_STATUSES.title AS status_title
      FROM USER_TASKS

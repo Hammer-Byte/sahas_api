@@ -37,40 +37,33 @@ router.get("/", async (req, res) => {
         stream_selection: {},
     };
 
-    try {
-        config.global.branches = await getAllBranches();
-        config.global.courses = await getAllCourses();
-        config.global.roles = await getAllRoles();
-        config.global.authorities = await getAllAuthorities();
-        config.global.chapter_types = await getAllChapterTypes();
-        config.global.user_task_statuses = await getAllUserTaskStatuses();
-        config.dash_board.carousel_images = await getAllDashboardCarouselItems();
-        config.stream_selection = {
-            fees: Number(await getConfigByKey("stream_selection_fees")),
-            external_attendees: (await getConfigByKey("stream_selection_external_attendees")) === "true",
-            suggestions: await getAllStreamSelectionSuggestions(),
-        };
-    } catch (error) {
-        logger.error(error);
-        // Still attempt carousel load if an earlier config step failed
-        if (!config.dash_board.carousel_images?.length) {
-            try {
-                config.dash_board.carousel_images = await getAllDashboardCarouselItems();
-            } catch (carouselError) {
-                logger.error(carouselError);
-            }
+    const load = async (label, fn) => {
+        try {
+            return await fn();
+        } catch (error) {
+            logger.error(`template-configs ${label}: ${error}`);
+            return undefined;
         }
-        if (!config.global.user_task_statuses) {
-            try {
-                config.global.user_task_statuses = await getAllUserTaskStatuses();
-            } catch (statusesError) {
-                logger.error(statusesError);
-                config.global.user_task_statuses = [];
-            }
-        }
-    } finally {
-        res.status(200).json(config);
-    }
+    };
+
+    config.global.branches = (await load("branches", getAllBranches)) ?? [];
+    config.global.courses = (await load("courses", getAllCourses)) ?? [];
+    config.global.roles = (await load("roles", getAllRoles)) ?? [];
+    config.global.authorities = (await load("authorities", getAllAuthorities)) ?? [];
+    config.global.chapter_types = (await load("chapter_types", getAllChapterTypes)) ?? [];
+    config.global.user_task_statuses = (await load("user_task_statuses", getAllUserTaskStatuses)) ?? [];
+    config.dash_board.carousel_images = (await load("carousel_images", getAllDashboardCarouselItems)) ?? [];
+
+    const fees = await load("stream_selection_fees", () => getConfigByKey("stream_selection_fees"));
+    const externalAttendees = await load("stream_selection_external_attendees", () => getConfigByKey("stream_selection_external_attendees"));
+    const suggestions = await load("stream_selection_suggestions", getAllStreamSelectionSuggestions);
+    config.stream_selection = {
+        fees: Number(fees ?? 0),
+        external_attendees: externalAttendees === "true",
+        suggestions: suggestions ?? [],
+    };
+
+    res.status(200).json(config);
 });
 
 router.post(

@@ -52,6 +52,22 @@ router.get("/", async (req, res) => {
         };
     } catch (error) {
         logger.error(error);
+        // Still attempt carousel load if an earlier config step failed
+        if (!config.dash_board.carousel_images?.length) {
+            try {
+                config.dash_board.carousel_images = await getAllDashboardCarouselItems();
+            } catch (carouselError) {
+                logger.error(carouselError);
+            }
+        }
+        if (!config.global.user_task_statuses) {
+            try {
+                config.global.user_task_statuses = await getAllUserTaskStatuses();
+            } catch (statusesError) {
+                logger.error(statusesError);
+                config.global.user_task_statuses = [];
+            }
+        }
     } finally {
         res.status(200).json(config);
     }

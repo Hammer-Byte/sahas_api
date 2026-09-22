@@ -10,6 +10,13 @@ const TASK_SELECT = `SELECT USER_TASKS.*,
      LEFT JOIN USERS AS CREATOR ON USER_TASKS.created_by = CREATOR.id
      LEFT JOIN USER_TASK_STATUSES ON USER_TASKS.status_id = USER_TASK_STATUSES.id`;
 
+function getAllUserTaskStatuses() {
+    return executeSQLQueryParameterized("SELECT id, title FROM USER_TASK_STATUSES ORDER BY id ASC").catch((error) => {
+        logger.error(`getAllUserTaskStatuses: ${error}`);
+        return [];
+    });
+}
+
 function buildTaskFilters({
     scope,
     viewer_id,
@@ -192,6 +199,7 @@ function deleteUserTaskById({ id }) {
 }
 
 module.exports = {
+    getAllUserTaskStatuses,
     getUserTasksByFilters,
     getUserTasksCountByFilters,
     getUserTaskById,

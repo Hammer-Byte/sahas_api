@@ -62,6 +62,10 @@ router.get("/", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req, res)
         return res.status(400).json({ error: "scope must be assigned, created, or all" });
     }
 
+    if (scope === "created" && !hasRequiredAuthority(req.user.authorities, AUTHORITIES.CREATE_USER_TASK)) {
+        return res.status(403).json({ error: "Forbidden" });
+    }
+
     if (scope === "all" && !hasRequiredAuthority(req.user.authorities, AUTHORITIES.READ_ALL_USER_TASKS)) {
         return res.status(403).json({ error: "Forbidden" });
     }

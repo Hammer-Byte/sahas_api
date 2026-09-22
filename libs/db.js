@@ -625,13 +625,15 @@ async function generateDBTables() {
             user_id INT NOT NULL,
             status_id INT NOT NULL,
             attachment VARCHAR(512) NULL,
+            deadline DATETIME NULL,
             created_by INT NOT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_user_tasks_user (user_id),
             INDEX idx_user_tasks_created_by (created_by),
             INDEX idx_user_tasks_status (status_id),
-            INDEX idx_user_tasks_created_on (created_on)
+            INDEX idx_user_tasks_created_on (created_on),
+            INDEX idx_user_tasks_deadline (deadline)
         )`,
         `CREATE TABLE IF NOT EXISTS USER_TASK_COMMENTS (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -693,6 +695,8 @@ async function generateDBTables() {
         ('MANAGE_BATCH_CONTROLLER', 'Manage Batch Controllers'),
         ('USE_PAGE_TASKS', 'Page For Managing Tasks'),
         ('CREATE_USER_TASK', 'Create User Task'),
+        ('READ_ALL_USER_TASKS', 'Read All User Tasks'),
+        ('DELETE_USER_TASK', 'Delete User Task'),
         ('USE_ADMIN_CORNER', 'Admin Corner Visibility'),
         ('USE_PAGE_MANAGE_BRANCHES', 'Page For Managing Branches'),
         ('CREATE_BRANCH', 'Create Branch'),

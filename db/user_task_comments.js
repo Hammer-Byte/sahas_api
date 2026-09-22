@@ -49,10 +49,18 @@ function deleteUserTaskCommentById({ id }) {
     });
 }
 
+function deleteUserTaskCommentsByTaskId({ task_id }) {
+    return executeSQLQueryParameterized("DELETE FROM USER_TASK_COMMENTS WHERE task_id=?", [task_id]).catch((error) => {
+        logger.error(`deleteUserTaskCommentsByTaskId: ${error}`);
+        throw error;
+    });
+}
+
 module.exports = {
     getUserTaskCommentsByTaskId,
     getUserTaskCommentById,
     addUserTaskComment,
     updateUserTaskCommentById,
     deleteUserTaskCommentById,
+    deleteUserTaskCommentsByTaskId,
 };

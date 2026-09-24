@@ -67,10 +67,12 @@ async function verifyPaymentGatewayPayLoadStatus(paymentGateWayPayLoad) {
 const hasRequiredAuthority = (authorities, requiredAuthority) => authorities.includes(requiredAuthority);
 
 /**
- * App exam/series datetimes are stored as MySQL DATETIME / "YYYY-MM-DD HH:mm" wall-clock
- * values in Asia/Kolkata (IST). On UTC servers, `new Date("2026-09-24 21:00:00")` treats
- * that string as UTC and shifts the window by 5.5h — use this helper for comparisons.
+ * App datetimes are stored as MySQL DATETIME / "YYYY-MM-DD HH:mm" wall-clock values in
+ * Asia/Kolkata (IST). Use these helpers for parse/compare — never raw `new Date(mysqlString)`
+ * on UTC hosts (shifts windows by 5.5h).
  */
+const APP_TZ_OFFSET_MINUTES = 330; // Asia/Kolkata
+
 function parseAppDateTime(value) {
     if (value == null || value === "") return NaN;
     if (value instanceof Date) return value.getTime();
@@ -94,6 +96,13 @@ function parseAppDateTime(value) {
     return new Date(raw).getTime();
 }
 
+function isWithinAppDateWindow({ start_at, end_at, graceMs = 0, now = Date.now() }) {
+    const start = parseAppDateTime(start_at);
+    const end = parseAppDateTime(end_at);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
+    return now >= start && now <= end + Number(graceMs || 0);
+}
+
 module.exports = {
     generateToken,
     getDeviceDescriptionByFingerPrint,
@@ -103,4 +112,6 @@ module.exports = {
     getDifferenceOfDates,
     hasRequiredAuthority,
     parseAppDateTime,
+    isWithinAppDateWindow,
+    APP_TZ_OFFSET_MINUTES,
 };

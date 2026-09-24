@@ -9,6 +9,7 @@ const {
     updateExamCandidatureByUserIdAndExamId,
 } = require("../db/exam_candidatures");
 const { addExamSubmission, userHasExamSubmissions } = require("../db/exam_submissions");
+const { parseAppDateTime } = require("../utils");
 
 const router = libExpress.Router();
 
@@ -16,16 +17,16 @@ const EXAM_SUBMISSION_GRACE_MS = 5 * 60 * 1000;
 
 function isExamWithinWindow({ start_at, end_at }) {
     const now = Date.now();
-    const start = new Date(start_at).getTime();
-    const end = new Date(end_at).getTime();
-    return now >= start && now <= end;
+    const start = parseAppDateTime(start_at);
+    const end = parseAppDateTime(end_at);
+    return Number.isFinite(start) && Number.isFinite(end) && now >= start && now <= end;
 }
 
 function isExamWithinSubmissionWindow({ start_at, end_at }) {
     const now = Date.now();
-    const start = new Date(start_at).getTime();
-    const end = new Date(end_at).getTime() + EXAM_SUBMISSION_GRACE_MS;
-    return now >= start && now <= end;
+    const start = parseAppDateTime(start_at);
+    const end = parseAppDateTime(end_at) + EXAM_SUBMISSION_GRACE_MS;
+    return Number.isFinite(start) && Number.isFinite(end) && now >= start && now <= end;
 }
 
 router.get("/:id", async (req, res) => {

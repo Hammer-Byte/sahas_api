@@ -35,6 +35,7 @@ const { buildExamSeriesMeritList } = require("../libs/exam_series_merit");
 const { buildExamSeriesResult } = require("../libs/exam_series_result");
 const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { validateRequestBody } = require("sahas_utils");
+const { parseAppDateTime } = require("../utils");
 
 const router = libExpress.Router();
 
@@ -498,7 +499,7 @@ router.get("/:examSeriesId/merit", async (req, res) => {
         return res.status(403).json({ error: "Exam Series Enrollment Required" });
     }
 
-    if (Date.now() <= new Date(examSeries.end_at).getTime()) {
+    if (Date.now() <= parseAppDateTime(examSeries.end_at)) {
         return res.status(400).json({ error: "Merit Is Available After Exam Series Ends" });
     }
 

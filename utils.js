@@ -66,6 +66,33 @@ async function verifyPaymentGatewayPayLoadStatus(paymentGateWayPayLoad) {
 
 const hasRequiredAuthority = (authorities, requiredAuthority) => authorities.includes(requiredAuthority);
 
+/**
+ * App exam/series datetimes are stored as MySQL DATETIME / "YYYY-MM-DD HH:mm" wall-clock
+ * values in Asia/Kolkata (IST). On UTC servers, `new Date("2026-09-24 21:00:00")` treats
+ * that string as UTC and shifts the window by 5.5h — use this helper for comparisons.
+ */
+function parseAppDateTime(value) {
+    if (value == null || value === "") return NaN;
+    if (value instanceof Date) return value.getTime();
+
+    const raw = String(value).trim();
+    if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)) {
+        return new Date(raw).getTime();
+    }
+
+    const dateTime = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (dateTime) {
+        const [, year, month, day, hour, minute, second = "00"] = dateTime;
+        return Date.parse(`${year}-${month}-${day}T${hour}:${minute}:${second}+05:30`);
+    }
+
+    const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnly) {
+        return Date.parse(`${raw}T00:00:00+05:30`);
+    }
+
+    return new Date(raw).getTime();
+}
 
 module.exports = {
     generateToken,
@@ -75,4 +102,5 @@ module.exports = {
     getFormattedDate,
     getDifferenceOfDates,
     hasRequiredAuthority,
+    parseAppDateTime,
 };

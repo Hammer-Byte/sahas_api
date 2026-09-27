@@ -77,7 +77,7 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_EXAM_SERIES), async (req,
 });
 
 router.patch("/exams", requires_authority(AUTHORITIES.UPDATE_EXAM), async (req, res) => {
-    const requiredBodyFields = ["id", "subject_id", "start_at", "end_at", "positive_marks", "negative_marks"];
+    const requiredBodyFields = ["id", "subject_id", "title", "start_at", "end_at", "positive_marks", "negative_marks"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (!isRequestBodyValid) {
@@ -513,6 +513,7 @@ router.get("/:examSeriesId/merit", async (req, res) => {
         total_exams: exams.length,
         exams: exams.map((exam) => ({
             id: exam.id,
+            title: exam.title,
             subject_title: exam.subject_title,
         })),
         merit_list,
@@ -550,7 +551,7 @@ router.post("/:examSeriesId/exams", requires_authority(AUTHORITIES.CREATE_EXAM),
         return res.status(400).json({ error: "Exam Series Not Exist" });
     }
 
-    const requiredBodyFields = ["subject_id", "start_at", "end_at", "positive_marks", "negative_marks"];
+    const requiredBodyFields = ["subject_id", "title", "start_at", "end_at", "positive_marks", "negative_marks"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (!isRequestBodyValid) {
@@ -564,6 +565,7 @@ router.post("/:examSeriesId/exams", requires_authority(AUTHORITIES.CREATE_EXAM),
     const examId = await addExam({
         exam_series_id: req.params.examSeriesId,
         subject_id: validatedRequestBody.subject_id,
+        title: validatedRequestBody.title,
         start_at: validatedRequestBody.start_at,
         end_at: validatedRequestBody.end_at,
         positive_marks: validatedRequestBody.positive_marks,

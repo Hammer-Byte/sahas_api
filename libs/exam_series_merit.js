@@ -21,6 +21,7 @@ function buildExamSeriesMeritList({ exams = [], submissionMarks = [] }) {
     const meritList = [...usersById.values()].map((user) => {
         const exam_scores = exams.map((exam) => ({
             exam_id: exam.id,
+            title: exam.title,
             subject_title: exam.subject_title,
             marks: user.marksByExamId.get(exam.id) ?? 0,
         }));

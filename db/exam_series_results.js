@@ -6,6 +6,7 @@ function getExamSeriesResultRowsByUserIdAndExamSeriesId({ user_id, exam_series_i
         `SELECT EXAMS.id AS exam_id,
                 EXAMS.exam_series_id,
                 EXAMS.subject_id,
+                EXAMS.title,
                 EXAMS.start_at,
                 EXAMS.end_at,
                 SUBJECTS.title AS subject_title,

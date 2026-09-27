@@ -437,6 +437,7 @@ async function generateDBTables() {
             id INT AUTO_INCREMENT PRIMARY KEY,
             exam_series_id INT NOT NULL,
             subject_id INT NOT NULL,
+            title VARCHAR(128) NOT NULL,
             start_at DATETIME NOT NULL,
             end_at DATETIME NOT NULL,
             positive_marks DECIMAL(10,2) NOT NULL DEFAULT 1,

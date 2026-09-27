@@ -7,6 +7,7 @@ function buildExamSeriesResult({ rows = [] }) {
                 id: row.exam_id,
                 exam_series_id: row.exam_series_id,
                 subject_id: row.subject_id,
+                title: row.title,
                 subject_title: row.subject_title,
                 start_at: row.start_at,
                 end_at: row.end_at,

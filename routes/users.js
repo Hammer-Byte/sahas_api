@@ -31,6 +31,7 @@ const { getExamSeriesById } = require("../db/exam_series");
 const { getExamsByExamSeriesId } = require("../db/exams");
 const { getExamSeriesEnrollmentByUserIdAndExamSeriesId } = require("../db/exam_series_enrollments");
 const { getExamSubmissionsByUserIdAndExamSeriesId } = require("../db/exam_submissions");
+const { getExamCandidaturesByUserIdAndExamSeriesId } = require("../db/exam_candidatures");
 const { hasRequiredAuthority } = require("../utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
@@ -147,6 +148,10 @@ router.get("/:userId/exam-series/:examSeriesId/submissions", async (req, res) =>
         user_id: userId,
         exam_series_id: examSeriesId,
     });
+    const candidatures = await getExamCandidaturesByUserIdAndExamSeriesId({
+        user_id: userId,
+        exam_series_id: examSeriesId,
+    });
 
     const submissionsByExamId = submissions.reduce((map, submission) => {
         if (!map.has(submission.exam_id)) {
@@ -156,11 +161,17 @@ router.get("/:userId/exam-series/:examSeriesId/submissions", async (req, res) =>
         return map;
     }, new Map());
 
+    const interruptionsByExamId = candidatures.reduce((map, candidature) => {
+        map.set(candidature.exam_id, Number(candidature.interruptions) || 0);
+        return map;
+    }, new Map());
+
     res.status(200).json({
         exam_series_id: examSeriesId,
         user_id: userId,
         exams: exams.map((exam) => ({
             ...exam,
+            interruptions: interruptionsByExamId.get(exam.id) ?? 0,
             submissions: submissionsByExamId.get(exam.id) ?? [],
         })),
     });
@@ -336,10 +347,23 @@ router.put("/", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) =>
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        await updateUserById({ ...validatedRequestBody });
+        await updateUserById({
+            id: validatedRequestBody.id,
+            email: validatedRequestBody.email,
+            full_name: validatedRequestBody.full_name,
+            phone: validatedRequestBody.phone,
+            address: validatedRequestBody.address,
+            active: validatedRequestBody.active,
+            guardian_phone: req.body.guardian_phone,
+            guardian_email: req.body.guardian_email,
+            dob: req.body.dob,
+            image: req.body.image,
+            branch_id: req.body.branch_id,
+            stream_selection_test_allowed: req.body.stream_selection_test_allowed,
+        });
         await updateUserHistoryById({ id: validatedRequestBody.id, ...validatedRequestBody?.history });
 
-        const user = await getUserById({ ...validatedRequestBody });
+        const user = await getUserById({ id: validatedRequestBody.id });
         user.history = await getUserHistoryById({ user_id: user.id });
 
         res.status(200).json(user);

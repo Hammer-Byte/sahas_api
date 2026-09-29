@@ -1,7 +1,7 @@
 const libExpress = require("express");
 const { requestService } = require("sahas_utils");
 
-const { getUserByEmail, addUserByEmail, getUserById, getAuthoritiesByRoleIds } = require("../db/users");
+const { getUserByEmail, getUserByGuardianEmail, addUserByEmail, getUserById, getAuthoritiesByRoleIds } = require("../db/users");
 const libValidator = require("validator");
 const { generateToken } = require("../utils");
 const { addInactiveToken, getTokenByOTP, activateToken } = require("../db/authentication_tokens");
@@ -57,10 +57,20 @@ router.post("/", async (req, res) => {
             return res.status(400).json({ error: "Missing or Invalid Email" });
         }
 
-        //Get The user
-        await addUserByEmail({ email: validatedRequestBody.email.toLowerCase() });
+        const normalizedEmail = validatedRequestBody.email.toLowerCase();
 
-        const user = await getUserByEmail({ email: validatedRequestBody.email.toLowerCase() });
+        let user = await getUserByEmail({ email: normalizedEmail });
+        if (!user) {
+            user = await getUserByGuardianEmail({ guardian_email: normalizedEmail });
+        }
+        if (!user) {
+            await addUserByEmail({ email: normalizedEmail });
+            user = await getUserByEmail({ email: normalizedEmail });
+        }
+
+        if (!user) {
+            return res.status(500).json({ error: "Something Seems to be Broken , Please Try Again Later" });
+        }
 
         //generate an otp and token
         const otp = Math.floor(1000 + Math.random() * 9000);

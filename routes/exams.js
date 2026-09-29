@@ -7,6 +7,7 @@ const {
     getExamCandidatureByUserIdAndExamId,
     addExamCandidature,
     updateExamCandidatureByUserIdAndExamId,
+    incrementExamInterruptions,
 } = require("../db/exam_candidatures");
 const { addExamSubmission, userHasExamSubmissions } = require("../db/exam_submissions");
 const { parseAppDateTime, isWithinAppDateWindow } = require("../utils");
@@ -120,6 +121,58 @@ router.post("/:id/candidature", async (req, res) => {
     }
 
     res.status(201).json({ id: candidatureId });
+});
+
+router.post("/:id/interruptions", async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Exam Id" });
+    }
+
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const exam = await getExamById({ id: req.params.id });
+    if (!exam) {
+        return res.status(400).json({ error: "Exam Not Exist" });
+    }
+
+    if (!isExamWithinWindow({ start_at: exam.start_at, end_at: exam.end_at })) {
+        return res.status(400).json({ error: "Exam Is Not Available At This Time" });
+    }
+
+    const hasExamAccess = await userHasExamAccessViaSeriesEnrollment({
+        user_id: req.user.id,
+        exam_id: req.params.id,
+    });
+
+    if (!hasExamAccess) {
+        return res.status(403).json({ error: "Exam Series Enrollment Required" });
+    }
+
+    const candidature = await getExamCandidatureByUserIdAndExamId({
+        user_id: req.user.id,
+        exam_id: req.params.id,
+    });
+
+    if (!candidature) {
+        return res.status(400).json({ error: "Exam Candidature Required Before Attending" });
+    }
+
+    if (await userHasExamSubmissions({ user_id: req.user.id, exam_id: req.params.id })) {
+        return res.status(400).json({ error: "Exam Submissions Already Recorded" });
+    }
+
+    const interruptions = await incrementExamInterruptions({
+        user_id: req.user.id,
+        exam_id: req.params.id,
+    });
+
+    if (interruptions === false || interruptions == null) {
+        return res.status(400).json({ error: "Failed To Record Exam Interruption" });
+    }
+
+    res.status(200).json({ interruptions });
 });
 
 router.get("/:id/questions", async (req, res) => {

@@ -13,6 +13,15 @@ function getUserByEmail({ email }) {
         });
 }
 
+function getUserByGuardianEmail({ guardian_email }) {
+    return executeSQLQueryParameterized(`SELECT * FROM USERS WHERE guardian_email=?`, [guardian_email])
+        .then((user) => (user && user.length > 0 ? user[0] : false))
+        .catch((error) => {
+            logger.error(`getUserByGuardianEmail: ${error}`);
+            return false;
+        });
+}
+
 //tested
 function addDefaultRoleToUser(userId) {
     return executeSQLQueryParameterized(`INSERT INTO USER_ROLES(user_id,role_id) VALUES(?,1)`, [userId]).catch((error) => {
@@ -175,14 +184,32 @@ function getCountUsersBySearchAndFilters(search, appliedFilters) {
 }
 
 //freeze
-function updateUserById({ id, email, full_name, phone, guardian_phone = null, image, address, branch_id, stream_selection_test_allowed = false, active }) {
+function updateUserById({
+    id,
+    email,
+    full_name,
+    phone,
+    guardian_phone = null,
+    guardian_email = null,
+    dob = null,
+    image,
+    address,
+    branch_id,
+    stream_selection_test_allowed = false,
+    active,
+}) {
+    const normalizedGuardianEmail =
+        guardian_email != null && String(guardian_email).trim() !== "" ? String(guardian_email).trim().toLowerCase() : null;
+
     return executeSQLQueryParameterized(
-        `UPDATE USERS SET email=?, full_name=?,phone=?,guardian_phone=?,image=?,address=?,branch_id=?,stream_selection_test_allowed=?,active=? WHERE id = ?`,
+        `UPDATE USERS SET email=?, full_name=?,phone=?,guardian_phone=?,guardian_email=?,dob=?,image=?,address=?,branch_id=?,stream_selection_test_allowed=?,active=? WHERE id = ?`,
         [
             email?.toLowerCase(),
             full_name,
             phone,
             guardian_phone || null,
+            normalizedGuardianEmail,
+            dob || null,
             image || null,
             address,
             branch_id,
@@ -245,6 +272,7 @@ module.exports = {
     getAllUsersBySearchAndFilters,
     getCountUsersBySearchAndFilters,
     getUserByEmail,
+    getUserByGuardianEmail,
     getUserByAuthenticationToken,
     addUserByEmail,
     getUserById,

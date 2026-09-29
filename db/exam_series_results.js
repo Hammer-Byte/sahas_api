@@ -16,7 +16,8 @@ function getExamSeriesResultRowsByUserIdAndExamSeriesId({ user_id, exam_series_i
                 EXAM_SUBMISSIONS.submitted_answer,
                 EXAM_SUBMISSIONS.marks,
                 EXAM_SUBMISSIONS.created_on AS submission_end_timestamp,
-                EXAM_CANDIDATURE.created_on AS submission_start_timestamp
+                EXAM_CANDIDATURE.created_on AS submission_start_timestamp,
+                EXAM_CANDIDATURE.interruptions AS interruptions
          FROM EXAMS
          LEFT JOIN SUBJECTS ON SUBJECTS.id = EXAMS.subject_id
          LEFT JOIN EXAM_QUESTIONS ON EXAM_QUESTIONS.exam_id = EXAMS.id

@@ -5,14 +5,15 @@ const TASK_SELECT = `SELECT USER_TASKS.*,
             ASSIGNEE.full_name AS user_full_name,
             ASSIGNEE.email AS user_email,
             CREATOR.full_name AS created_by_full_name,
-            USER_TASK_STATUSES.title AS status_title
+            USER_TASK_STATUSES.title AS status_title,
+            USER_TASK_STATUSES.color AS status_color
      FROM USER_TASKS
      LEFT JOIN USERS AS ASSIGNEE ON USER_TASKS.user_id = ASSIGNEE.id
      LEFT JOIN USERS AS CREATOR ON USER_TASKS.created_by = CREATOR.id
      LEFT JOIN USER_TASK_STATUSES ON USER_TASKS.status_id = USER_TASK_STATUSES.id`;
 
 function getAllUserTaskStatuses() {
-    return executeSQLQueryParameterized("SELECT id, title FROM USER_TASK_STATUSES ORDER BY id ASC").catch((error) => {
+    return executeSQLQueryParameterized("SELECT id, title, color FROM USER_TASK_STATUSES ORDER BY id ASC").catch((error) => {
         logger.error(`getAllUserTaskStatuses: ${error}`);
         return [];
     });

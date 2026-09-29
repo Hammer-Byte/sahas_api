@@ -617,6 +617,7 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS USER_TASK_STATUSES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(64) NOT NULL UNIQUE,
+            color VARCHAR(32) NOT NULL DEFAULT '#E5E7EB',
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP
         )`,
         `CREATE TABLE IF NOT EXISTS USER_TASKS (
@@ -662,11 +663,11 @@ async function generateDBTables() {
         (2, 'Ahmedabad Branch', '45 Riverfront Road, Ahmedabad', 'Serves Gujarat region', 1, '2025-08-10 23:05:32', '2025-08-10 23:05:32'),
         (3, 'Bangalore Branch', '88 MG Road, Bangalore', 'South India operations', 1, '2025-08-10 23:05:32', '2025-08-10 23:05:32')`,
 
-        `INSERT IGNORE INTO USER_TASK_STATUSES (id, title) VALUES
-        (1, 'Open'),
-        (2, 'In Progress'),
-        (3, 'Completed'),
-        (4, 'Cancelled')`,
+        `INSERT IGNORE INTO USER_TASK_STATUSES (id, title, color) VALUES
+        (1, 'Open', '#DBEAFE'),
+        (2, 'In Progress', '#FEF3C7'),
+        (3, 'Completed', '#D1FAE5'),
+        (4, 'Cancelled', '#FEE2E2')`,
 
         `INSERT IGNORE INTO AUTHORITIES (title, description) VALUES
         ('MANAGE_OTHER_USERS', 'Manage Other User Profile'),

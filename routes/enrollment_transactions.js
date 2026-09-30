@@ -30,7 +30,7 @@ router.get(
 
         const transactionsPeriod = getDifferenceOfDates({ start_date: req.query.start_date, end_date: req.query.end_date });
 
-        if (transactionsPeriod > 180 || transactionsPeriod < 0) {
+        if (transactionsPeriod > 186 || transactionsPeriod < 0) {
             return res.status(400).json({ error: "Date Range is Either Negative or Too Big" });
         }
         next();
@@ -59,7 +59,7 @@ router.get(
 
         const transactionsPeriod = getDifferenceOfDates({ start_date: req.query.start_date, end_date: req.query.end_date });
 
-        if (transactionsPeriod > 180 || transactionsPeriod < 0) {
+        if (transactionsPeriod > 186 || transactionsPeriod < 0) {
             return res.status(400).json({ error: "Date Range is Either Negative or Too Big" });
         }
         next();
@@ -126,7 +126,7 @@ router.get(
 
         const transactionsPeriod = getDifferenceOfDates({ start_date: req.query.start_date, end_date: req.query.end_date });
 
-        if (transactionsPeriod > 180 || transactionsPeriod < 0) {
+        if (transactionsPeriod > 186 || transactionsPeriod < 0) {
             return res.status(400).json({ error: "Date Range is Either Negative or Too Big" });
         }
         next();

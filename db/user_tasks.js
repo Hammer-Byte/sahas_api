@@ -164,10 +164,10 @@ function getUserTaskById({ id }) {
         });
 }
 
-function addUserTask({ title, description = null, user_id, status_id, attachment = null, deadline = null, created_by }) {
+function addUserTask({ title, description = null, user_id, status_id, priority = 0, attachment = null, deadline = null, created_by }) {
     return executeSQLQueryParameterized(
-        "INSERT INTO USER_TASKS(title, description, user_id, status_id, attachment, deadline, created_by) VALUES(?,?,?,?,?,?,?)",
-        [title, description, user_id, status_id, attachment, deadline, created_by]
+        "INSERT INTO USER_TASKS(title, description, user_id, status_id, priority, attachment, deadline, created_by) VALUES(?,?,?,?,?,?,?,?)",
+        [title, description, user_id, status_id, priority, attachment, deadline, created_by]
     )
         .then((result) => result.insertId)
         .catch((error) => {
@@ -176,10 +176,10 @@ function addUserTask({ title, description = null, user_id, status_id, attachment
         });
 }
 
-function updateUserTaskById({ id, title, description = null, user_id, status_id, attachment = null, deadline = null }) {
+function updateUserTaskById({ id, title, description = null, user_id, status_id, priority = 0, attachment = null, deadline = null }) {
     return executeSQLQueryParameterized(
-        "UPDATE USER_TASKS SET title=?, description=?, user_id=?, status_id=?, attachment=?, deadline=? WHERE id=?",
-        [title, description, user_id, status_id, attachment, deadline, id]
+        "UPDATE USER_TASKS SET title=?, description=?, user_id=?, status_id=?, priority=?, attachment=?, deadline=? WHERE id=?",
+        [title, description, user_id, status_id, priority, attachment, deadline, id]
     ).catch((error) => {
         logger.error(`updateUserTaskById: ${error}`);
         throw error;

@@ -668,9 +668,9 @@ async function generateDBTables() {
 
         `INSERT IGNORE INTO USER_TASK_STATUSES (id, title, color) VALUES
         (1, 'Open', '#DBEAFE'),
-        (2, 'In Progress', '#DBEAFE'),
+        (2, 'In Progress', '#FEF3C7'),
         (3, 'Completed', '#D1FAE5'),
-        (4, 'Cancelled', '#DBEAFE')`,
+        (4, 'Cancelled', '#FEE2E2')`,
 
         `INSERT IGNORE INTO AUTHORITIES (title, description) VALUES
         ('MANAGE_OTHER_USERS', 'Manage Other User Profile'),

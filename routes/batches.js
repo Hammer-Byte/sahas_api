@@ -355,6 +355,72 @@ router.get("/:id", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), asyn
     return res.status(200).json(batch);
 });
 
+router.get("/:id/schedule", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
+    }
+
+    const { getBatchScheduleByBatchId } = require("../db/batch_schedule");
+    const rows = await getBatchScheduleByBatchId({ batch_id: req.params.id });
+    const byWeekday = new Map(rows.map((row) => [Number(row.weekday), row]));
+    const days = Array.from({ length: 7 }, (_, weekday) => {
+        const row = byWeekday.get(weekday);
+        return {
+            weekday,
+            start_time: row?.start_time || null,
+            end_time: row?.end_time || null,
+        };
+    });
+    return res.status(200).json(days);
+});
+
+router.put("/:id/schedule", requires_authority(AUTHORITIES.UPDATE_BATCH), async (req, res) => {
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
+    }
+
+    const days = Array.isArray(req.body?.days) ? req.body.days : req.body;
+    if (!Array.isArray(days) || days.length !== 7) {
+        return res.status(400).json({ error: "Expected 7 weekday schedule rows" });
+    }
+
+    const { upsertBatchSchedule, getBatchScheduleByBatchId } = require("../db/batch_schedule");
+    const normalized = days.map((day) => ({
+        weekday: Number(day.weekday),
+        start_time: day.start_time || null,
+        end_time: day.end_time || null,
+    }));
+
+    for (const day of normalized) {
+        if (day.weekday < 0 || day.weekday > 6) {
+            return res.status(400).json({ error: "Invalid weekday" });
+        }
+        if ((day.start_time && !day.end_time) || (!day.start_time && day.end_time)) {
+            return res.status(400).json({ error: "start_time and end_time must both be set or both null" });
+        }
+    }
+
+    const saved = await upsertBatchSchedule({ batch_id: req.params.id, days: normalized });
+    if (!saved) {
+        return res.status(400).json({ error: "Failed To Update Batch Schedule" });
+    }
+
+    const rows = await getBatchScheduleByBatchId({ batch_id: req.params.id });
+    const byWeekday = new Map(rows.map((row) => [Number(row.weekday), row]));
+    return res.status(200).json(
+        Array.from({ length: 7 }, (_, weekday) => {
+            const row = byWeekday.get(weekday);
+            return {
+                weekday,
+                start_time: row?.start_time || null,
+                end_time: row?.end_time || null,
+            };
+        }),
+    );
+});
+
 router.post("/", requires_authority(AUTHORITIES.CREATE_BATCH), async (req, res) => {
     const requiredBodyFields = ["title"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);

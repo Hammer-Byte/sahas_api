@@ -162,7 +162,7 @@ router.get("/:userId/exam-series/:examSeriesId/submissions", async (req, res) =>
     }, new Map());
 
     const interruptionsByExamId = candidatures.reduce((map, candidature) => {
-        map.set(candidature.exam_id, Number(candidature.interruptions) || 0);
+        map.set(Number(candidature.exam_id), Number(candidature.interruptions) || 0);
         return map;
     }, new Map());
 
@@ -171,7 +171,7 @@ router.get("/:userId/exam-series/:examSeriesId/submissions", async (req, res) =>
         user_id: userId,
         exams: exams.map((exam) => ({
             ...exam,
-            interruptions: interruptionsByExamId.get(exam.id) ?? 0,
+            interruptions: interruptionsByExamId.get(Number(exam.id)) ?? 0,
             submissions: submissionsByExamId.get(exam.id) ?? [],
         })),
     });

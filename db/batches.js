@@ -13,6 +13,20 @@ function getAllBatches() {
     });
 }
 
+function getBatchesByBranchId({ branch_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT BATCHES.*, BRANCHES.title AS branch_title
+         FROM BATCHES
+         LEFT JOIN BRANCHES ON BATCHES.branch_id = BRANCHES.id
+         WHERE BATCHES.branch_id = ?
+         ORDER BY BATCHES.id DESC`,
+        [branch_id],
+    ).catch((error) => {
+        logger.error(`getBatchesByBranchId: ${error}`);
+        return [];
+    });
+}
+
 function getBatchesByControllerUserId({ user_id }) {
     return executeSQLQueryParameterized(
         `SELECT BATCHES.*, BRANCHES.title AS branch_title
@@ -272,6 +286,7 @@ function getAssignableBatchesForUser({ user_id }) {
 
 module.exports = {
     getAllBatches,
+    getBatchesByBranchId,
     getBatchesByControllerUserId,
     getBatchById,
     addBatch,

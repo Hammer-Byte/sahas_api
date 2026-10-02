@@ -47,6 +47,7 @@ router.get("/", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req, res)
     const {
         scope,
         status_id,
+        priority,
         user_id,
         start_date,
         end_date,
@@ -76,6 +77,7 @@ router.get("/", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req, res)
         scope,
         viewer_id: req.user.id,
         status_id: status_id || null,
+        priority: priority !== undefined && priority !== null && priority !== "" ? priority : null,
         user_id: (scope === "created" || scope === "all") && user_id ? user_id : null,
         start_date: start_date || null,
         end_date: end_date || null,
@@ -104,6 +106,7 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_USER_TASK), async (req, r
     try {
         const id = await addUserTask({
             ...validatedRequestBody,
+            priority: req.body.priority ?? 0,
             description: req.body.description ?? null,
             attachment: req.body.attachment ?? null,
             deadline: req.body.deadline ?? null,
@@ -221,10 +224,11 @@ router.patch("/:id", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req,
         const description = req.body.description !== undefined ? req.body.description : task.description;
         const user_id = req.body.user_id ?? task.user_id;
         const status_id = req.body.status_id ?? task.status_id;
+        const priority = req.body.priority ?? task.priority;
         const attachment = req.body.attachment !== undefined ? req.body.attachment : task.attachment;
         const deadline = req.body.deadline !== undefined ? req.body.deadline : task.deadline;
         try {
-            await updateUserTaskById({ id: task.id, title, description, user_id, status_id, attachment, deadline });
+            await updateUserTaskById({ id: task.id, title, description, user_id, status_id, priority, attachment, deadline });
             return res.status(200).json(await getUserTaskById({ id: task.id }));
         } catch (error) {
             return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Update Task" });
@@ -232,7 +236,7 @@ router.patch("/:id", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req,
     }
 
     if (statusEditor && req.body.status_id !== undefined) {
-        const disallowed = ["title", "description", "user_id", "attachment", "deadline"].some((key) => req.body[key] !== undefined);
+        const disallowed = ["title", "description", "user_id", "attachment", "deadline", "priority"].some((key) => req.body[key] !== undefined);
         if (disallowed) {
             return res.status(403).json({ error: "Assignee can only update status" });
         }

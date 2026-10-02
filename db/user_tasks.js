@@ -23,6 +23,7 @@ function buildTaskFilters({
     scope,
     viewer_id,
     status_id = null,
+    priority = null,
     user_id = null,
     start_date = null,
     end_date = null,
@@ -46,6 +47,11 @@ function buildTaskFilters({
     if (status_id) {
         where.push("USER_TASKS.status_id = ?");
         params.push(status_id);
+    }
+
+    if (priority !== null && priority !== undefined && priority !== "") {
+        where.push("USER_TASKS.priority = ?");
+        params.push(priority);
     }
 
     if (user_id && (scope === "created" || scope === "all")) {
@@ -92,6 +98,7 @@ function getUserTasksByFilters({
     scope,
     viewer_id,
     status_id = null,
+    priority = null,
     user_id = null,
     start_date = null,
     end_date = null,
@@ -106,6 +113,7 @@ function getUserTasksByFilters({
         scope,
         viewer_id,
         status_id,
+        priority,
         user_id,
         start_date,
         end_date,
@@ -128,6 +136,7 @@ function getUserTasksCountByFilters({
     scope,
     viewer_id,
     status_id = null,
+    priority = null,
     user_id = null,
     start_date = null,
     end_date = null,
@@ -139,6 +148,7 @@ function getUserTasksCountByFilters({
         scope,
         viewer_id,
         status_id,
+        priority,
         user_id,
         start_date,
         end_date,
@@ -164,10 +174,10 @@ function getUserTaskById({ id }) {
         });
 }
 
-function addUserTask({ title, description = null, user_id, status_id, attachment = null, deadline = null, created_by }) {
+function addUserTask({ title, description = null, user_id, status_id, priority = 0, attachment = null, deadline = null, created_by }) {
     return executeSQLQueryParameterized(
-        "INSERT INTO USER_TASKS(title, description, user_id, status_id, attachment, deadline, created_by) VALUES(?,?,?,?,?,?,?)",
-        [title, description, user_id, status_id, attachment, deadline, created_by]
+        "INSERT INTO USER_TASKS(title, description, user_id, status_id, priority, attachment, deadline, created_by) VALUES(?,?,?,?,?,?,?,?)",
+        [title, description, user_id, status_id, priority, attachment, deadline, created_by]
     )
         .then((result) => result.insertId)
         .catch((error) => {
@@ -176,10 +186,10 @@ function addUserTask({ title, description = null, user_id, status_id, attachment
         });
 }
 
-function updateUserTaskById({ id, title, description = null, user_id, status_id, attachment = null, deadline = null }) {
+function updateUserTaskById({ id, title, description = null, user_id, status_id, priority = 0, attachment = null, deadline = null }) {
     return executeSQLQueryParameterized(
-        "UPDATE USER_TASKS SET title=?, description=?, user_id=?, status_id=?, attachment=?, deadline=? WHERE id=?",
-        [title, description, user_id, status_id, attachment, deadline, id]
+        "UPDATE USER_TASKS SET title=?, description=?, user_id=?, status_id=?, priority=?, attachment=?, deadline=? WHERE id=?",
+        [title, description, user_id, status_id, priority, attachment, deadline, id]
     ).catch((error) => {
         logger.error(`updateUserTaskById: ${error}`);
         throw error;

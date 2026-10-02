@@ -23,6 +23,7 @@ function buildTaskFilters({
     scope,
     viewer_id,
     status_id = null,
+    priority = null,
     user_id = null,
     start_date = null,
     end_date = null,
@@ -46,6 +47,11 @@ function buildTaskFilters({
     if (status_id) {
         where.push("USER_TASKS.status_id = ?");
         params.push(status_id);
+    }
+
+    if (priority !== null && priority !== undefined && priority !== "") {
+        where.push("USER_TASKS.priority = ?");
+        params.push(priority);
     }
 
     if (user_id && (scope === "created" || scope === "all")) {
@@ -92,6 +98,7 @@ function getUserTasksByFilters({
     scope,
     viewer_id,
     status_id = null,
+    priority = null,
     user_id = null,
     start_date = null,
     end_date = null,
@@ -106,6 +113,7 @@ function getUserTasksByFilters({
         scope,
         viewer_id,
         status_id,
+        priority,
         user_id,
         start_date,
         end_date,
@@ -128,6 +136,7 @@ function getUserTasksCountByFilters({
     scope,
     viewer_id,
     status_id = null,
+    priority = null,
     user_id = null,
     start_date = null,
     end_date = null,
@@ -139,6 +148,7 @@ function getUserTasksCountByFilters({
         scope,
         viewer_id,
         status_id,
+        priority,
         user_id,
         start_date,
         end_date,

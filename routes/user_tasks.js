@@ -47,6 +47,7 @@ router.get("/", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req, res)
     const {
         scope,
         status_id,
+        priority,
         user_id,
         start_date,
         end_date,
@@ -76,6 +77,7 @@ router.get("/", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req, res)
         scope,
         viewer_id: req.user.id,
         status_id: status_id || null,
+        priority: priority !== undefined && priority !== null && priority !== "" ? priority : null,
         user_id: (scope === "created" || scope === "all") && user_id ? user_id : null,
         start_date: start_date || null,
         end_date: end_date || null,

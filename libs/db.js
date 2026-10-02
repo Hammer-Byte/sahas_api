@@ -629,6 +629,7 @@ async function generateDBTables() {
             description VARCHAR(1024) NULL,
             user_id INT NOT NULL,
             status_id INT NOT NULL,
+            priority TINYINT NOT NULL DEFAULT 0,
             attachment VARCHAR(512) NULL,
             deadline DATETIME NULL,
             created_by INT NOT NULL,
@@ -637,6 +638,7 @@ async function generateDBTables() {
             INDEX idx_user_tasks_user (user_id),
             INDEX idx_user_tasks_created_by (created_by),
             INDEX idx_user_tasks_status (status_id),
+            INDEX idx_user_tasks_priority (priority),
             INDEX idx_user_tasks_created_on (created_on),
             INDEX idx_user_tasks_deadline (deadline)
         )`,

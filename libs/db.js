@@ -617,6 +617,55 @@ async function generateDBTables() {
             INDEX idx_batch_controllers_batch (batch_id),
             INDEX idx_batch_controllers_user (user_id)
         )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_SCHEDULE (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            batch_id INT NOT NULL,
+            weekday TINYINT NOT NULL,
+            start_time TIME NULL,
+            end_time TIME NULL,
+            subject VARCHAR(128) NULL,
+            event_handler INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_batch_weekday (batch_id, weekday),
+            INDEX idx_batch_schedule_batch (batch_id),
+            INDEX idx_batch_schedule_handler (event_handler)
+        )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_EVENTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(128) NOT NULL,
+            description VARCHAR(1024) NULL,
+            start_at DATETIME NOT NULL,
+            end_at DATETIME NOT NULL,
+            branch_id INT NULL,
+            cancelled BOOLEAN NOT NULL DEFAULT FALSE,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_batch_events_start (start_at),
+            INDEX idx_batch_events_branch (branch_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_EVENT_BATCHES (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            batch_event_id INT NOT NULL,
+            batch_id INT NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_batch_event_batch (batch_event_id, batch_id),
+            INDEX idx_batch_event_batches_event (batch_event_id),
+            INDEX idx_batch_event_batches_batch (batch_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS USER_EVENTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            title VARCHAR(128) NOT NULL,
+            description VARCHAR(1024) NULL,
+            start_at DATETIME NOT NULL,
+            end_at DATETIME NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user_events_user (user_id),
+            INDEX idx_user_events_start (start_at)
+        )`,
         `CREATE TABLE IF NOT EXISTS USER_TASK_STATUSES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(64) NOT NULL UNIQUE,
@@ -700,6 +749,10 @@ async function generateDBTables() {
         ('ASSIGN_BATCH_STUDENT', 'Assign Student To Batch'),
         ('MANAGE_BATCH_ATTENDANCE', 'Manage Batch Attendance'),
         ('MANAGE_BATCH_CONTROLLER', 'Manage Batch Controllers'),
+        ('USE_PAGE_MANAGE_EVENTS', 'Page For Managing Batch Events'),
+        ('CREATE_BATCH_EVENT', 'Create Batch Event'),
+        ('UPDATE_BATCH_EVENT', 'Update Batch Event'),
+        ('DELETE_BATCH_EVENT', 'Delete Batch Event'),
         ('USE_PAGE_TASKS', 'Page For Managing Tasks'),
         ('CREATE_USER_TASK', 'Create User Task'),
         ('READ_ALL_USER_TASKS', 'Read All User Tasks'),
@@ -875,6 +928,32 @@ async function generateDBTables() {
     ];
 
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
+
+    // CREATE TABLE IF NOT EXISTS does not add columns to existing tables.
+    const ensureColumns = [
+        `ALTER TABLE EXAM_CANDIDATURE ADD COLUMN interruptions INT NOT NULL DEFAULT 0`,
+        `ALTER TABLE USERS ADD COLUMN guardian_email VARCHAR(48) NULL`,
+        `ALTER TABLE USERS ADD COLUMN dob DATE NULL`,
+        `ALTER TABLE BATCH_SCHEDULE ADD COLUMN subject VARCHAR(128) NULL`,
+        `ALTER TABLE BATCH_SCHEDULE ADD COLUMN event_handler INT NULL`,
+        `ALTER TABLE BATCH_SCHEDULE ADD INDEX idx_batch_schedule_handler (event_handler)`,
+    ];
+
+    await Promise.all(
+        ensureColumns.map((query) =>
+            executeSQLQueryRaw(query).catch((error) => {
+                // Duplicate column/index is expected on already-migrated databases.
+                if (
+                    error?.code !== "ER_DUP_FIELDNAME" &&
+                    error?.code !== "ER_DUP_KEYNAME" &&
+                    error?.errno !== 1060 &&
+                    error?.errno !== 1061
+                ) {
+                    logger.error(`ensureColumns failed: ${query} - ${error}`);
+                }
+            }),
+        ),
+    );
 }
 
 // Utility function to execute SQL queries using promises

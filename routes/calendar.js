@@ -16,13 +16,34 @@ const router = libExpress.Router();
 function toTimeString(value) {
     if (value == null) return null;
     if (typeof value === "string") {
-        return value.length >= 5 ? value.slice(0, 8) : value;
+        const match = value.match(/(\d{2}:\d{2}(?::\d{2})?)/);
+        return match ? match[1] : value.slice(0, 8);
     }
     if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        // mysql TIME is decoded as a UTC Date (e.g. 16:30 → 1970-01-01T16:30:00.000Z).
+        // Using local getHours() in IST shifts it to 22:00.
+        const hh = String(value.getUTCHours()).padStart(2, "0");
+        const mm = String(value.getUTCMinutes()).padStart(2, "0");
+        const ss = String(value.getUTCSeconds()).padStart(2, "0");
+        return `${hh}:${mm}:${ss}`;
+    }
+    return String(value);
+}
+
+function toWallClockDateTime(value) {
+    if (value == null) return null;
+    if (typeof value === "string") {
+        const match = value.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+        if (match) return `${match[1]} ${match[2]}`;
+        return value;
+    }
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const y = value.getFullYear();
+        const mo = String(value.getMonth() + 1).padStart(2, "0");
+        const d = String(value.getDate()).padStart(2, "0");
         const hh = String(value.getHours()).padStart(2, "0");
         const mm = String(value.getMinutes()).padStart(2, "0");
-        const ss = String(value.getSeconds()).padStart(2, "0");
-        return `${hh}:${mm}:${ss}`;
+        return `${y}-${mo}-${d} ${hh}:${mm}`;
     }
     return String(value);
 }
@@ -112,8 +133,8 @@ router.get("/", async (req, res) => {
                 type: "BATCH_EVENT",
                 title: batchEvent.title,
                 description: batchEvent.description,
-                start_at: batchEvent.start_at,
-                end_at: batchEvent.end_at,
+                start_at: toWallClockDateTime(batchEvent.start_at),
+                end_at: toWallClockDateTime(batchEvent.end_at),
                 cancelled: !!batchEvent.cancelled,
                 batch_id: batchEvent.batch_id,
                 batch_title: batchEvent.batch_title,
@@ -141,8 +162,8 @@ router.get("/", async (req, res) => {
             type: "USER_EVENT",
             title: userEvent.title,
             description: userEvent.description,
-            start_at: userEvent.start_at,
-            end_at: userEvent.end_at,
+            start_at: toWallClockDateTime(userEvent.start_at),
+            end_at: toWallClockDateTime(userEvent.end_at),
             cancelled: false,
             batch_id: null,
             batch_title: null,

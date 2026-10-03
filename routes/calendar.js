@@ -1,7 +1,7 @@
 const libExpress = require("express");
 const { validateRequestBody } = require("sahas_utils");
 const { getBatchesByUserId } = require("../db/batches");
-const { getBatchSchedulesByBatchIdsAndWeekday } = require("../db/batch_schedule");
+const { getBatchSchedulesByBatchIdsAndWeekday, getBatchSchedulesByEventHandlerAndWeekday } = require("../db/batch_schedule");
 const { getBatchEventsForUserBatchesOnDay } = require("../db/batch_events");
 const {
     getUserEventsByUserIdOnDay,
@@ -46,6 +46,35 @@ function dayBounds(dateStr) {
     };
 }
 
+function pushScheduleEvent(events, seen, schedule, dateStr) {
+    if (!schedule.active && schedule.active !== 1) return;
+    if (!dateInBatchRange(dateStr, schedule.start_date, schedule.end_date)) return;
+
+    const startTime = toTimeString(schedule.start_time);
+    const endTime = toTimeString(schedule.end_time);
+    if (!startTime || !endTime) return;
+
+    const key = `${schedule.batch_id}:${schedule.weekday}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    events.push({
+        id: `schedule:${schedule.batch_id}:${schedule.weekday}`,
+        type: "BATCH_SCHEDULE",
+        title: schedule.subject || schedule.batch_title || "Batch class",
+        description: null,
+        start_at: `${dateStr} ${startTime.slice(0, 5)}`,
+        end_at: `${dateStr} ${endTime.slice(0, 5)}`,
+        cancelled: false,
+        batch_id: schedule.batch_id,
+        batch_title: schedule.batch_title,
+        subject: schedule.subject || null,
+        event_handler: schedule.event_handler || null,
+        event_handler_name: schedule.event_handler_name || null,
+        editable: false,
+    });
+}
+
 router.get("/", async (req, res) => {
     if (!req.user?.id) {
         return res.status(401).json({ error: "Authentication Required" });
@@ -65,29 +94,12 @@ router.get("/", async (req, res) => {
     const batch_ids = activeBatches.map((batch) => batch.id);
 
     const events = [];
+    const seenSchedules = new Set();
 
     if (batch_ids.length) {
         const schedules = await getBatchSchedulesByBatchIdsAndWeekday({ batch_ids, weekday });
         for (const schedule of schedules) {
-            if (!schedule.active && schedule.active !== 1) continue;
-            if (!dateInBatchRange(dateStr, schedule.start_date, schedule.end_date)) continue;
-
-            const startTime = toTimeString(schedule.start_time);
-            const endTime = toTimeString(schedule.end_time);
-            if (!startTime || !endTime) continue;
-
-            events.push({
-                id: `schedule:${schedule.batch_id}:${weekday}`,
-                type: "BATCH_SCHEDULE",
-                title: schedule.batch_title || "Batch class",
-                description: null,
-                start_at: `${dateStr} ${startTime.slice(0, 5)}`,
-                end_at: `${dateStr} ${endTime.slice(0, 5)}`,
-                cancelled: false,
-                batch_id: schedule.batch_id,
-                batch_title: schedule.batch_title,
-                editable: false,
-            });
+            pushScheduleEvent(events, seenSchedules, schedule, dateStr);
         }
 
         const batchEvents = await getBatchEventsForUserBatchesOnDay({ batch_ids, day_start, day_end });
@@ -108,6 +120,14 @@ router.get("/", async (req, res) => {
                 editable: false,
             });
         }
+    }
+
+    const handlerSchedules = await getBatchSchedulesByEventHandlerAndWeekday({
+        user_id: req.user.id,
+        weekday,
+    });
+    for (const schedule of handlerSchedules) {
+        pushScheduleEvent(events, seenSchedules, schedule, dateStr);
     }
 
     const userEvents = await getUserEventsByUserIdOnDay({

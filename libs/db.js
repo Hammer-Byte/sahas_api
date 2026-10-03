@@ -623,10 +623,13 @@ async function generateDBTables() {
             weekday TINYINT NOT NULL,
             start_time TIME NULL,
             end_time TIME NULL,
+            subject VARCHAR(128) NULL,
+            event_handler INT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_batch_weekday (batch_id, weekday),
-            INDEX idx_batch_schedule_batch (batch_id)
+            INDEX idx_batch_schedule_batch (batch_id),
+            INDEX idx_batch_schedule_handler (event_handler)
         )`,
         `CREATE TABLE IF NOT EXISTS BATCH_EVENTS (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -931,13 +934,21 @@ async function generateDBTables() {
         `ALTER TABLE EXAM_CANDIDATURE ADD COLUMN interruptions INT NOT NULL DEFAULT 0`,
         `ALTER TABLE USERS ADD COLUMN guardian_email VARCHAR(48) NULL`,
         `ALTER TABLE USERS ADD COLUMN dob DATE NULL`,
+        `ALTER TABLE BATCH_SCHEDULE ADD COLUMN subject VARCHAR(128) NULL`,
+        `ALTER TABLE BATCH_SCHEDULE ADD COLUMN event_handler INT NULL`,
+        `ALTER TABLE BATCH_SCHEDULE ADD INDEX idx_batch_schedule_handler (event_handler)`,
     ];
 
     await Promise.all(
         ensureColumns.map((query) =>
             executeSQLQueryRaw(query).catch((error) => {
-                // Duplicate column is expected on already-migrated databases.
-                if (error?.code !== "ER_DUP_FIELDNAME" && error?.errno !== 1060) {
+                // Duplicate column/index is expected on already-migrated databases.
+                if (
+                    error?.code !== "ER_DUP_FIELDNAME" &&
+                    error?.code !== "ER_DUP_KEYNAME" &&
+                    error?.errno !== 1060 &&
+                    error?.errno !== 1061
+                ) {
                     logger.error(`ensureColumns failed: ${query} - ${error}`);
                 }
             }),

@@ -370,6 +370,9 @@ router.get("/:id/schedule", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCH
             weekday,
             start_time: row?.start_time || null,
             end_time: row?.end_time || null,
+            subject: row?.subject || null,
+            event_handler: row?.event_handler || null,
+            event_handler_name: row?.event_handler_name || null,
         };
     });
     return res.status(200).json(days);
@@ -386,12 +389,27 @@ router.put("/:id/schedule", requires_authority(AUTHORITIES.UPDATE_BATCH), async 
         return res.status(400).json({ error: "Expected 7 weekday schedule rows" });
     }
 
-    const { upsertBatchSchedule, getBatchScheduleByBatchId } = require("../db/batch_schedule");
-    const normalized = days.map((day) => ({
-        weekday: Number(day.weekday),
-        start_time: day.start_time || null,
-        end_time: day.end_time || null,
-    }));
+    const { upsertBatchSchedule, getBatchScheduleByBatchId, ensureScheduleColumns } = require("../db/batch_schedule");
+    const columnsReady = await ensureScheduleColumns();
+    if (!columnsReady) {
+        return res.status(500).json({ error: "Schedule subject/handler columns are missing. Restart API after latest schema update." });
+    }
+
+    const normalized = days.map((day) => {
+        const start_time = day.start_time || null;
+        const end_time = day.end_time || null;
+        const hasTimes = !!(start_time && end_time);
+        const subjectRaw = day.subject == null ? "" : String(day.subject).trim();
+        const handlerRaw = day.event_handler != null && day.event_handler !== "" ? Number(day.event_handler) : null;
+
+        return {
+            weekday: Number(day.weekday),
+            start_time,
+            end_time,
+            subject: hasTimes ? subjectRaw || null : null,
+            event_handler: hasTimes && Number.isFinite(handlerRaw) && handlerRaw > 0 ? handlerRaw : null,
+        };
+    });
 
     for (const day of normalized) {
         if (day.weekday < 0 || day.weekday > 6) {
@@ -399,6 +417,14 @@ router.put("/:id/schedule", requires_authority(AUTHORITIES.UPDATE_BATCH), async 
         }
         if ((day.start_time && !day.end_time) || (!day.start_time && day.end_time)) {
             return res.status(400).json({ error: "start_time and end_time must both be set or both null" });
+        }
+        if (day.start_time && day.end_time) {
+            if (!day.subject) {
+                return res.status(400).json({ error: "subject is required when schedule times are set" });
+            }
+            if (!day.event_handler) {
+                return res.status(400).json({ error: "event_handler is required when schedule times are set" });
+            }
         }
     }
 
@@ -416,6 +442,9 @@ router.put("/:id/schedule", requires_authority(AUTHORITIES.UPDATE_BATCH), async 
                 weekday,
                 start_time: row?.start_time || null,
                 end_time: row?.end_time || null,
+                subject: row?.subject || null,
+                event_handler: row?.event_handler || null,
+                event_handler_name: row?.event_handler_name || null,
             };
         }),
     );

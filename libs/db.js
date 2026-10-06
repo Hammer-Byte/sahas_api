@@ -957,6 +957,13 @@ async function generateDBTables() {
         `INSERT IGNORE INTO ROLE_AUTHORITIES (role_id, authority_id) SELECT 2, id FROM AUTHORITIES`,
         `INSERT IGNORE INTO ROLE_AUTHORITIES (role_id, authority_id)
          SELECT 1, id FROM AUTHORITIES WHERE title = 'READ_NOTIFICATION'`,
+        // Roles that can manage events also get notifications admin + create
+        `INSERT IGNORE INTO ROLE_AUTHORITIES (role_id, authority_id)
+         SELECT DISTINCT ra.role_id, a.id
+         FROM ROLE_AUTHORITIES ra
+         INNER JOIN AUTHORITIES event_auth ON event_auth.id = ra.authority_id AND event_auth.title = 'USE_PAGE_MANAGE_EVENTS'
+         CROSS JOIN AUTHORITIES a
+         WHERE a.title IN ('USE_PAGE_MANAGE_NOTIFICATIONS', 'CREATE_NOTIFICATION')`,
 
         `INSERT IGNORE INTO USERS (full_name, email ) VALUES ('Nisarg', 'hammerbyte.nisarg@gmail.com');`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (1, 2);`,

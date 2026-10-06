@@ -26,7 +26,7 @@ const {
 } = require("../db/batches");
 const { addGlobalNotesForUsers } = require("../db/global_notes");
 const { addCounselingNotesForUsers } = require("../db/counseling_notes");
-const { createNotification, createNotificationsForUsers } = require("../libs/notifications");
+const { createNotification, createNotificationsForUsers, getWarningTypeId, getAlertTypeId } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -119,6 +119,18 @@ router.post("/:id/attendance", requires_authority(AUTHORITIES.MANAGE_BATCH_ATTEN
         records,
         created_by: req.user?.id,
     });
+
+    const warningTypeId = await getWarningTypeId();
+    for (const record of records) {
+        const isAbsent = record.status === "ABSENT";
+        await createNotification({
+            user_id: record.user_id,
+            title: isAbsent ? "You were marked absent" : "Attendance recorded",
+            description: `You were marked ${record.status.toLowerCase()} on ${attendance_date}.`,
+            type_id: isAbsent ? warningTypeId : undefined,
+            created_by: req.user?.id,
+        });
+    }
 
     const students = await getBatchAttendanceByDate({ batch_id: req.params.id, attendance_date });
     return res.status(200).json({ attendance_date, students });
@@ -271,6 +283,14 @@ router.post("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONT
     if (!id) {
         return res.status(400).json({ error: "Failed To Add Controller" });
     }
+
+    await createNotification({
+        user_id: validatedRequestBody.user_id,
+        title: "You were assigned as batch controller",
+        description: `You were assigned as controller for batch "${batch.title}".`,
+        type_id: await getAlertTypeId(),
+        created_by: req.user?.id,
+    });
 
     const controllers = await getBatchControllers({ batch_id: req.params.id });
     const added = controllers.find((controller) => Number(controller.user_id) === Number(validatedRequestBody.user_id));
@@ -453,6 +473,15 @@ router.put("/:id/schedule", requires_authority(AUTHORITIES.UPDATE_BATCH), async 
     if (!saved) {
         return res.status(400).json({ error: "Failed To Update Batch Schedule" });
     }
+
+    const scheduleUserIds = await getBatchUserIds({ batch_id: req.params.id });
+    await createNotificationsForUsers({
+        user_ids: scheduleUserIds,
+        title: "Your batch schedule was updated",
+        description: `The schedule for batch "${batch.title}" was updated.`,
+        type_id: await getAlertTypeId(),
+        created_by: req.user?.id,
+    });
 
     const rows = await getBatchScheduleByBatchId({ batch_id: req.params.id });
     const byWeekday = new Map(rows.map((row) => [Number(row.weekday), row]));

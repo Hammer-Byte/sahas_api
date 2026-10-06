@@ -1,17 +1,41 @@
 const { requestService, logger } = require("sahas_utils");
 const { getUserById } = require("../db/users");
 const { addNotification, addNotificationAttachments, getNotificationTypes } = require("../db/notifications");
+const { getBatchUserIds } = require("../db/batches");
 
-let noticeTypeIdCache = null;
+const typeIdCache = {};
 
-async function getNoticeTypeId() {
-    if (noticeTypeIdCache) {
-        return noticeTypeIdCache;
+async function getNotificationTypeIdByTitle(title = "Notice") {
+    if (typeIdCache[title]) {
+        return typeIdCache[title];
     }
     const types = await getNotificationTypes();
-    const notice = types.find((type) => type.title === "Notice");
-    noticeTypeIdCache = notice?.id || 1;
-    return noticeTypeIdCache;
+    const match = types.find((type) => type.title === title);
+    typeIdCache[title] = match?.id || types.find((type) => type.title === "Notice")?.id || 1;
+    return typeIdCache[title];
+}
+
+async function getNoticeTypeId() {
+    return getNotificationTypeIdByTitle("Notice");
+}
+
+async function getAlertTypeId() {
+    return getNotificationTypeIdByTitle("Alert");
+}
+
+async function getWarningTypeId() {
+    return getNotificationTypeIdByTitle("Warning");
+}
+
+async function getUserIdsForBatchIds(batch_ids = []) {
+    const seen = new Set();
+    for (const batch_id of batch_ids) {
+        const user_ids = await getBatchUserIds({ batch_id });
+        for (const user_id of user_ids) {
+            seen.add(Number(user_id));
+        }
+    }
+    return [...seen].filter(Boolean);
 }
 
 async function createNotification({ user_id, title, description = null, type_id = null, created_by = null, attachments = [] }) {
@@ -73,6 +97,10 @@ async function createNotificationsForUsers({ user_ids = [], title, description =
 
 module.exports = {
     getNoticeTypeId,
+    getAlertTypeId,
+    getWarningTypeId,
+    getNotificationTypeIdByTitle,
+    getUserIdsForBatchIds,
     createNotification,
     createNotificationsForUsers,
 };

@@ -3,6 +3,8 @@ const { addInquiryNote, getInquiryNoteById, deleteInquiryNoteById } = require(".
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { getInquiryById } = require("../db/inquiries");
+const { createNotification } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -14,6 +16,15 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_INQUIRY_NOTE), async (req
 
     if (isRequestBodyValid) {
         const inquityNoteId = await addInquiryNote({ ...validatedRequestBody, created_by: req.user.id });
+        const inquiry = await getInquiryById({ id: validatedRequestBody.inquiry_id });
+        if (inquiry?.user_id) {
+            await createNotification({
+                user_id: inquiry.user_id,
+                title: "An inquiry note was added",
+                description: "A new note was added to your inquiry.",
+                created_by: req.user.id,
+            });
+        }
         res.status(201).json(await getInquiryNoteById({ id: inquityNoteId }));
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });

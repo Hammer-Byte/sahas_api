@@ -364,6 +364,16 @@ router.put("/", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) =>
         });
         await updateUserHistoryById({ id: validatedRequestBody.id, ...validatedRequestBody?.history });
 
+        if (req.body.stream_selection_test_allowed === true || req.body.stream_selection_test_allowed === 1) {
+            const { createNotification } = require("../libs/notifications");
+            await createNotification({
+                user_id: validatedRequestBody.id,
+                title: "Psychometric test access granted",
+                description: "You can now take the stream selection test.",
+                created_by: req.user.id,
+            });
+        }
+
         const user = await getUserById({ id: validatedRequestBody.id });
         user.history = await getUserHistoryById({ user_id: user.id });
 
@@ -424,6 +434,13 @@ router.patch(
     },
     async (req, res) => {
         await patchUserStreamSelectionTestAllowedById({ id: req.user.id, stream_selection_test_allowed: true });
+        const { createNotification } = require("../libs/notifications");
+        await createNotification({
+            user_id: req.user.id,
+            title: "Psychometric test access granted",
+            description: "You can now take the stream selection test.",
+            created_by: req.user.id,
+        });
         res.sendStatus(200);
     },
 );

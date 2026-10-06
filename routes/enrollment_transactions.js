@@ -252,7 +252,22 @@ router.patch("/manual-verification", async (req, res) => {
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        updateEnrollmentTransactionVerificationById(validatedRequestBody);
+        await updateEnrollmentTransactionVerificationById(validatedRequestBody);
+        const transaction = await getEnrollmentTransactionById({ id: validatedRequestBody.id });
+        if (transaction?.enrollment_id) {
+            const enrollment = await getEnrollmentById({ id: transaction.enrollment_id });
+            if (enrollment?.user_id) {
+                const verified = !!validatedRequestBody.manually_verified;
+                await createNotification({
+                    user_id: enrollment.user_id,
+                    title: verified ? "Payment verified" : "Payment verification updated",
+                    description: verified
+                        ? `Transaction #${validatedRequestBody.id} was manually verified.`
+                        : `Verification for transaction #${validatedRequestBody.id} was updated.`,
+                    created_by: req.user?.id,
+                });
+            }
+        }
         res.sendStatus(200);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });

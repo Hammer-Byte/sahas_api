@@ -7,6 +7,9 @@ const {
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { getEnrollmentById } = require("../db/enrollments");
+const { getCourseById } = require("../db/courses");
+const { createNotification } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -18,7 +21,18 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_ENROLLMENT_COURSE), async
 
     if (isRequestBodyValid) {
         const enrollmentCourseId = await addEnrollmentCourse({ created_by: req.user.id, ...validatedRequestBody });
-        res.status(201).json(await getEnrollmentCourseById({ id: enrollmentCourseId }));
+        const enrollmentCourse = await getEnrollmentCourseById({ id: enrollmentCourseId });
+        const enrollment = await getEnrollmentById({ id: validatedRequestBody.enrollment_id });
+        const course = await getCourseById({ id: validatedRequestBody.course_id });
+        if (enrollment?.user_id) {
+            await createNotification({
+                user_id: enrollment.user_id,
+                title: "A course was added to your enrollment",
+                description: `Course "${course?.title || validatedRequestBody.course_id}" was added to your enrollment.`,
+                created_by: req.user.id,
+            });
+        }
+        res.status(201).json(enrollmentCourse);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }

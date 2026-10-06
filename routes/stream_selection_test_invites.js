@@ -10,6 +10,7 @@ const {  patchUserStreamSelectionTestAllowedById } = require("../db/users");
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { createNotification } = require("../libs/notifications");
 
 
 const parseAuthenticationToken = require("../middlewares/parse_authentication_token");
@@ -50,6 +51,12 @@ router.get("/:id/attend", async (req, res) => {
 
     if (invite && invite.active) {
         await patchUserStreamSelectionTestAllowedById({ id: req.user.id, stream_selection_test_allowed: true });
+        await createNotification({
+            user_id: req.user.id,
+            title: "Psychometric test access granted",
+            description: "You can now take the stream selection test.",
+            created_by: req.user.id,
+        });
         res.sendStatus(200);
     } else {
         res.status(400).json({ error: "Invite not found or inactive" });

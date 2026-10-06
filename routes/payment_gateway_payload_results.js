@@ -2,6 +2,7 @@ const libExpress = require("express");
 const { validateRequestBody } = require("sahas_utils");
 const { PAYMENT_POST_ROUTE } = require("../constants");
 const { getUserByEmail, patchUserStreamSelectionTestAllowedById } = require("../db/users");
+const { createNotification } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -16,6 +17,12 @@ router.post("/", async (req, res) => {
         if (validatedRequestBody.productinfo === "Stream Selection Test") {
             const user = await getUserByEmail({ email: req.body.email });
             await patchUserStreamSelectionTestAllowedById({ id: user.id, stream_selection_test_allowed: true });
+            await createNotification({
+                user_id: user.id,
+                title: "Psychometric test access granted",
+                description: "You can now take the stream selection test.",
+                created_by: user.id,
+            });
             return res.redirect(redirectionHost.concat("stream-selection-test/enroll"));
         }
 

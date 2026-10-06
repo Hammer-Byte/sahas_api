@@ -13,6 +13,7 @@ const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { getAllBranches } = require("../db/branches");
 const { getAllCourses } = require("../db/courses");
+const { createNotification, getAlertTypeId } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -25,6 +26,12 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_INQUIRY), async (req, res
     if (isRequestBodyValid) {
         const inquiryId = await addInquiry({ ...validatedRequestBody, created_by: req.user.id });
         await addInquiryNote({ inquiry_id: inquiryId, note: validatedRequestBody.note, created_by: req.user.id });
+        await createNotification({
+            user_id: validatedRequestBody.user_id,
+            title: "An inquiry was created",
+            description: "A new inquiry was created on your profile.",
+            created_by: req.user.id,
+        });
         res.status(201).json(await getInquiryById({ id: inquiryId }));
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
@@ -94,7 +101,17 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_INQUIRY), async (req, re
 
     if (isRequestBodyValid) {
         await updateInquiryById({ ...validatedRequestBody });
-        res.status(200).json(await getInquiryById(validatedRequestBody));
+        const inquiry = await getInquiryById(validatedRequestBody);
+        if (inquiry?.user_id) {
+            await createNotification({
+                user_id: inquiry.user_id,
+                title: "An inquiry was updated",
+                description: `Your inquiry is now ${validatedRequestBody.active ? "open" : "closed"}.`,
+                type_id: await getAlertTypeId(),
+                created_by: req.user.id,
+            });
+        }
+        res.status(200).json(inquiry);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }

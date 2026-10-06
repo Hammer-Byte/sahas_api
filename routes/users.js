@@ -13,6 +13,7 @@ const {
     patchUserStreamSelectionTestAllowedById,
 } = require("../db/users");
 const { getInquiriesByUserId } = require("../db/inquiries");
+const { getNotificationsByUserId, markAllSeenByUserId } = require("../db/notifications");
 const { validateRequestBody } = require("sahas_utils");
 const { getEnrollmentsByUserId } = require("../db/enrollments");
 const { getWalletTransactionsByUserId } = require("../db/wallet_transactions");
@@ -436,6 +437,24 @@ router.get("/:id/inquiries", requires_authority(AUTHORITIES.READ_USER_INQUIRIES)
         return res.status(400).json({ error: "Missing User Id" });
     }
     res.status(200).json(await getInquiriesByUserId({ user_id: req.params.id }));
+});
+
+router.get("/:id/notifications", async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+
+    const userId = Number(req.params.id);
+    const isSelf = Number(req.user.id) === userId;
+    if (!isSelf && !hasRequiredAuthority(req.user.authorities, AUTHORITIES.MANAGE_OTHER_USERS)) {
+        return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const notifications = await getNotificationsByUserId({ user_id: userId });
+    if (isSelf) {
+        await markAllSeenByUserId({ user_id: userId });
+    }
+    res.status(200).json(notifications);
 });
 
 //tested

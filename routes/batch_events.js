@@ -11,6 +11,7 @@ const {
     updateBatchEventById,
     deleteBatchEventById,
 } = require("../db/batch_events");
+const { createNotificationsForUsers, getUserIdsForBatchIds, getAlertTypeId, getWarningTypeId } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -62,7 +63,16 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_BATCH_EVENT), async (req,
     }
 
     await setBatchEventBatches({ batch_event_id: id, batch_ids: validatedRequestBody.batch_ids });
-    res.status(201).json(await getBatchEventById({ id }));
+    const event = await getBatchEventById({ id });
+    const user_ids = await getUserIdsForBatchIds(validatedRequestBody.batch_ids);
+    await createNotificationsForUsers({
+        user_ids,
+        title: "A batch event was added",
+        description: `Event "${event.title}" was added to your batch.`,
+        type_id: await getAlertTypeId(),
+        created_by: req.user?.id,
+    });
+    res.status(201).json(event);
 });
 
 router.patch("/", requires_authority(AUTHORITIES.UPDATE_BATCH_EVENT), async (req, res) => {
@@ -97,7 +107,19 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_BATCH_EVENT), async (req
         batch_ids: validatedRequestBody.batch_ids,
     });
 
-    res.status(200).json(await getBatchEventById({ id: validatedRequestBody.id }));
+    const event = await getBatchEventById({ id: validatedRequestBody.id });
+    const cancelled = !!req.body.cancelled;
+    const user_ids = await getUserIdsForBatchIds(validatedRequestBody.batch_ids);
+    await createNotificationsForUsers({
+        user_ids,
+        title: cancelled ? "A batch event was cancelled" : "A batch event was updated",
+        description: cancelled
+            ? `Event "${event.title}" was cancelled.`
+            : `Event "${event.title}" was updated.`,
+        type_id: cancelled ? await getWarningTypeId() : await getAlertTypeId(),
+        created_by: req.user?.id,
+    });
+    res.status(200).json(event);
 });
 
 router.delete("/:id", requires_authority(AUTHORITIES.DELETE_BATCH_EVENT), async (req, res) => {

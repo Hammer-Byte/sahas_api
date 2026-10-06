@@ -5,6 +5,7 @@ const { addEnrollmentCourse, getEnrollmentCoursesByEnrollmentId } = require("../
 const { getTransactionsByEnrollmentId } = require("../db/enrollment_transactions");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { createNotification, getAlertTypeId } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -18,7 +19,15 @@ router.patch("/",requires_authority(AUTHORITIES.UPDATE_ENROLLMENT), async (req, 
 
     if (isRequestBodyValid) {
         await updateEnrollmentById({ ...validatedRequestBody });
-        res.status(200).json(await getEnrollmentById({ ...validatedRequestBody }));
+        const enrollment = await getEnrollmentById({ ...validatedRequestBody });
+        await createNotification({
+            user_id: enrollment.user_id,
+            title: "Your enrollment was updated",
+            description: `Your enrollment access was updated (digital=${!!validatedRequestBody.digital_access}, on-site=${!!validatedRequestBody.on_site_access}).`,
+            type_id: await getAlertTypeId(),
+            created_by: req.user.id,
+        });
+        res.status(200).json(enrollment);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
@@ -35,6 +44,16 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_ENROLLMENT), async (req, 
         validatedRequestBody?.courses?.forEach((course) =>
             addEnrollmentCourse({ created_by: req.user.id, enrollment_id: enrollmentId, course_id: course?.id }),
         );
+
+        const courseTitles = (validatedRequestBody.courses || []).map((course) => course?.title).filter(Boolean).join(", ");
+        await createNotification({
+            user_id: validatedRequestBody.user_id,
+            title: "You were enrolled in a course",
+            description: courseTitles
+                ? `You were enrolled for ${courseTitles}.`
+                : "A new enrollment was created for you.",
+            created_by: req.user.id,
+        });
 
         res.status(201).json(await getEnrollmentById({ id: enrollmentId }));
     } else {

@@ -36,6 +36,7 @@ const { buildExamSeriesResult } = require("../libs/exam_series_result");
 const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { validateRequestBody } = require("sahas_utils");
 const { parseAppDateTime } = require("../utils");
+const { createNotification, createNotificationsForUsers, getAlertTypeId } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -167,6 +168,13 @@ router.post("/enrollments", async (req, res) => {
     if (!enrollmentId) {
         return res.status(400).json({ error: "Failed To Enroll In Exam Series" });
     }
+
+    await createNotification({
+        user_id: req.user.id,
+        title: "Exam series access granted",
+        description: `You enrolled in exam series "${examSeries.title}".`,
+        created_by: req.user.id,
+    });
 
     res.status(201).json(
         await getExamSeriesEnrollmentByUserIdAndExamSeriesId({
@@ -576,7 +584,17 @@ router.post("/:examSeriesId/exams", requires_authority(AUTHORITIES.CREATE_EXAM),
         return res.status(400).json({ error: "Failed To Add Exam" });
     }
 
-    res.status(201).json(await getExamById({ id: examId }));
+    const exam = await getExamById({ id: examId });
+    const enrollments = await getExamSeriesEnrollmentsByExamSeriesId({ exam_series_id: req.params.examSeriesId });
+    await createNotificationsForUsers({
+        user_ids: enrollments.map((enrollment) => enrollment.user_id),
+        title: "A new exam was scheduled",
+        description: `Exam "${exam?.title || validatedRequestBody.title}" was scheduled in "${examSeries.title}".`,
+        type_id: await getAlertTypeId(),
+        created_by: req.user?.id,
+    });
+
+    res.status(201).json(exam);
 });
 
 router.get("/:examSeriesId/exams", async (req, res) => {

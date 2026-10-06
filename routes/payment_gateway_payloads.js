@@ -55,6 +55,12 @@ router.get("/:id", async (req, res) => {
                         user_id: req?.user?.id,
                         exam_series_id: paymentGateWayPayLoad.exam_series_id,
                     });
+                    await createNotification({
+                        user_id: req.user.id,
+                        title: "Exam series access granted",
+                        description: `You enrolled in exam series "${paymentGateWayPayLoad?.examSeries?.title || paymentGateWayPayLoad.exam_series_id}".`,
+                        created_by: req.user.id,
+                    });
                 }
 
                 return;

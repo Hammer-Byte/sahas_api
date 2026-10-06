@@ -4,6 +4,7 @@ const { deleteUserRoleById, addUserRole, getUserRoleById } = require("../db/user
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { createNotification, getAlertTypeId } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -15,8 +16,16 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_USER_ROLES), async (req, 
 
     if (isRequestBodyValid) {
         const userRoleId = await addUserRole({ created_by: req.user.id, ...validatedRequestBody });
+        const userRole = await getUserRoleById({ id: userRoleId });
+        await createNotification({
+            user_id: validatedRequestBody.user_id,
+            title: "A role was assigned to you",
+            description: `You were granted the "${userRole?.title || "new"}" role.`,
+            type_id: await getAlertTypeId(),
+            created_by: req.user.id,
+        });
 
-        res.status(201).json(await getUserRoleById({ id: userRoleId }));
+        res.status(201).json(userRole);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }

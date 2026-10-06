@@ -9,6 +9,7 @@ const parseGuestUser = require("../middlewares/parse_guest_user");
 const { getFormattedDate } = require("../utils");
 const { PAYMENT_RESULT_API_PATH } = require("../constants");
 const { getConfigByKey } = require("../db/configs");
+const { createNotification } = require("../libs/notifications");
 
 const libCrypto = require("crypto");
 const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
@@ -201,6 +202,12 @@ router.post("/", parseGuestUser, async (req, res) => {
                     if (generatedResult?.cdn_url && responseCode === 201) {
                         await updateStreamSelectionTestReportUrlById({ id: streamSelectionTestId, report_url: generatedResult.cdn_url });
                         logger.success(`Stream Selection Test Result For Stream Selection Test Id - ${streamSelectionTestId} Generated !`);
+                        await createNotification({
+                            user_id: req.user.id,
+                            title: "Your psychometric report is ready",
+                            description: "Your stream selection report is ready. Open notifications or your test result to view it.",
+                            created_by: req.user.id,
+                        });
                     } else {
                         logger.error(
                             `Failed To Generate Result For Stream Selection Test Id - ${streamSelectionTestId} - Media Responded With ${JSON.stringify(generatedResult)}`,
@@ -218,6 +225,12 @@ router.post("/", parseGuestUser, async (req, res) => {
             const streamSelectionTest = await getLatestStreamSelectionTestByUserId({ user_id: req?.user?.id });
             streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
             streamSelectionTest.result = result;
+            await createNotification({
+                user_id: req.user.id,
+                title: "Stream selection test completed",
+                description: `Your result is ready. Suitable stream: ${result?.suitable_stream || "see report"}.`,
+                created_by: req.user.id,
+            });
             return res.status(201).json(streamSelectionTest);
 
         }

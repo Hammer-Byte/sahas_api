@@ -3,6 +3,7 @@ const { updateUserDeviceStatusById, getUserDeviceById } = require("../db/devices
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { createNotification, getWarningTypeId } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -14,7 +15,18 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_USER_DEVICE), async (req
 
     if (isRequestBodyValid) {
         await updateUserDeviceStatusById(validatedRequestBody);
-        res.status(200).json(await getUserDeviceById(validatedRequestBody));
+        const device = await getUserDeviceById(validatedRequestBody);
+        const active = !!validatedRequestBody.active;
+        if (device?.user_id) {
+            await createNotification({
+                user_id: device.user_id,
+                title: active ? "A device was activated" : "A device was deactivated",
+                description: `Device #${validatedRequestBody.id} is now ${active ? "active" : "inactive"}.`,
+                type_id: active ? undefined : await getWarningTypeId(),
+                created_by: req.user?.id,
+            });
+        }
+        res.status(200).json(device);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }

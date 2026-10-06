@@ -20,8 +20,13 @@ const {
     deleteUserTaskCommentById,
     deleteUserTaskCommentsByTaskId,
 } = require("../db/user_task_comments");
+const { createNotification, createNotificationsForUsers } = require("../libs/notifications");
 
 const router = libExpress.Router();
+
+function getTaskActivityRecipientIds(task, actorId) {
+    return [...new Set([Number(task.user_id), Number(task.created_by)].filter((id) => id && id !== Number(actorId)))];
+}
 
 function canViewTask(task, userId, authorities = []) {
     if (!task) return false;
@@ -112,7 +117,14 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_USER_TASK), async (req, r
             deadline: req.body.deadline ?? null,
             created_by: req.user.id,
         });
-        return res.status(201).json(await getUserTaskById({ id }));
+        const task = await getUserTaskById({ id });
+        await createNotification({
+            user_id: task.user_id,
+            title: "A task was assigned to you",
+            description: `Task "${task.title}" has been assigned to you.`,
+            created_by: req.user.id,
+        });
+        return res.status(201).json(task);
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Task" });
     }
@@ -190,6 +202,12 @@ router.post("/:id/comments", requires_authority(AUTHORITIES.USE_PAGE_TASKS), asy
             attachment: req.body.attachment ?? null,
             created_by: req.user.id,
         });
+        await createNotificationsForUsers({
+            user_ids: getTaskActivityRecipientIds(task, req.user.id),
+            title: "There was activity on a task",
+            description: `A comment was added on task "${task.title}".`,
+            created_by: req.user.id,
+        });
         return res.status(201).json(await getUserTaskCommentById({ id }));
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Comment" });
@@ -227,9 +245,26 @@ router.patch("/:id", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req,
         const priority = req.body.priority ?? task.priority;
         const attachment = req.body.attachment !== undefined ? req.body.attachment : task.attachment;
         const deadline = req.body.deadline !== undefined ? req.body.deadline : task.deadline;
+        const assigneeChanged = Number(user_id) !== Number(task.user_id);
         try {
             await updateUserTaskById({ id: task.id, title, description, user_id, status_id, priority, attachment, deadline });
-            return res.status(200).json(await getUserTaskById({ id: task.id }));
+            const updated = await getUserTaskById({ id: task.id });
+            if (assigneeChanged) {
+                await createNotification({
+                    user_id: updated.user_id,
+                    title: "A task was assigned to you",
+                    description: `Task "${updated.title}" has been assigned to you.`,
+                    created_by: req.user.id,
+                });
+            } else {
+                await createNotificationsForUsers({
+                    user_ids: getTaskActivityRecipientIds(updated, req.user.id),
+                    title: "There was activity on a task",
+                    description: `Task "${updated.title}" was updated.`,
+                    created_by: req.user.id,
+                });
+            }
+            return res.status(200).json(updated);
         } catch (error) {
             return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Update Task" });
         }
@@ -242,7 +277,14 @@ router.patch("/:id", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req,
         }
         try {
             await updateUserTaskStatusById({ id: task.id, status_id: req.body.status_id });
-            return res.status(200).json(await getUserTaskById({ id: task.id }));
+            const updated = await getUserTaskById({ id: task.id });
+            await createNotificationsForUsers({
+                user_ids: getTaskActivityRecipientIds(updated, req.user.id),
+                title: "There was activity on a task",
+                description: `Task "${updated.title}" was updated.`,
+                created_by: req.user.id,
+            });
+            return res.status(200).json(updated);
         } catch (error) {
             return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Update Status" });
         }

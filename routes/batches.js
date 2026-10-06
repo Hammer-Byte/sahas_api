@@ -26,6 +26,7 @@ const {
 } = require("../db/batches");
 const { addGlobalNotesForUsers } = require("../db/global_notes");
 const { addCounselingNotesForUsers } = require("../db/counseling_notes");
+const { createNotification, createNotificationsForUsers } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -163,6 +164,13 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
             return res.status(400).json({ error: "Failed To Add Global Notes" });
         }
 
+        await createNotificationsForUsers({
+            user_ids,
+            title: "A global note was created",
+            description: "A new global note has been added to your profile.",
+            created_by: req.user.id,
+        });
+
         return res.status(201).json({ count });
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Global Notes" });
@@ -208,6 +216,13 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
         if (!count) {
             return res.status(400).json({ error: "Failed To Add Counseling Notes" });
         }
+
+        await createNotificationsForUsers({
+            user_ids,
+            title: "A counseling note was created",
+            description: "A new counseling note has been added to your profile.",
+            created_by: req.user.id,
+        });
 
         return res.status(201).json({ count });
     } catch (error) {
@@ -295,6 +310,12 @@ router.post("/:id/users", requires_authority(AUTHORITIES.ASSIGN_BATCH_STUDENT), 
 
     const assigned = await getBatchUserById({ id });
     if (assigned) {
+        await createNotification({
+            user_id: validatedRequestBody.user_id,
+            title: "You have been added to a batch",
+            description: `You have been added to batch "${batch.title}".`,
+            created_by: req.user?.id,
+        });
         return res.status(201).json(assigned);
     }
 

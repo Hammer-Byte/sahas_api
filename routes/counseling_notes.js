@@ -3,6 +3,7 @@ const { addCounselingNote, deleteCounselingNoteById, updateCounselingNoteById, g
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { createNotification } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -23,7 +24,14 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_COUNSELING_NOTE), async (
             attachment: req.body.attachment ?? null,
             created_by: req.user.id,
         });
-        return res.status(201).json(await getCounselingNoteById({ id: counselingNoteId }));
+        const note = await getCounselingNoteById({ id: counselingNoteId });
+        await createNotification({
+            user_id: note.user_id,
+            title: "A counseling note was created",
+            description: "A new counseling note has been added to your profile.",
+            created_by: req.user.id,
+        });
+        return res.status(201).json(note);
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Counseling Note" });
     }
@@ -42,7 +50,14 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_COUNSELING_NOTE), async 
             type: req.body.type ?? null,
             attachment: req.body.attachment ?? null,
         });
-        res.status(200).json(await getCounselingNoteById({ id: validatedRequestBody.id }));
+        const note = await getCounselingNoteById({ id: validatedRequestBody.id });
+        await createNotification({
+            user_id: note.user_id,
+            title: "A counseling note was updated",
+            description: "A counseling note on your profile was updated.",
+            created_by: req.user.id,
+        });
+        res.status(200).json(note);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }

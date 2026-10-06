@@ -18,6 +18,7 @@ const { logger } = require("sahas_utils");
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { createNotification } = require("../libs/notifications");
 
 //tested
 router.get(
@@ -229,6 +230,14 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_ENROLLMENT_TRANSACTION), 
                     }
                 },
             });
+
+        const courseTitle = enrollmentCourses.map(({ title }) => title).join(", ") || "course";
+        await createNotification({
+            user_id: enrollment.user_id,
+            title: "An enrollment transaction was added",
+            description: `An enrollment transaction for "${courseTitle}" (amount ${validatedRequestBody.amount}) was recorded.`,
+            created_by: req.user.id,
+        });
 
         res.status(201).json(enrollmentTransaction);
     } else {

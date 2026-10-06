@@ -6,6 +6,7 @@ const { getAllRoles } = require("../db/roles");
 const { getAllAuthorities } = require("../db/authorities");
 const { getAllChapterTypes } = require("../db/chapter_types");
 const { getAllUserTaskStatuses } = require("../db/user_tasks");
+const { getNotificationTypes } = require("../db/notifications");
 const { getAllStreamSelectionSuggestions } = require("../db/stream_selection_suggestions");
 const { getConfigByKey, writeConfigByKey } = require("../db/configs");
 const {
@@ -52,6 +53,7 @@ router.get("/", async (req, res) => {
     config.global.authorities = (await load("authorities", getAllAuthorities)) ?? [];
     config.global.chapter_types = (await load("chapter_types", getAllChapterTypes)) ?? [];
     config.global.user_task_statuses = (await load("user_task_statuses", getAllUserTaskStatuses)) ?? [];
+    config.global.notification_types = (await load("notification_types", getNotificationTypes)) ?? [];
     config.dash_board.carousel_images = (await load("carousel_images", getAllDashboardCarouselItems)) ?? [];
 
     const fees = await load("stream_selection_fees", () => getConfigByKey("stream_selection_fees"));

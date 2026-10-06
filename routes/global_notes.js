@@ -3,6 +3,7 @@ const { addGlobalNote, deleteGlobalNoteById, updateGlobalNoteById, getGlobalNote
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { createNotification } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -23,7 +24,14 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req,
             attachment: req.body.attachment ?? null,
             created_by: req.user.id,
         });
-        return res.status(201).json(await getGlobalNoteById({ id: globalNoteId }));
+        const note = await getGlobalNoteById({ id: globalNoteId });
+        await createNotification({
+            user_id: note.user_id,
+            title: "A global note was created",
+            description: "A new global note has been added to your profile.",
+            created_by: req.user.id,
+        });
+        return res.status(201).json(note);
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Global Note" });
     }
@@ -42,7 +50,14 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_GLOBAL_NOTE), async (req
             type: req.body.type ?? null,
             attachment: req.body.attachment ?? null,
         });
-        res.status(200).json(await getGlobalNoteById({ id: validatedRequestBody.id }));
+        const note = await getGlobalNoteById({ id: validatedRequestBody.id });
+        await createNotification({
+            user_id: note.user_id,
+            title: "A global note was updated",
+            description: "A global note on your profile was updated.",
+            created_by: req.user.id,
+        });
+        res.status(200).json(note);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }

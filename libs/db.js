@@ -702,6 +702,32 @@ async function generateDBTables() {
             INDEX idx_user_task_comments_task (task_id),
             INDEX idx_user_task_comments_created_by (created_by)
         )`,
+        `CREATE TABLE IF NOT EXISTS NOTIFICATION_TYPES (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(64) NOT NULL UNIQUE,
+            color VARCHAR(32) NOT NULL DEFAULT '#E5E7EB',
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS NOTIFICATIONS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NULL,
+            type_id INT NOT NULL,
+            seen TINYINT(1) NOT NULL DEFAULT 0,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_notifications_user (user_id),
+            INDEX idx_notifications_user_seen (user_id, seen),
+            INDEX idx_notifications_type (type_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS NOTIFICATION_ATTACHMENTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            notification_id INT NOT NULL,
+            attachment VARCHAR(512) NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_notif_attachments_notification (notification_id)
+        )`,
 
         `INSERT IGNORE INTO CONFIGS (config_key, config_value) VALUES
         ('under_maintenance', 'false'),
@@ -722,6 +748,11 @@ async function generateDBTables() {
         (2, 'In Progress', '#FEF3C7'),
         (3, 'Completed', '#D1FAE5'),
         (4, 'Cancelled', '#FEE2E2')`,
+
+        `INSERT IGNORE INTO NOTIFICATION_TYPES (id, title, color) VALUES
+        (1, 'Notice', '#DBEAFE'),
+        (2, 'Alert', '#FEF3C7'),
+        (3, 'Warning', '#FEE2E2')`,
 
         `INSERT IGNORE INTO AUTHORITIES (title, description) VALUES
         ('MANAGE_OTHER_USERS', 'Manage Other User Profile'),
@@ -914,12 +945,25 @@ async function generateDBTables() {
         ('CREATE_USER_NOTE', 'Create User Note'),
         ('READ_USER_NOTE', 'Read User Note'),
         ('UPDATE_USER_NOTE', 'Update User Note'),
-        ('DELETE_USER_NOTE', 'Delete User Note')`,
+        ('DELETE_USER_NOTE', 'Delete User Note'),
+
+        ('CREATE_NOTIFICATION', 'Create Notification'),
+        ('READ_NOTIFICATION', 'Read Notification'),
+        ('USE_PAGE_MANAGE_NOTIFICATIONS', 'Page For Managing Notifications')`,
 
         `INSERT IGNORE INTO ROLES (title) VALUES ('STUDENT')`,
         `INSERT IGNORE INTO ROLES (title) VALUES ('DEVELOPER')`,
 
         `INSERT IGNORE INTO ROLE_AUTHORITIES (role_id, authority_id) SELECT 2, id FROM AUTHORITIES`,
+        `INSERT IGNORE INTO ROLE_AUTHORITIES (role_id, authority_id)
+         SELECT 1, id FROM AUTHORITIES WHERE title = 'READ_NOTIFICATION'`,
+        // Roles that can manage events also get notifications admin + create
+        `INSERT IGNORE INTO ROLE_AUTHORITIES (role_id, authority_id)
+         SELECT DISTINCT ra.role_id, a.id
+         FROM ROLE_AUTHORITIES ra
+         INNER JOIN AUTHORITIES event_auth ON event_auth.id = ra.authority_id AND event_auth.title = 'USE_PAGE_MANAGE_EVENTS'
+         CROSS JOIN AUTHORITIES a
+         WHERE a.title IN ('USE_PAGE_MANAGE_NOTIFICATIONS', 'CREATE_NOTIFICATION')`,
 
         `INSERT IGNORE INTO USERS (full_name, email ) VALUES ('Nisarg', 'hammerbyte.nisarg@gmail.com');`,
         `INSERT IGNORE INTO USER_ROLES (user_id, role_id) VALUES (1, 2);`,

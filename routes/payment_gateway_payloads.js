@@ -12,6 +12,7 @@ const libNumbersToWords = require("number-to-words");
 const { getBundledCoursesByCourseId } = require("../db/bundled_courses");
 const { PAYMENT_GATEWAY_TYPE_EXAM_SERIES } = require("../constants");
 const { addExamSeriesEnrollment, getExamSeriesEnrollmentByUserIdAndExamSeriesId } = require("../db/exam_series_enrollments");
+const { createNotification } = require("../libs/notifications");
 
 const router = libExpress.Router();
 
@@ -219,6 +220,13 @@ router.get("/:id", async (req, res) => {
                             logger.error(`Failed To Send Enrollment Email`);
                         }
                     },
+                });
+
+                await createNotification({
+                    user_id: req.user.id,
+                    title: "An enrollment transaction was added",
+                    description: `An enrollment transaction for "${paymentGateWayPayLoad?.course?.title}" (amount ${paymentGateWayPayLoad?.transaction?.amount}) was recorded.`,
+                    created_by: req.user.id,
                 });
             }
         }),

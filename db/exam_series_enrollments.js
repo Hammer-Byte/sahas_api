@@ -71,6 +71,43 @@ function deleteExamSeriesEnrollmentById({ id }) {
     );
 }
 
+function getGivenExamSeriesByUserId({ user_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT EXAM_SERIES.id,
+                EXAM_SERIES.title,
+                EXAM_SERIES.course_id,
+                EXAM_SERIES.fees,
+                EXAM_SERIES.start_at,
+                EXAM_SERIES.end_at,
+                EXAM_SERIES.active,
+                COURSES.title AS course_title,
+                EXAM_SERIES_ENROLLMENTS.created_on AS enrolled_at,
+                COUNT(DISTINCT EXAM_SUBMISSIONS.exam_id) AS exams_attempted,
+                COALESCE(SUM(EXAM_SUBMISSIONS.marks), 0) AS total_marks
+         FROM EXAM_SERIES_ENROLLMENTS
+         INNER JOIN EXAM_SERIES ON EXAM_SERIES.id = EXAM_SERIES_ENROLLMENTS.exam_series_id
+         INNER JOIN COURSES ON COURSES.id = EXAM_SERIES.course_id
+         INNER JOIN EXAMS ON EXAMS.exam_series_id = EXAM_SERIES.id
+         INNER JOIN EXAM_SUBMISSIONS ON EXAM_SUBMISSIONS.exam_id = EXAMS.id
+            AND EXAM_SUBMISSIONS.user_id = EXAM_SERIES_ENROLLMENTS.user_id
+         WHERE EXAM_SERIES_ENROLLMENTS.user_id = ?
+         GROUP BY EXAM_SERIES.id,
+                  EXAM_SERIES.title,
+                  EXAM_SERIES.course_id,
+                  EXAM_SERIES.fees,
+                  EXAM_SERIES.start_at,
+                  EXAM_SERIES.end_at,
+                  EXAM_SERIES.active,
+                  COURSES.title,
+                  EXAM_SERIES_ENROLLMENTS.created_on
+         ORDER BY EXAM_SERIES.end_at DESC, EXAM_SERIES.id DESC`,
+        [user_id],
+    ).catch((error) => {
+        logger.error(`getGivenExamSeriesByUserId: ${error}`);
+        return [];
+    });
+}
+
 module.exports = {
     addExamSeriesEnrollment,
     getExamSeriesEnrollmentById,
@@ -78,4 +115,5 @@ module.exports = {
     getExamSeriesEnrollmentsByExamSeriesId,
     deleteExamSeriesEnrollmentById,
     userHasExamAccessViaSeriesEnrollment,
+    getGivenExamSeriesByUserId,
 };

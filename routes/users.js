@@ -30,7 +30,10 @@ const { getGlobalNotesByUserId } = require("../db/global_notes");
 const { getCounselingNotesByUserId } = require("../db/counseling_notes");
 const { getExamSeriesById } = require("../db/exam_series");
 const { getExamsByExamSeriesId } = require("../db/exams");
-const { getExamSeriesEnrollmentByUserIdAndExamSeriesId } = require("../db/exam_series_enrollments");
+const {
+    getExamSeriesEnrollmentByUserIdAndExamSeriesId,
+    getGivenExamSeriesByUserId,
+} = require("../db/exam_series_enrollments");
 const { getExamSubmissionsByUserIdAndExamSeriesId } = require("../db/exam_submissions");
 const { getExamCandidaturesByUserIdAndExamSeriesId } = require("../db/exam_candidatures");
 const { hasRequiredAuthority } = require("../utils");
@@ -102,6 +105,29 @@ router.get("/download", async (req, res) => {
             return res.status(responseCode).json(generatedUsers);
         },
     });
+});
+
+router.get("/:userId/exam-series", async (req, res) => {
+    if (!req.params.userId) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const userId = Number(req.params.userId);
+    const isSelf = req.user.id === userId;
+    if (!isSelf && !hasRequiredAuthority(req.user.authorities, AUTHORITIES.READ_USER)) {
+        return res.status(403).json({ error: `You Don't have authority ${AUTHORITIES.READ_USER} to perform this operation` });
+    }
+
+    const user = await getUserById({ id: userId });
+    if (!user) {
+        return res.status(400).json({ error: "User Not Exist" });
+    }
+
+    return res.status(200).json(await getGivenExamSeriesByUserId({ user_id: userId }));
 });
 
 router.get("/:userId/exam-series/:examSeriesId/submissions", async (req, res) => {

@@ -12,8 +12,6 @@ const {
     getChapterBySubjectIdAndTitle,
 } = require("../db/chapters");
 const { getMediaByChapterId } = require("../db/media");
-const { getActiveUserIdsBySubjectId } = require("../db/enrollments");
-const { createNotificationsForUsers } = require("../libs/notifications");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 
@@ -125,15 +123,7 @@ router.post(
     },
     async (req, res) => {
         const chapterId = await addChapter(req.body);
-        const chapter = await getChapterById({ id: chapterId });
-        const user_ids = await getActiveUserIdsBySubjectId({ subject_id: req.body.subject_id });
-        await createNotificationsForUsers({
-            user_ids,
-            title: "A new chapter was added",
-            description: `A new chapter "${chapter?.title || req.body.title}" was added to your course.`,
-            created_by: req.user.id,
-        });
-        res.status(201).json(chapter);
+        res.status(201).json(await getChapterById({ id: chapterId }));
     },
 );
 

@@ -80,23 +80,6 @@ function getEnrollmentByCourseIdAndUserId({ user_id, course_id }) {
         .catch((error) => logger.error(`getEnrollmentByCourseIdAndUserId: ${error}`));
 }
 
-function getActiveUserIdsBySubjectId({ subject_id }) {
-    return executeSQLQueryParameterized(
-        `SELECT DISTINCT e.user_id
-         FROM COURSE_SUBJECTS cs
-         JOIN ENROLLMENT_COURSES ec ON ec.course_id = cs.course_id
-         JOIN ENROLLMENTS e ON e.id = ec.enrollment_id
-         WHERE cs.subject_id = ?
-           AND e.end_date >= NOW()`,
-        [subject_id],
-    )
-        .then((results) => results.map((row) => row.user_id))
-        .catch((error) => {
-            logger.error(`getActiveUserIdsBySubjectId: ${error}`);
-            return [];
-        });
-}
-
 module.exports = {
     getEnrollmentsByUserId,
     getEnrollmentsAmountByEnrollmentIds,
@@ -104,6 +87,5 @@ module.exports = {
     getEnrollmentById,
     addEnrollment,
     getEnrollmentByCourseIdAndUserId,
-    getActiveUserIdsBySubjectId,
     deleteEnrollmentById,
 };

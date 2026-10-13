@@ -13,14 +13,20 @@ const { AUTHORITIES } = require("../constants");
 
 //tested
 router.post("/", requires_authority(AUTHORITIES.CREATE_COUPON_CODE_COURSES), async (req, res) => {
-    const requiredBodyFields = ["course_ids", "discount", "discount_type"];
+    const requiredBodyFields = ["coupon_code_id", "course_ids", "discount", "discount_type"];
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
         const { course_ids: courseIds, ...rest } = validatedRequestBody;
 
-        const couponCodeCourseIds = await Promise.all(courseIds.map(({ id }) => addCouponCodeCourse({ course_id: id, ...rest })));
+        const couponCodeCourseIds = (
+            await Promise.all(courseIds.map(({ id }) => addCouponCodeCourse({ course_id: id, ...rest })))
+        ).filter(Boolean);
+
+        if (!couponCodeCourseIds.length) {
+            return res.status(500).json({ error: "Failed to assign course(s) to coupon code" });
+        }
 
         res.status(201).json(await getCouponCodeCoursesByIds({ couponCodeCourseIds: couponCodeCourseIds.join(",") }));
     } else {

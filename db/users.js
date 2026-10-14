@@ -22,6 +22,15 @@ function getUserByGuardianEmail({ guardian_email }) {
         });
 }
 
+function getUserByPhone({ phone }) {
+    return executeSQLQueryParameterized(`SELECT * FROM USERS WHERE phone=?`, [phone])
+        .then((user) => (user && user.length > 0 ? user[0] : false))
+        .catch((error) => {
+            logger.error(`getUserByPhone: ${error}`);
+            return false;
+        });
+}
+
 //tested
 function addDefaultRoleToUser(userId) {
     return executeSQLQueryParameterized(`INSERT INTO USER_ROLES(user_id,role_id) VALUES(?,1)`, [userId]).catch((error) => {
@@ -36,6 +45,15 @@ function addUserByEmail({ email }) {
         .then((result) => result?.affectedRows && addDefaultRoleToUser(result?.insertId))
         .catch((error) => {
             logger.error(`addUserByEmail: ${error}`);
+            return false;
+        });
+}
+
+function addUserByPhone({ phone }) {
+    return executeSQLQueryParameterized(`INSERT IGNORE INTO USERS(phone) VALUES(?)`, [phone])
+        .then((result) => result?.affectedRows && addDefaultRoleToUser(result?.insertId))
+        .catch((error) => {
+            logger.error(`addUserByPhone: ${error}`);
             return false;
         });
 }
@@ -229,7 +247,19 @@ function patchUserFullNameById({ id, full_name }) {
 
 //freeze
 function patchUserPhoneById({ id, phone }) {
-    return executeSQLQueryParameterized(`UPDATE USERS SET phone=? WHERE id = ?`, [phone, id]).catch((error) => logger.error(`patchUserPhoneById: ${error}`));
+    return executeSQLQueryParameterized(`UPDATE USERS SET phone=? WHERE id = ?`, [phone, id]).catch((error) => {
+        logger.error(`patchUserPhoneById: ${error}`);
+        throw error;
+    });
+}
+
+function patchUserEmailById({ id, email }) {
+    return executeSQLQueryParameterized(`UPDATE USERS SET email=? WHERE id = ?`, [email, id])
+        .then((result) => result)
+        .catch((error) => {
+            logger.error(`patchUserEmailById: ${error}`);
+            throw error;
+        });
 }
 
 //freeze
@@ -273,8 +303,10 @@ module.exports = {
     getCountUsersBySearchAndFilters,
     getUserByEmail,
     getUserByGuardianEmail,
+    getUserByPhone,
     getUserByAuthenticationToken,
     addUserByEmail,
+    addUserByPhone,
     getUserById,
     getAuthoritiesByRoleIds,
     updateUserById,
@@ -282,5 +314,6 @@ module.exports = {
     addGuestUser,
     patchUserFullNameById,
     patchUserPhoneById,
+    patchUserEmailById,
     patchUserStreamSelectionTestAllowedById,
 };

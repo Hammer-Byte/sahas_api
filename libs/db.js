@@ -19,7 +19,7 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS USERS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             full_name VARCHAR(36) NULL,
-            email VARCHAR(48) NOT NULL UNIQUE,
+            email VARCHAR(48) NULL UNIQUE,
             phone VARCHAR(13) NULL UNIQUE,
             guardian_phone VARCHAR(13) NULL,
             guardian_email VARCHAR(48) NULL,
@@ -978,6 +978,7 @@ async function generateDBTables() {
         `ALTER TABLE EXAM_CANDIDATURE ADD COLUMN interruptions INT NOT NULL DEFAULT 0`,
         `ALTER TABLE USERS ADD COLUMN guardian_email VARCHAR(48) NULL`,
         `ALTER TABLE USERS ADD COLUMN dob DATE NULL`,
+        `ALTER TABLE USERS MODIFY email VARCHAR(48) NULL`,
         `ALTER TABLE BATCH_SCHEDULE ADD COLUMN subject VARCHAR(128) NULL`,
         `ALTER TABLE BATCH_SCHEDULE ADD COLUMN event_handler INT NULL`,
         `ALTER TABLE BATCH_SCHEDULE ADD INDEX idx_batch_schedule_handler (event_handler)`,

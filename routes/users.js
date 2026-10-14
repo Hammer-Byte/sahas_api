@@ -8,6 +8,7 @@ const {
     addUser,
     patchUserFullNameById,
     patchUserPhoneById,
+    patchUserEmailById,
     addGuestUser,
     getUserByEmail,
     patchUserStreamSelectionTestAllowedById,
@@ -36,7 +37,7 @@ const {
 } = require("../db/exam_series_enrollments");
 const { getExamSubmissionsByUserIdAndExamSeriesId } = require("../db/exam_submissions");
 const { getExamCandidaturesByUserIdAndExamSeriesId } = require("../db/exam_candidatures");
-const { hasRequiredAuthority } = require("../utils");
+const { hasRequiredAuthority, normalizeIndianPhone, generateToken } = require("../utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { addUserHistory, getUserHistoryById, updateUserHistoryById } = require("../db/user_history");
@@ -49,8 +50,8 @@ const {
 
 const parseGuestUser = require("../middlewares/parse_guest_user");
 const { addInactiveToken } = require("../db/authentication_tokens");
-const { generateToken } = require("../utils");
 const { getConfigByKey } = require("../db/configs");
+const libValidator = require("validator");
 
 const router = libExpress.Router();
 
@@ -438,12 +439,51 @@ router.patch(
         if (!isRequestBodyValid) {
             return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
         }
-        req.body = validatedRequestBody;
+        const { phone, error } = normalizeIndianPhone(validatedRequestBody.phone);
+        if (error) {
+            return res.status(400).json({ error });
+        }
+        req.body = { id: validatedRequestBody.id, phone };
         next();
     },
     async (req, res) => {
-        await patchUserPhoneById({ ...req.body });
-        res.status(200).json(await getUserById({ id: req.body.id }));
+        try {
+            await patchUserPhoneById({ ...req.body });
+            res.status(200).json(await getUserById({ id: req.body.id }));
+        } catch (error) {
+            if (error?.code === "ER_DUP_ENTRY") {
+                return res.status(400).json({ error: "Phone already in use" });
+            }
+            res.status(500).json({ error: "Failed to update phone" });
+        }
+    },
+);
+
+router.patch(
+    "/email",
+    requires_authority(AUTHORITIES.UPDATE_USER),
+    async (req, res, next) => {
+        const requiredBodyFields = ["id", "email"];
+        const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+        if (!isRequestBodyValid) {
+            return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+        }
+        if (!libValidator.isEmail(String(validatedRequestBody.email))) {
+            return res.status(400).json({ error: "Missing or Invalid Email" });
+        }
+        req.body = { id: validatedRequestBody.id, email: String(validatedRequestBody.email).toLowerCase().trim() };
+        next();
+    },
+    async (req, res) => {
+        try {
+            await patchUserEmailById({ ...req.body });
+            res.status(200).json(await getUserById({ id: req.body.id }));
+        } catch (error) {
+            if (error?.code === "ER_DUP_ENTRY") {
+                return res.status(400).json({ error: "Email already in use" });
+            }
+            res.status(500).json({ error: "Failed to update email" });
+        }
     },
 );
 

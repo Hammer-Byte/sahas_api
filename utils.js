@@ -67,6 +67,31 @@ async function verifyPaymentGatewayPayLoadStatus(paymentGateWayPayLoad) {
 const hasRequiredAuthority = (authorities, requiredAuthority) => authorities.includes(requiredAuthority);
 
 /**
+ * Normalize India mobile to 10 digits for DB storage.
+ * Accepts 9876543210, 919876543210, +919876543210.
+ * Returns { phone } or { error }.
+ */
+function normalizeIndianPhone(raw) {
+    if (raw == null || raw === "") {
+        return { error: "Missing or Invalid Phone" };
+    }
+    let digits = String(raw).replace(/\D/g, "");
+    if (digits.length === 12 && digits.startsWith("91")) {
+        digits = digits.slice(2);
+    } else if (digits.length === 11 && digits.startsWith("0")) {
+        digits = digits.slice(1);
+    }
+    if (!/^[6-9]\d{9}$/.test(digits)) {
+        return { error: "Missing or Invalid Phone" };
+    }
+    return { phone: digits };
+}
+
+function toMsg91Mobile(tenDigitPhone) {
+    return `91${tenDigitPhone}`;
+}
+
+/**
  * App datetimes are stored as MySQL DATETIME / "YYYY-MM-DD HH:mm" wall-clock values in
  * Asia/Kolkata (IST). Use these helpers for parse/compare — never raw `new Date(mysqlString)`
  * on UTC hosts (shifts windows by 5.5h).
@@ -111,6 +136,8 @@ module.exports = {
     getFormattedDate,
     getDifferenceOfDates,
     hasRequiredAuthority,
+    normalizeIndianPhone,
+    toMsg91Mobile,
     parseAppDateTime,
     isWithinAppDateWindow,
     APP_TZ_OFFSET_MINUTES,

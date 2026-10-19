@@ -77,6 +77,26 @@ function getBatchEventsForUserBatchesOnDay({ batch_ids, day_start, day_end }) {
     });
 }
 
+function getBatchEventsForUserBatchesInRange({ batch_ids, range_start, range_end }) {
+    if (!batch_ids?.length) return Promise.resolve([]);
+
+    const placeholders = batch_ids.map(() => "?").join(",");
+    return executeSQLQueryParameterized(
+        `SELECT DISTINCT BATCH_EVENTS.*, BATCHES.id AS batch_id, BATCHES.title AS batch_title
+         FROM BATCH_EVENTS
+         INNER JOIN BATCH_EVENT_BATCHES ON BATCH_EVENT_BATCHES.batch_event_id = BATCH_EVENTS.id
+         INNER JOIN BATCHES ON BATCHES.id = BATCH_EVENT_BATCHES.batch_id
+         WHERE BATCH_EVENT_BATCHES.batch_id IN (${placeholders})
+           AND BATCH_EVENTS.start_at < ?
+           AND BATCH_EVENTS.end_at > ?
+         ORDER BY BATCH_EVENTS.start_at ASC`,
+        [...batch_ids, range_end, range_start],
+    ).catch((error) => {
+        logger.error(`getBatchEventsForUserBatchesInRange: ${error}`);
+        return [];
+    });
+}
+
 function addBatchEvent({ title, description = null, start_at, end_at, branch_id = null, cancelled = false, created_by = null }) {
     return executeSQLQueryParameterized(
         `INSERT INTO BATCH_EVENTS (title, description, start_at, end_at, branch_id, cancelled, created_by)
@@ -121,6 +141,7 @@ module.exports = {
     getBatchEventById,
     getAllBatchEvents,
     getBatchEventsForUserBatchesOnDay,
+    getBatchEventsForUserBatchesInRange,
     addBatchEvent,
     setBatchEventBatches,
     updateBatchEventById,

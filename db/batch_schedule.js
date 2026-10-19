@@ -97,6 +97,51 @@ function getBatchSchedulesByEventHandlerAndWeekday({ user_id, weekday }) {
         });
 }
 
+function getBatchSchedulesByBatchIds({ batch_ids }) {
+    if (!batch_ids?.length) return Promise.resolve([]);
+
+    const placeholders = batch_ids.map(() => "?").join(",");
+    return ensureScheduleColumns()
+        .then(() =>
+            executeSQLQueryParameterized(
+                `SELECT BATCH_SCHEDULE.*, BATCHES.title AS batch_title, BATCHES.start_date, BATCHES.end_date, BATCHES.active,
+                        USERS.full_name AS event_handler_name
+                 FROM BATCH_SCHEDULE
+                 INNER JOIN BATCHES ON BATCHES.id = BATCH_SCHEDULE.batch_id
+                 LEFT JOIN USERS ON USERS.id = BATCH_SCHEDULE.event_handler
+                 WHERE BATCH_SCHEDULE.batch_id IN (${placeholders})
+                   AND BATCH_SCHEDULE.start_time IS NOT NULL
+                   AND BATCH_SCHEDULE.end_time IS NOT NULL`,
+                batch_ids,
+            ),
+        )
+        .catch((error) => {
+            logger.error(`getBatchSchedulesByBatchIds: ${error}`);
+            return [];
+        });
+}
+
+function getBatchSchedulesByEventHandler({ user_id }) {
+    return ensureScheduleColumns()
+        .then(() =>
+            executeSQLQueryParameterized(
+                `SELECT BATCH_SCHEDULE.*, BATCHES.title AS batch_title, BATCHES.start_date, BATCHES.end_date, BATCHES.active,
+                        USERS.full_name AS event_handler_name
+                 FROM BATCH_SCHEDULE
+                 INNER JOIN BATCHES ON BATCHES.id = BATCH_SCHEDULE.batch_id
+                 LEFT JOIN USERS ON USERS.id = BATCH_SCHEDULE.event_handler
+                 WHERE BATCH_SCHEDULE.event_handler = ?
+                   AND BATCH_SCHEDULE.start_time IS NOT NULL
+                   AND BATCH_SCHEDULE.end_time IS NOT NULL`,
+                [user_id],
+            ),
+        )
+        .catch((error) => {
+            logger.error(`getBatchSchedulesByEventHandler: ${error}`);
+            return [];
+        });
+}
+
 async function upsertBatchSchedule({ batch_id, days = [] }) {
     try {
         const ready = await ensureScheduleColumns();
@@ -135,6 +180,8 @@ module.exports = {
     getBatchScheduleByBatchId,
     getBatchSchedulesByBatchIdsAndWeekday,
     getBatchSchedulesByEventHandlerAndWeekday,
+    getBatchSchedulesByBatchIds,
+    getBatchSchedulesByEventHandler,
     upsertBatchSchedule,
     ensureScheduleColumns,
 };

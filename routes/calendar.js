@@ -1,10 +1,16 @@
 const libExpress = require("express");
 const { validateRequestBody } = require("sahas_utils");
 const { getBatchesByUserId } = require("../db/batches");
-const { getBatchSchedulesByBatchIdsAndWeekday, getBatchSchedulesByEventHandlerAndWeekday } = require("../db/batch_schedule");
-const { getBatchEventsForUserBatchesOnDay } = require("../db/batch_events");
+const {
+    getBatchSchedulesByBatchIdsAndWeekday,
+    getBatchSchedulesByEventHandlerAndWeekday,
+    getBatchSchedulesByBatchIds,
+    getBatchSchedulesByEventHandler,
+} = require("../db/batch_schedule");
+const { getBatchEventsForUserBatchesOnDay, getBatchEventsForUserBatchesInRange } = require("../db/batch_events");
 const {
     getUserEventsByUserIdOnDay,
+    getUserEventsByUserIdInRange,
     getUserEventById,
     addUserEvent,
     updateUserEventById,
@@ -12,6 +18,8 @@ const {
 } = require("../db/user_events");
 
 const router = libExpress.Router();
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_SUMMARY_DAYS = 62;
 
 function toTimeString(value) {
     if (value == null) return null;
@@ -96,13 +104,148 @@ function pushScheduleEvent(events, seen, schedule, dateStr) {
     });
 }
 
+function parseLocalDate(dateStr) {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
+}
+
+function formatLocalDate(date) {
+    const y = date.getFullYear();
+    const mo = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${d}`;
+}
+
+function daysBetweenInclusive(fromStr, toStr) {
+    const start = parseLocalDate(fromStr);
+    const end = parseLocalDate(toStr);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return -1;
+    return Math.floor((end - start) / 86400000) + 1;
+}
+
+function bumpSummary(summary, dateStr, amount = 1) {
+    if (!summary[dateStr]) summary[dateStr] = { count: 0 };
+    summary[dateStr].count += amount;
+}
+
+function wallClockDatePart(value) {
+    const wall = toWallClockDateTime(value);
+    if (!wall) return null;
+    const match = String(wall).match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : null;
+}
+
+function forEachOverlappingDay(startAt, endAt, fromStr, toStr, callback) {
+    const startDate = wallClockDatePart(startAt);
+    const endDate = wallClockDatePart(endAt);
+    if (!startDate || !endDate) return;
+
+    let cursorStr = startDate < fromStr ? fromStr : startDate;
+    const lastStr = endDate > toStr ? toStr : endDate;
+    if (cursorStr > lastStr) return;
+
+    const cursor = parseLocalDate(cursorStr);
+    const last = parseLocalDate(lastStr);
+    while (cursor <= last) {
+        callback(formatLocalDate(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+    }
+}
+
+function scheduleCountsTowardDay(schedule, dateStr) {
+    if (!schedule.active && schedule.active !== 1) return false;
+    if (!dateInBatchRange(dateStr, schedule.start_date, schedule.end_date)) return false;
+    const startTime = toTimeString(schedule.start_time);
+    const endTime = toTimeString(schedule.end_time);
+    return !!(startTime && endTime);
+}
+
+router.get("/summary", async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const fromStr = typeof req.query.from === "string" ? req.query.from.trim() : "";
+    const toStr = typeof req.query.to === "string" ? req.query.to.trim() : "";
+    if (!DATE_RE.test(fromStr) || !DATE_RE.test(toStr)) {
+        return res.status(400).json({ error: "Missing or Invalid from/to (YYYY-MM-DD)" });
+    }
+
+    const dayCount = daysBetweenInclusive(fromStr, toStr);
+    if (dayCount < 1) {
+        return res.status(400).json({ error: "Invalid range: to must be on or after from" });
+    }
+    if (dayCount > MAX_SUMMARY_DAYS) {
+        return res.status(400).json({ error: `Range too large (max ${MAX_SUMMARY_DAYS} days)` });
+    }
+
+    const range_start = `${fromStr} 00:00:00`;
+    const range_end = `${toStr} 23:59:59`;
+    const summary = {};
+
+    const memberships = await getBatchesByUserId({ user_id: req.user.id });
+    const activeBatches = memberships.filter((batch) => batch.active !== 0 && batch.active !== false);
+    const batch_ids = activeBatches.map((batch) => batch.id);
+
+    const [batchSchedules, handlerSchedules, batchEvents, userEvents] = await Promise.all([
+        batch_ids.length ? getBatchSchedulesByBatchIds({ batch_ids }) : Promise.resolve([]),
+        getBatchSchedulesByEventHandler({ user_id: req.user.id }),
+        batch_ids.length
+            ? getBatchEventsForUserBatchesInRange({ batch_ids, range_start, range_end })
+            : Promise.resolve([]),
+        getUserEventsByUserIdInRange({ user_id: req.user.id, range_start, range_end }),
+    ]);
+
+    const schedulesByWeekday = new Map();
+    const seenScheduleKeys = new Set();
+    for (const schedule of [...batchSchedules, ...handlerSchedules]) {
+        const key = `${schedule.batch_id}:${schedule.weekday}`;
+        if (seenScheduleKeys.has(key)) continue;
+        seenScheduleKeys.add(key);
+        const weekday = Number(schedule.weekday);
+        if (!schedulesByWeekday.has(weekday)) schedulesByWeekday.set(weekday, []);
+        schedulesByWeekday.get(weekday).push(schedule);
+    }
+
+    const cursor = parseLocalDate(fromStr);
+    const last = parseLocalDate(toStr);
+    while (cursor <= last) {
+        const dateStr = formatLocalDate(cursor);
+        const weekday = cursor.getDay();
+        const daySchedules = schedulesByWeekday.get(weekday) || [];
+        for (const schedule of daySchedules) {
+            if (scheduleCountsTowardDay(schedule, dateStr)) {
+                bumpSummary(summary, dateStr);
+            }
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const seenBatchEvents = new Set();
+    for (const batchEvent of batchEvents) {
+        if (seenBatchEvents.has(batchEvent.id)) continue;
+        seenBatchEvents.add(batchEvent.id);
+        forEachOverlappingDay(batchEvent.start_at, batchEvent.end_at, fromStr, toStr, (dateStr) => {
+            bumpSummary(summary, dateStr);
+        });
+    }
+
+    for (const userEvent of userEvents) {
+        forEachOverlappingDay(userEvent.start_at, userEvent.end_at, fromStr, toStr, (dateStr) => {
+            bumpSummary(summary, dateStr);
+        });
+    }
+
+    res.status(200).json(summary);
+});
+
 router.get("/", async (req, res) => {
     if (!req.user?.id) {
         return res.status(401).json({ error: "Authentication Required" });
     }
 
     const dateStr = typeof req.query.date === "string" ? req.query.date.trim() : "";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    if (!DATE_RE.test(dateStr)) {
         return res.status(400).json({ error: "Missing or Invalid date (YYYY-MM-DD)" });
     }
 

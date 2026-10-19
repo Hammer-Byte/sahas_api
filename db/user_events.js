@@ -15,6 +15,20 @@ function getUserEventsByUserIdOnDay({ user_id, day_start, day_end }) {
     });
 }
 
+function getUserEventsByUserIdInRange({ user_id, range_start, range_end }) {
+    return executeSQLQueryParameterized(
+        `SELECT * FROM USER_EVENTS
+         WHERE user_id = ?
+           AND start_at < ?
+           AND end_at > ?
+         ORDER BY start_at ASC`,
+        [user_id, range_end, range_start],
+    ).catch((error) => {
+        logger.error(`getUserEventsByUserIdInRange: ${error}`);
+        return [];
+    });
+}
+
 function getUserEventById({ id }) {
     return executeSQLQueryParameterized(`SELECT * FROM USER_EVENTS WHERE id = ?`, [id])
         .then((rows) => (rows.length > 0 ? rows[0] : false))
@@ -47,6 +61,7 @@ function deleteUserEventById({ id, user_id }) {
 
 module.exports = {
     getUserEventsByUserIdOnDay,
+    getUserEventsByUserIdInRange,
     getUserEventById,
     addUserEvent,
     updateUserEventById,

@@ -6,6 +6,7 @@ const { getTransactionsByEnrollmentId } = require("../db/enrollment_transactions
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { createNotification, getAlertTypeId } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -27,6 +28,7 @@ router.patch("/",requires_authority(AUTHORITIES.UPDATE_ENROLLMENT), async (req, 
             type_id: await getAlertTypeId(),
             created_by: req.user.id,
         });
+        await recordActivity({ user_id: enrollment.user_id, key: "UPDATE_ENROLLMENT" });
         res.status(200).json(enrollment);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
@@ -54,6 +56,13 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_ENROLLMENT), async (req, 
                 : "A new enrollment was created for you.",
             created_by: req.user.id,
         });
+        if (enrollmentId) {
+            await recordActivity({
+                user_id: validatedRequestBody.user_id,
+                key: "CREATE_ENROLLMENT",
+                values: { amount: validatedRequestBody.amount, course: courseTitles },
+            });
+        }
 
         res.status(201).json(await getEnrollmentById({ id: enrollmentId }));
     } else {

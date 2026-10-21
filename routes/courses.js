@@ -60,6 +60,8 @@ router.post(
             course.bundledCourses = await getBundledCoursesByCourseId({ course_id: courseId });
         }
 
+        await recordActivity({ user_id: req.user?.id, key: "ADD_COURSE", values: { course: course?.title || req.body.title } });
+
         res.status(201).json(course);
     },
 );
@@ -69,7 +71,9 @@ router.delete("/:id", requires_authority(AUTHORITIES.DELETE_COURSE), async (req,
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Course Id" });
     }
+    const course = await getCourseById({ id: req.params.id });
     deleteCourseById({ id: req.params.id });
+    await recordActivity({ user_id: req.user?.id, key: "DELETE_COURSE", values: { course: course?.title } });
     res.sendStatus(204);
 });
 
@@ -185,6 +189,8 @@ router.patch(
 
             course.bundledCourses = await getBundledCoursesByCourseId({ course_id: course?.id });
         }
+
+        await recordActivity({ user_id: req.user?.id, key: "UPDATE_COURSE", values: { course: course?.title } });
 
         res.status(200).json(course);
     },

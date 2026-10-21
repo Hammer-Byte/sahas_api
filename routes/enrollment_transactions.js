@@ -266,6 +266,17 @@ router.patch("/manual-verification", async (req, res) => {
             const enrollment = await getEnrollmentById({ id: transaction.enrollment_id });
             if (enrollment?.user_id) {
                 const verified = !!validatedRequestBody.manually_verified;
+                if (verified) {
+                    const enrollmentCourses = await getEnrollmentCoursesByEnrollmentId({ enrollment_id: enrollment.id });
+                    await recordActivity({
+                        user_id: enrollment.user_id,
+                        key: "VERIFY_PAYMENT",
+                        values: {
+                            amount: transaction.amount,
+                            course: enrollmentCourses.map(({ title }) => title).join(", "),
+                        },
+                    });
+                }
                 await createNotification({
                     user_id: enrollment.user_id,
                     title: verified ? "Payment verified" : "Payment verification updated",

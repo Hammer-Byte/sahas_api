@@ -11,6 +11,7 @@ const { getChaptersBySubjectId } = require("../db/chapters");
 const { getTestConfigurationByChapterId } = require("../db/test_configurations");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -22,6 +23,7 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_SUBJECTS), async (req, r
 
     if (isRequestBodyValid) {
         updateSubjectById(validatedRequestBody);
+        await recordActivity({ user_id: req.user?.id, key: "UPDATE_SUBJECT", values: { subject: validatedRequestBody.title } });
         res.status(200).json(validatedRequestBody);
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
@@ -84,6 +86,7 @@ router.post(
             subject_id: subjectId,
             view_index: req.body.view_index,
         });
+        await recordActivity({ user_id: req.user?.id, key: "ADD_SUBJECT", values: { subject: req.body.title } });
         res.status(201).json(await getCourseSubjectById({ id: courseSubjectId }));
     },
 );

@@ -19,6 +19,7 @@ const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { createNotification } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 //tested
 router.get(
@@ -232,6 +233,13 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_ENROLLMENT_TRANSACTION), 
             });
 
         const courseTitle = enrollmentCourses.map(({ title }) => title).join(", ") || "course";
+        if (enrollmentTransactionId) {
+            await recordActivity({
+                user_id: enrollment?.user_id,
+                key: "PAY_FEES",
+                values: { amount: validatedRequestBody.amount, course: courseTitle },
+            });
+        }
         await createNotification({
             user_id: enrollment.user_id,
             title: "An enrollment transaction was added",

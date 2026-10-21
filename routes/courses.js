@@ -20,6 +20,7 @@ const { getCouponCodeCourseByCouponCodeAndCourseId } = require("../db/coupon_cod
 const { getUserByEmail } = require("../db/users");
 const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
 const { getConfigByKey } = require("../db/configs");
+const { recordActivity } = require("../libs/activities");
 
 
 
@@ -204,6 +205,8 @@ router.get("/:id", requires_authority(AUTHORITIES.READ_COURSE), async (req, res)
         if (course?.is_bundle) course.bundledCourses = await getBundledCoursesByCourseId({ course_id: course.id });
 
         course.carousel = await getCourseCarouselByCourseId({ course_id: course?.id });
+
+        await recordActivity({ user_id: req.user?.id, key: "READ_COURSE", values: { course: course.title } });
 
         return res.status(200).json(course);
     }

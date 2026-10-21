@@ -11,6 +11,7 @@ const {
 } = require("../db/exam_candidatures");
 const { addExamSubmission, userHasExamSubmissions } = require("../db/exam_submissions");
 const { parseAppDateTime, isWithinAppDateWindow } = require("../utils");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -119,6 +120,8 @@ router.post("/:id/candidature", async (req, res) => {
     if (!candidatureId) {
         return res.status(400).json({ error: "Failed To Record Exam Candidature" });
     }
+
+    await recordActivity({ user_id: req.user.id, key: "START_EXAM", values: { exam: exam.title } });
 
     res.status(201).json({ id: candidatureId });
 });
@@ -315,6 +318,8 @@ router.post("/:id/submissions", async (req, res) => {
             marks,
         });
     }
+
+    await recordActivity({ user_id: req.user.id, key: "SUBMIT_EXAM", values: { exam: exam.title } });
 
     res.status(201).json({ submissions: insertedSubmissions });
 });

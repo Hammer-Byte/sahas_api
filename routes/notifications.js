@@ -4,6 +4,7 @@ const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { getUsersByBatchId } = require("../db/batches");
 const { createNotification } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -46,6 +47,10 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_NOTIFICATION), async (req
             });
             notified += 1;
         }
+    }
+
+    if (notified) {
+        await recordActivity({ user_id: req.user?.id, key: "SEND_NOTIFICATION", values: { title } });
     }
 
     return res.status(201).json({ notified });

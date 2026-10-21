@@ -14,6 +14,8 @@ const { AUTHORITIES } = require("../constants");
 const { getAllBranches } = require("../db/branches");
 const { getAllCourses } = require("../db/courses");
 const { createNotification, getAlertTypeId } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
+const { getCourseById } = require("../db/courses");
 
 const router = libExpress.Router();
 
@@ -31,6 +33,12 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_INQUIRY), async (req, res
             title: "An inquiry was created",
             description: "A new inquiry was created on your profile.",
             created_by: req.user.id,
+        });
+        const course = await getCourseById({ id: validatedRequestBody.course_id });
+        await recordActivity({
+            user_id: validatedRequestBody.user_id,
+            key: "CREATE_INQUIRY",
+            values: { course: course?.title },
         });
         res.status(201).json(await getInquiryById({ id: inquiryId }));
     } else {
@@ -109,6 +117,12 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_INQUIRY), async (req, re
                 description: `Your inquiry is now ${validatedRequestBody.active ? "open" : "closed"}.`,
                 type_id: await getAlertTypeId(),
                 created_by: req.user.id,
+            });
+            const course = await getCourseById({ id: inquiry.course_id });
+            await recordActivity({
+                user_id: inquiry.user_id,
+                key: "UPDATE_INQUIRY",
+                values: { course: course?.title },
             });
         }
         res.status(200).json(inquiry);

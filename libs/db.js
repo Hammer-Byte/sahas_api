@@ -1535,6 +1535,8 @@ async function generateDBTables() {
             }),
         ),
     );
+
+    await backfillUserActivityTimesToIst();
 }
 
 // Utility function to execute SQL queries using promises
@@ -1585,6 +1587,32 @@ function executeSQLQueryParameterized(query, parameters) {
             }
         });
     });
+}
+
+async function backfillUserActivityTimesToIst() {
+    try {
+        const existing = await executeSQLQueryParameterized(`SELECT config_value FROM CONFIGS WHERE config_key = ?`, [
+            "user_activities_ist_backfill",
+        ]);
+        if (existing?.length) return;
+
+        const offsetRows = await executeSQLQueryRaw(`SELECT TIMESTAMPDIFF(MINUTE, UTC_TIMESTAMP(), NOW()) AS offset_minutes`);
+        const offsetMinutes = Number(offsetRows?.[0]?.offset_minutes);
+        const shiftMinutes = 330 - offsetMinutes;
+        if (Number.isFinite(offsetMinutes) && shiftMinutes !== 0) {
+            await executeSQLQueryRaw(
+                `UPDATE USER_ACTIVITIES SET created_on = DATE_ADD(created_on, INTERVAL ${Math.trunc(shiftMinutes)} MINUTE)`,
+            );
+            logger.info(`Shifted USER_ACTIVITIES created_on by ${Math.trunc(shiftMinutes)} minutes onto IST`);
+        }
+
+        await executeSQLQueryParameterized(`INSERT INTO CONFIGS (config_key, config_value) VALUES (?, ?)`, [
+            "user_activities_ist_backfill",
+            "1",
+        ]);
+    } catch (error) {
+        logger.error(`backfillUserActivityTimesToIst: ${error}`);
+    }
 }
 
 // Export the pool to use in other files

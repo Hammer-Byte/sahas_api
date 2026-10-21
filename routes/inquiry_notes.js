@@ -5,6 +5,7 @@ const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { getInquiryById } = require("../db/inquiries");
 const { createNotification } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -24,6 +25,7 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_INQUIRY_NOTE), async (req
                 description: "A new note was added to your inquiry.",
                 created_by: req.user.id,
             });
+            await recordActivity({ user_id: inquiry.user_id, key: "ADD_INQUIRY_NOTE" });
         }
         res.status(201).json(await getInquiryNoteById({ id: inquityNoteId }));
     } else {

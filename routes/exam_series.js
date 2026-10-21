@@ -37,6 +37,7 @@ const { getEnrollmentByCourseIdAndUserId } = require("../db/enrollments");
 const { validateRequestBody } = require("sahas_utils");
 const { parseAppDateTime } = require("../utils");
 const { createNotification, createNotificationsForUsers, getAlertTypeId } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -74,7 +75,9 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_EXAM_SERIES), async (req,
     next();
 }, async (req, res) => {
     const examSeriesId = await addExamSeries(req.body);
-    res.status(201).json(await getExamSeriesById({ id: examSeriesId }));
+    const examSeries = await getExamSeriesById({ id: examSeriesId });
+    await recordActivity({ user_id: req.user?.id, key: "ADD_EXAM_SERIES", values: { series: examSeries?.title || req.body.title } });
+    res.status(201).json(examSeries);
 });
 
 router.patch("/exams", requires_authority(AUTHORITIES.UPDATE_EXAM), async (req, res) => {
@@ -95,7 +98,9 @@ router.patch("/exams", requires_authority(AUTHORITIES.UPDATE_EXAM), async (req, 
     }
 
     await updateExamById(validatedRequestBody);
-    res.status(200).json(await getExamById({ id: validatedRequestBody.id }));
+    const updatedExam = await getExamById({ id: validatedRequestBody.id });
+    await recordActivity({ user_id: req.user?.id, key: "UPDATE_EXAM", values: { exam: updatedExam?.title } });
+    res.status(200).json(updatedExam);
 });
 
 router.delete("/exams/:id", requires_authority(AUTHORITIES.DELETE_EXAM), async (req, res) => {
@@ -109,6 +114,7 @@ router.delete("/exams/:id", requires_authority(AUTHORITIES.DELETE_EXAM), async (
     }
 
     await deleteExamById({ id: req.params.id });
+    await recordActivity({ user_id: req.user?.id, key: "DELETE_EXAM", values: { exam: exam.title } });
     res.sendStatus(204);
 });
 
@@ -169,6 +175,7 @@ router.post("/enrollments", async (req, res) => {
         return res.status(400).json({ error: "Failed To Enroll In Exam Series" });
     }
 
+    await recordActivity({ user_id: req.user.id, key: "ENROLL_EXAM_SERIES", values: { series: examSeries.title } });
     await createNotification({
         user_id: req.user.id,
         title: "Exam series access granted",
@@ -594,6 +601,8 @@ router.post("/:examSeriesId/exams", requires_authority(AUTHORITIES.CREATE_EXAM),
         created_by: req.user?.id,
     });
 
+    await recordActivity({ user_id: req.user?.id, key: "ADD_EXAM", values: { exam: exam?.title || validatedRequestBody.title } });
+
     res.status(201).json(exam);
 });
 
@@ -619,7 +628,9 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_EXAM_SERIES), async (req
     }
 
     await updateExamSeriesById(validatedRequestBody);
-    res.status(200).json(await getExamSeriesById({ id: validatedRequestBody.id }));
+    const examSeries = await getExamSeriesById({ id: validatedRequestBody.id });
+    await recordActivity({ user_id: req.user?.id, key: "UPDATE_EXAM_SERIES", values: { series: examSeries?.title } });
+    res.status(200).json(examSeries);
 });
 
 module.exports = router;

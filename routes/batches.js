@@ -27,6 +27,7 @@ const {
 const { addGlobalNotesForUsers } = require("../db/global_notes");
 const { addCounselingNotesForUsers } = require("../db/counseling_notes");
 const { createNotification, createNotificationsForUsers, getWarningTypeId, getAlertTypeId } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -335,6 +336,11 @@ router.post("/:id/users", requires_authority(AUTHORITIES.ASSIGN_BATCH_STUDENT), 
             title: "You have been added to a batch",
             description: `You have been added to batch "${batch.title}".`,
             created_by: req.user?.id,
+        });
+        await recordActivity({
+            user_id: validatedRequestBody.user_id,
+            key: "ASSIGN_BATCH",
+            values: { batch: batch.title },
         });
         return res.status(201).json(assigned);
     }

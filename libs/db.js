@@ -1196,6 +1196,13 @@ async function generateDBTables() {
             INDEX idx_user_events_user (user_id),
             INDEX idx_user_events_start (start_at)
         )`,
+        `CREATE TABLE IF NOT EXISTS USER_ACTIVITIES (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            activity VARCHAR(512) NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_activities_user_created (user_id, created_on)
+        )`,
         `CREATE TABLE IF NOT EXISTS USER_TASK_STATUSES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(64) NOT NULL UNIQUE,

@@ -14,6 +14,7 @@ const {
 const { getMediaByChapterId } = require("../db/media");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -30,8 +31,12 @@ router.get("/:id/media", requires_authority(AUTHORITIES.READ_CHAPTERS_MEDIA), as
 
     //if it requires enrollment and no enrollment access is there then let is pass
 
-    //provide all the subjects
-    res.status(200).json(await getMediaByChapterId({ chapter_id: req.params.id }));
+    const [media, chapter] = await Promise.all([
+        getMediaByChapterId({ chapter_id: req.params.id }),
+        getChapterById({ id: req.params.id }),
+    ]);
+    await recordActivity({ user_id: req.user?.id, key: "VIEW_MEDIA", values: { chapter: chapter?.title } });
+    res.status(200).json(media);
 });
 
 //tested
@@ -40,7 +45,8 @@ router.get("/test", requires_authority(AUTHORITIES.READ_CHAPTERS_TEST), async (r
         return res.status(400).json({ error: "Missing Chapters or Subject" });
     }
 
-    const { test_timer_minutes, test_size } = await getSubjectById({ id: req.query.subject });
+    const subject = await getSubjectById({ id: req.query.subject });
+    const { test_timer_minutes, test_size } = subject;
 
     if (!test_timer_minutes || !test_size) {
         return res.status(400).json({ error: "Missing Test Minutes or Test Size" });
@@ -65,6 +71,8 @@ router.get("/test", requires_authority(AUTHORITIES.READ_CHAPTERS_TEST), async (r
         testQuestions.push(...records);
     }
 
+    await recordActivity({ user_id: req.user?.id, key: "TAKE_CHAPTER_TEST", values: { subject: subject?.title } });
+
     res.status(200).json({
         timerMinute: test_timer_minutes,
         questions: testQuestions?.sort(() => 0.5 - Math.random())?.slice(0, test_size),
@@ -79,6 +87,8 @@ router.get("/:id", requires_authority(AUTHORITIES.READ_CHAPTERS), async (req, re
 
     const chapter = await getChapterById({ id: req.params.id });
     chapter.subject = await getSubjectById({ id: chapter?.subject_id });
+
+    await recordActivity({ user_id: req.user?.id, key: "READ_CHAPTER", values: { chapter: chapter?.title } });
 
     res.status(200).json(chapter);
 });

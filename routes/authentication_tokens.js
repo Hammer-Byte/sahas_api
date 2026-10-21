@@ -18,6 +18,7 @@ const { logger } = require("sahas_utils");
 const { getUserRolesByUserId } = require("../db/user_roles");
 const { getUpcomingExamByUserId } = require("../db/exams");
 const { getUnseenCountByUserId } = require("../db/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -81,6 +82,7 @@ router.patch("/", async (req, res) => {
         activateToken(req.body.authentication_token);
         const user = await getUserById({ id: authenticationToken.user_id });
         await populateRolesAndAuthorities(user);
+        await recordActivity({ user_id: user.id, key: "LOGIN" });
 
         return res.status(200).json(user);
     }

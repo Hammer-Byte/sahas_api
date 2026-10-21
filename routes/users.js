@@ -38,6 +38,8 @@ const {
 const { getExamSubmissionsByUserIdAndExamSeriesId } = require("../db/exam_submissions");
 const { getExamCandidaturesByUserIdAndExamSeriesId } = require("../db/exam_candidatures");
 const { hasRequiredAuthority, normalizeIndianPhone, generateToken } = require("../utils");
+const { recordActivity } = require("../libs/activities");
+const { getUserActivitiesByUserIdBetween } = require("../db/user_activities");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { addUserHistory, getUserHistoryById, updateUserHistoryById } = require("../db/user_history");
@@ -129,6 +131,47 @@ router.get("/:userId/exam-series", async (req, res) => {
     }
 
     return res.status(200).json(await getGivenExamSeriesByUserId({ user_id: userId }));
+});
+
+function isCalendarDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split("-").map(Number);
+    const check = new Date(Date.UTC(year, month - 1, day));
+    return check.getUTCFullYear() === year && check.getUTCMonth() === month - 1 && check.getUTCDate() === day;
+}
+
+router.get("/:id/activities", async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const userId = Number(req.params.id);
+    const isSelf = req.user.id === userId;
+    if (!isSelf && !hasRequiredAuthority(req.user.authorities, AUTHORITIES.READ_USER)) {
+        return res.status(403).json({ error: `You Don't have authority ${AUTHORITIES.READ_USER} to perform this operation` });
+    }
+
+    const date = String(req.query.date || "").trim();
+    if (!isCalendarDate(date)) {
+        return res.status(400).json({ error: "Missing or Invalid Date" });
+    }
+
+    const user = await getUserById({ id: userId });
+    if (!user) {
+        return res.status(400).json({ error: "User Not Exist" });
+    }
+
+    return res.status(200).json(
+        await getUserActivitiesByUserIdBetween({
+            user_id: userId,
+            day_start: `${date} 00:00:00`,
+            day_end: `${date} 23:59:59`,
+        }),
+    );
 });
 
 router.get("/:userId/exam-series/:examSeriesId/submissions", async (req, res) => {
@@ -403,6 +446,7 @@ router.put("/", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) =>
 
         const user = await getUserById({ id: validatedRequestBody.id });
         user.history = await getUserHistoryById({ user_id: user.id });
+        await recordActivity({ user_id: user.id, key: "UPDATE_PROFILE" });
 
         res.status(200).json(user);
     } else {

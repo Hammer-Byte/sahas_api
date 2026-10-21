@@ -13,6 +13,7 @@ const { getBundledCoursesByCourseId } = require("../db/bundled_courses");
 const { PAYMENT_GATEWAY_TYPE_EXAM_SERIES } = require("../constants");
 const { addExamSeriesEnrollment, getExamSeriesEnrollmentByUserIdAndExamSeriesId } = require("../db/exam_series_enrollments");
 const { createNotification } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -51,10 +52,20 @@ router.get("/:id", async (req, res) => {
                 });
 
                 if (!existingEnrollment) {
-                    await addExamSeriesEnrollment({
+                    const examSeriesEnrollmentId = await addExamSeriesEnrollment({
                         user_id: req?.user?.id,
                         exam_series_id: paymentGateWayPayLoad.exam_series_id,
                     });
+                    if (examSeriesEnrollmentId) {
+                        await recordActivity({
+                            user_id: req?.user?.id,
+                            key: "PAY_FEES",
+                            values: {
+                                amount: paymentGateWayPayLoad?.transaction?.amount,
+                                course: paymentGateWayPayLoad?.examSeries?.title || paymentGateWayPayLoad.exam_series_id,
+                            },
+                        });
+                    }
                     await createNotification({
                         user_id: req.user.id,
                         title: "Exam series access granted",
@@ -227,6 +238,17 @@ router.get("/:id", async (req, res) => {
                         }
                     },
                 });
+
+                if (enrollmentTransactionId) {
+                    await recordActivity({
+                        user_id: req?.user?.id,
+                        key: "PAY_FEES",
+                        values: {
+                            amount: paymentGateWayPayLoad?.transaction?.amount,
+                            course: paymentGateWayPayLoad?.course?.title,
+                        },
+                    });
+                }
 
                 await createNotification({
                     user_id: req.user.id,

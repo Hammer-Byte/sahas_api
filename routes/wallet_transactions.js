@@ -4,6 +4,7 @@ const { addWalletTransaction, getWalletTransactionById } = require("../db/wallet
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { createNotification, getAlertTypeId } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -16,6 +17,13 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_WALLET_TRANSACTION), asyn
     if (isRequestBodyValid) {
         const walletTransactionId = await addWalletTransaction({ created_by: req.user.id, ...validatedRequestBody });
         const amount = Number(validatedRequestBody.amount);
+        if (walletTransactionId) {
+            await recordActivity({
+                user_id: validatedRequestBody.user_id,
+                key: "WALLET",
+                values: { amount },
+            });
+        }
         const isCredit = amount >= 0;
         await createNotification({
             user_id: validatedRequestBody.user_id,

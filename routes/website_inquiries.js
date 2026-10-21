@@ -26,30 +26,32 @@ function normalizeText(value = "", max = 500) {
 
 /**
  * Public website inquiry form submit.
- * Body: { name|full_name, phone|contact, course_slug?, course_title?, description|note }
+ * Body: { name|full_name, phone|contact, branch_slug?, branch_name?, course_slug?, course_title?, description|note }
+ * Only name and phone are required.
  */
 router.post("/", async (req, res) => {
     try {
         const body = req.body || {};
         const full_name = normalizeText(body.full_name || body.name, 100);
         const phone = normalizePhone(body.phone || body.contact);
+        const branch_slug = normalizeText(body.branch_slug || body.branchSlug || "", 80) || null;
+        const branch_name = normalizeText(body.branch_name || body.branchName || body.branch || "", 160) || null;
         const course_slug = normalizeText(body.course_slug || body.courseSlug || "", 80) || null;
         const course_title = normalizeText(body.course_title || body.courseTitle || body.course || "", 160) || null;
-        const description = normalizeText(body.description || body.note || "", 2000);
+        const description = normalizeText(body.description || body.note || "", 2000) || null;
 
         if (!full_name) {
             return res.status(400).json({ success: false, error: "Name is required" });
         }
         if (!phone || phone.replace(/\D/g, "").length < 8) {
-            return res.status(400).json({ success: false, error: "Valid contact number is required" });
-        }
-        if (!description) {
-            return res.status(400).json({ success: false, error: "Description is required" });
+            return res.status(400).json({ success: false, error: "Valid phone number is required" });
         }
 
         const id = await addWebsiteInquiry({
             full_name,
             phone,
+            branch_slug,
+            branch_name,
             course_slug,
             course_title,
             description,

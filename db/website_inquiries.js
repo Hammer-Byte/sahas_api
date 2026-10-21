@@ -1,11 +1,29 @@
 const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
 
-function addWebsiteInquiry({ full_name, phone, course_slug = null, course_title = null, description, source = "website" }) {
+function addWebsiteInquiry({
+    full_name,
+    phone,
+    branch_slug = null,
+    branch_name = null,
+    course_slug = null,
+    course_title = null,
+    description = null,
+    source = "website",
+}) {
     return executeSQLQueryParameterized(
-        `INSERT INTO WEBSITE_INQUIRIES(full_name, phone, course_slug, course_title, description, source)
-         VALUES(?,?,?,?,?,?)`,
-        [full_name, phone, course_slug || null, course_title || null, description, source || "website"],
+        `INSERT INTO WEBSITE_INQUIRIES(full_name, phone, branch_slug, branch_name, course_slug, course_title, description, source)
+         VALUES(?,?,?,?,?,?,?,?)`,
+        [
+            full_name,
+            phone,
+            branch_slug || null,
+            branch_name || null,
+            course_slug || null,
+            course_title || null,
+            description || null,
+            source || "website",
+        ],
     )
         .then((result) => result.insertId)
         .catch((error) => {

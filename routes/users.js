@@ -469,6 +469,7 @@ router.patch(
     },
     async (req, res) => {
         await patchUserFullNameById({ ...req.body });
+        await recordActivity({ user_id: req.body.id, key: "UPDATE_NAME", values: { name: req.body.full_name } });
         res.status(200).json(await getUserById({ id: req.body.id }));
     },
 );
@@ -493,6 +494,7 @@ router.patch(
     async (req, res) => {
         try {
             await patchUserPhoneById({ ...req.body });
+            await recordActivity({ user_id: req.body.id, key: "UPDATE_PHONE", values: { phone: req.body.phone } });
             res.status(200).json(await getUserById({ id: req.body.id }));
         } catch (error) {
             if (error?.code === "ER_DUP_ENTRY") {
@@ -521,6 +523,7 @@ router.patch(
     async (req, res) => {
         try {
             await patchUserEmailById({ ...req.body });
+            await recordActivity({ user_id: req.body.id, key: "UPDATE_EMAIL", values: { email: req.body.email } });
             res.status(200).json(await getUserById({ id: req.body.id }));
         } catch (error) {
             if (error?.code === "ER_DUP_ENTRY") {

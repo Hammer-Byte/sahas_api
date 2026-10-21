@@ -98,7 +98,9 @@ router.delete("/:id", requires_authority(AUTHORITIES.DELETE_CHAPTERS), async (re
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Chapter Id" });
     }
+    const chapter = await getChapterById({ id: req.params.id });
     deleteChapterById({ id: req.params.id });
+    await recordActivity({ user_id: req.user?.id, key: "DELETE_CHAPTER", values: { chapter: chapter?.title } });
     res.sendStatus(204);
 });
 
@@ -133,7 +135,9 @@ router.post(
     },
     async (req, res) => {
         const chapterId = await addChapter(req.body);
-        res.status(201).json(await getChapterById({ id: chapterId }));
+        const chapter = await getChapterById({ id: chapterId });
+        await recordActivity({ user_id: req.user?.id, key: "ADD_CHAPTER", values: { chapter: chapter?.title || req.body.title } });
+        res.status(201).json(chapter);
     },
 );
 
@@ -152,7 +156,9 @@ router.patch(
     },
     async (req, res) => {
         await updateChapterById(req.body);
-        res.status(200).json(await getChapterById({ id: req.body.id }));
+        const chapter = await getChapterById({ id: req.body.id });
+        await recordActivity({ user_id: req.user?.id, key: "UPDATE_CHAPTER", values: { chapter: chapter?.title } });
+        res.status(200).json(chapter);
     },
 );
 

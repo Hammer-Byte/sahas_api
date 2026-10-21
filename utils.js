@@ -121,6 +121,10 @@ function parseAppDateTime(value) {
     return new Date(raw).getTime();
 }
 
+function formatAppDateTime(value = new Date()) {
+    return libMoment(value).utcOffset(APP_TZ_OFFSET_MINUTES).format("YYYY-MM-DD HH:mm:ss");
+}
+
 function isWithinAppDateWindow({ start_at, end_at, graceMs = 0, now = Date.now() }) {
     const start = parseAppDateTime(start_at);
     const end = parseAppDateTime(end_at);
@@ -139,6 +143,7 @@ module.exports = {
     normalizeIndianPhone,
     toMsg91Mobile,
     parseAppDateTime,
+    formatAppDateTime,
     isWithinAppDateWindow,
     APP_TZ_OFFSET_MINUTES,
 };

@@ -1,10 +1,13 @@
 const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
+const { formatAppDateTime } = require("../utils");
 
 function addUserActivity({ user_id, activity }) {
-    return executeSQLQueryParameterized(`INSERT INTO USER_ACTIVITIES (user_id, activity) VALUES (?, ?)`, [user_id, activity]).then(
-        (result) => result.insertId,
-    );
+    return executeSQLQueryParameterized(`INSERT INTO USER_ACTIVITIES (user_id, activity, created_on) VALUES (?, ?, ?)`, [
+        user_id,
+        activity,
+        formatAppDateTime(),
+    ]).then((result) => result.insertId);
 }
 
 function getUserActivitiesByUserIdBetween({ user_id, day_start, day_end }) {

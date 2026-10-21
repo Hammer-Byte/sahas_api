@@ -4,6 +4,7 @@ const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { createNotification } = require("../libs/notifications");
+const { recordActivity } = require("../libs/activities");
 
 const router = libExpress.Router();
 
@@ -31,6 +32,7 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req,
             description: "A new global note has been added to your profile.",
             created_by: req.user.id,
         });
+        await recordActivity({ user_id: note.user_id, key: "ADD_GLOBAL_NOTE" });
         return res.status(201).json(note);
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Global Note" });

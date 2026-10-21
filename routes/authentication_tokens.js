@@ -21,6 +21,42 @@ const { getUnseenCountByUserId } = require("../db/notifications");
 
 const router = libExpress.Router();
 
+function accountEmail(user) {
+    for (const value of [user?.email, user?.guardian_email]) {
+        if (value == null) continue;
+        const normalized = String(value).trim().toLowerCase();
+        if (libValidator.isEmail(normalized)) return normalized;
+    }
+    return null;
+}
+
+function smsRecipientForUser(user) {
+    if (user?.phone == null || String(user.phone).trim() === "") return null;
+    const { phone, error } = normalizeIndianPhone(user.phone);
+    if (error) return null;
+    return toMsg91Mobile(phone);
+}
+
+async function postMailer({ requestPath = "/", body, startMessage }) {
+    let responseCode = 500;
+    await requestService({
+        requestServiceName: process.env.SERVICE_MAILER,
+        requestPath,
+        onRequestStart: () => logger.info(startMessage),
+        requestMethod: "POST",
+        parseResponseBody: false,
+        requestPostBody: body,
+        onResponseReceieved: (_, code) => {
+            responseCode = code;
+        },
+        onRequestFailure: (error) => {
+            logger.error(`${startMessage} - ${error}`);
+            responseCode = 500;
+        },
+    });
+    return responseCode;
+}
+
 //work on blocked user #2
 //once receieved the info on UI save into reudx
 //check what fields need to be sent
@@ -115,52 +151,52 @@ router.post("/", async (req, res) => {
         validity: new Date(Date.now() + token_validity * 24 * 60 * 60 * 1000),
     });
 
-    if (sendChannel.type === "email") {
-        requestService({
-            requestServiceName: process.env.SERVICE_MAILER,
-            onRequestStart: () => logger.info("Generating OTP"),
-            requestMethod: "POST",
-            parseResponseBody: false,
-            requestPostBody: {
-                to: sendChannel.to,
-                subject: "Verification OTP",
-                template: "otp",
-                injects: { otp, otp_validity, user_email: sendChannel.userEmail },
-            },
-            onResponseReceieved: (_, responseCode) => {
-                if (responseCode === 201) {
-                    res.status(201).json({ authentication_token });
-                } else {
-                    logger.error(`Failed To Generate OTP - Mailer Responded With ${responseCode}`);
-                    res.status(500).json({ error: "Something Seems to be Broken , Please Try Again Later" });
-                }
-            },
-        });
-    } else {
-        requestService({
-            requestServiceName: process.env.SERVICE_MAILER,
-            requestPath: "/sms",
-            onRequestStart: () => logger.info("Generating SMS OTP"),
-            requestMethod: "POST",
-            parseResponseBody: false,
-            requestPostBody: {
-                to: sendChannel.to,
-                otp,
-            },
-            onResponseReceieved: (_, responseCode) => {
-                if (responseCode === 201) {
-                    res.status(201).json({ authentication_token });
-                } else {
-                    logger.error(`Failed To Generate SMS OTP - Mailer Responded With ${responseCode}`);
-                    res.status(500).json({ error: "Something Seems to be Broken , Please Try Again Later" });
-                }
-            },
-            onRequestFailure: (error) => {
-                logger.error(`Failed To Generate SMS OTP - ${error}`);
-                res.status(500).json({ error: "Something Seems to be Broken , Please Try Again Later" });
-            },
-        });
+    const emailRecipient = sendChannel.type === "email" ? sendChannel.to : accountEmail(user);
+    const smsRecipient = sendChannel.type === "sms" ? sendChannel.to : smsRecipientForUser(user);
+    const deliveries = [];
+
+    if (smsRecipient) {
+        deliveries.push(
+            postMailer({
+                requestPath: "/sms",
+                body: { to: smsRecipient, otp },
+                startMessage: "Generating SMS OTP",
+            }).then((code) => ({ channel: "sms", code })),
+        );
     }
+
+    if (emailRecipient) {
+        deliveries.push(
+            postMailer({
+                body: {
+                    to: emailRecipient,
+                    subject: "Verification OTP",
+                    template: "otp",
+                    injects: { otp, otp_validity, user_email: sendChannel.userEmail || emailRecipient },
+                },
+                startMessage: "Generating OTP",
+            }).then((code) => ({ channel: "email", code })),
+        );
+    }
+
+    if (!deliveries.length) {
+        logger.error("Failed To Generate OTP - no phone or email to deliver");
+        return res.status(500).json({ error: "Something Seems to be Broken , Please Try Again Later" });
+    }
+
+    const results = await Promise.all(deliveries);
+    for (const result of results) {
+        if (result.code !== 201) {
+            logger.error(`Failed To Generate OTP via ${result.channel} - Mailer Responded With ${result.code}`);
+        }
+    }
+
+    const primaryOk = results.some((result) => result.channel === sendChannel.type && result.code === 201);
+    if (!primaryOk) {
+        return res.status(500).json({ error: "Something Seems to be Broken , Please Try Again Later" });
+    }
+
+    return res.status(201).json({ authentication_token });
 });
 
 router.get("/", async (req, res) => {

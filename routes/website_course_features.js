@@ -53,7 +53,10 @@ router.patch("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, 
         return res.status(400).json({ error: "Website Course Feature Not Exist" });
     }
 
-    await updateWebsiteCourseFeatureById({ ...validatedRequestBody, ...req.body });
+    const updated = await updateWebsiteCourseFeatureById({ ...validatedRequestBody, ...req.body });
+    if (!updated) {
+        return res.status(400).json({ error: "Failed To Save" });
+    }
     return res.status(200).json(await getWebsiteCourseFeatureById({ id: validatedRequestBody.id }));
 });
 
@@ -67,7 +70,10 @@ router.delete("/:id", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (r
         return res.status(400).json({ error: "Website Course Feature Not Exist" });
     }
 
-    await deleteWebsiteCourseFeatureById({ id: req.params.id });
+    const removed = await deleteWebsiteCourseFeatureById({ id: req.params.id });
+    if (!removed) {
+        return res.status(400).json({ error: "Failed To Delete" });
+    }
     return res.sendStatus(204);
 });
 

@@ -22,7 +22,10 @@ router.patch("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, 
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
 
-    await updateWebsiteAbout({ ...validatedRequestBody, ...req.body });
+    const updated = await updateWebsiteAbout({ ...validatedRequestBody, ...req.body });
+    if (!updated) {
+        return res.status(400).json({ error: "Failed To Save" });
+    }
     return res.status(200).json(await getWebsiteAbout());
 });
 

@@ -17,9 +17,15 @@ function getWebsiteCourseById({ id }) {
         });
 }
 
-function addWebsiteCourse({ title, subtitle, short_description, description, category, board, university, medium, duration, badge, price, price_label, image, image_alt, brochure_url, cta_text, enquiry_url, detail_url, featured = false, is_active = true }) {
-    const publicId = String(title || "website_courses").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70) || `website_courses-${Date.now()}`;
-    return executeSQLQueryParameterized("INSERT INTO WEBSITE_COURSES (public_id, slug, title, subtitle, short_description, description, category, board, university, medium, duration, badge, price, price_label, image, image_alt, brochure_url, cta_text, enquiry_url, detail_url, featured, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [publicId, publicId, title, subtitle, short_description, description, category, board, university, medium, duration, badge, price, price_label, image, image_alt, brochure_url, cta_text, enquiry_url, detail_url, featured, is_active])
+function emptyPrice(value) {
+    if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) return null;
+    const numeric = Number(String(value).replace(/[₹,\s]/g, ""));
+    return Number.isFinite(numeric) ? numeric : null;
+}
+
+function addWebsiteCourse(body) {
+    const publicId = String(body.title || "website_courses").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70) || `website_courses-${Date.now()}`;
+    return executeSQLQueryParameterized("INSERT INTO WEBSITE_COURSES (public_id, slug, title, subtitle, short_description, description, category, board, university, medium, duration, badge, price, price_label, image, image_alt, brochure_url, cta_text, enquiry_url, detail_url, featured, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [publicId, publicId, body.title, body.subtitle, body.short_description, body.description, body.category, body.board, body.university, body.medium, body.duration, body.badge, emptyPrice(body.price), body.price_label, body.image, body.image_alt, body.brochure_url, body.cta_text, body.enquiry_url, body.detail_url, body.featured, body.is_active])
         .then((result) => result.insertId)
         .catch((error) => {
             logger.error(`addWebsiteCourse: ${error}`);
@@ -27,8 +33,8 @@ function addWebsiteCourse({ title, subtitle, short_description, description, cat
         });
 }
 
-function updateWebsiteCourseById({ id, title, subtitle, short_description, description, category, board, university, medium, duration, badge, price, price_label, image, image_alt, brochure_url, cta_text, enquiry_url, detail_url, featured, is_active }) {
-    return executeSQLQueryParameterized("UPDATE WEBSITE_COURSES SET title=?, subtitle=?, short_description=?, description=?, category=?, board=?, university=?, medium=?, duration=?, badge=?, price=?, price_label=?, image=?, image_alt=?, brochure_url=?, cta_text=?, enquiry_url=?, detail_url=?, featured=?, is_active=? WHERE id=?", [title, subtitle, short_description, description, category, board, university, medium, duration, badge, price, price_label, image, image_alt, brochure_url, cta_text, enquiry_url, detail_url, featured, is_active, id]).catch((error) => {
+function updateWebsiteCourseById(body) {
+    return executeSQLQueryParameterized("UPDATE WEBSITE_COURSES SET title=?, subtitle=?, short_description=?, description=?, category=?, board=?, university=?, medium=?, duration=?, badge=?, price=?, price_label=?, image=?, image_alt=?, brochure_url=?, cta_text=?, enquiry_url=?, detail_url=?, featured=?, is_active=? WHERE id=?", [body.title, body.subtitle, body.short_description, body.description, body.category, body.board, body.university, body.medium, body.duration, body.badge, emptyPrice(body.price), body.price_label, body.image, body.image_alt, body.brochure_url, body.cta_text, body.enquiry_url, body.detail_url, body.featured, body.is_active, body.id]).catch((error) => {
         logger.error(`updateWebsiteCourseById: ${error}`);
         return false;
     });

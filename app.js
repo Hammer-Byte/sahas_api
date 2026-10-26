@@ -6,8 +6,9 @@ const { generateDBTables } = require("./libs/db");
 
 // Test and Prepare Required Tables
 (async () => {
-    await generateDBTables()
-        .then(() => logger.success("Database Ready"))
-        .then(allowTraffic)
-        .catch((error) => logger.error(`Failed To Prepare Database ${error}`));
+  await generateDBTables()
+    .then(() => logger.success("Database Ready"))
+    .then(allowTraffic)
+    .catch((error) => logger.error(`Failed To Prepare Database ${error}`));
 })();
+// comment

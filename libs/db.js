@@ -1512,31 +1512,6 @@ async function generateDBTables() {
 
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
 
-    // CREATE TABLE IF NOT EXISTS does not add columns to existing tables.
-    const ensureColumns = [
-        `ALTER TABLE EXAM_CANDIDATURE ADD COLUMN interruptions INT NOT NULL DEFAULT 0`,
-        `ALTER TABLE USERS ADD COLUMN guardian_email VARCHAR(48) NULL`,
-        `ALTER TABLE USERS ADD COLUMN dob DATE NULL`,
-        `ALTER TABLE USERS MODIFY email VARCHAR(48) NULL`,
-        `ALTER TABLE BATCH_SCHEDULE ADD COLUMN subject VARCHAR(128) NULL`,
-        `ALTER TABLE BATCH_SCHEDULE ADD COLUMN event_handler INT NULL`,
-        `ALTER TABLE BATCH_SCHEDULE ADD INDEX idx_batch_schedule_handler (event_handler)`,
-    ];
-
-    await Promise.all(
-        ensureColumns.map((query) =>
-            executeSQLQueryRaw(query).catch((error) => {
-                if (
-                    error?.code !== "ER_DUP_FIELDNAME" &&
-                    error?.code !== "ER_DUP_KEYNAME" &&
-                    error?.errno !== 1060 &&
-                    error?.errno !== 1061
-                ) {
-                    logger.error(`ensureColumns failed: ${query} - ${error}`);
-                }
-            }),
-        ),
-    );
 
     await backfillUserActivityTimesToIst();
 }

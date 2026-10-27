@@ -67,11 +67,7 @@ const routers = {
 
     "/inquiries": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/inquiries") },
 
-    // Public website inquiry form (POST open; GET needs auth + READ_USER_INQUIRIES)
-    "/website-inquiries": {
-        middlewares: [parseAuthenticationToken, logRequest],
-        router: require("./routes/website_inquiries"),
-    },
+    "/website-inquiries": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/website_inquiries") },
 
     "/sahaswebsite": { middlewares: [], router: require("./routes/sahaswebsite") },
     "/website/settings": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/website_settings") },

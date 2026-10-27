@@ -67,8 +67,7 @@ const routers = {
 
     "/inquiries": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/inquiries") },
 
-    "/website-inquiries": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/website_inquiries") },
-
+    "/website-inquiries": { middlewares: [parseAuthenticationToken, logRequest], router: require("./routes/website_inquiries") },
     "/sahaswebsite": { middlewares: [], router: require("./routes/sahaswebsite") },
     "/website/settings": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/website_settings") },
     "/website/header": { middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest], router: require("./routes/website_header") },

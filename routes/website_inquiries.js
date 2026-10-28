@@ -6,9 +6,17 @@ const { AUTHORITIES } = require("../constants");
 
 const router = libExpress.Router();
 
+// Same authority as other admin website management routes; guard missing user so includes() does not crash
+const requiresAdminWebsite = (req, res, next) => {
+    if (!req?.user?.authorities) {
+        return res.status(403).json({ error: `You Don't have authority ${AUTHORITIES.USE_ADMIN_CORNER} to perform this operation` });
+    }
+    return requires_authority(AUTHORITIES.USE_ADMIN_CORNER)(req, res, next);
+};
+
 //tested
-router.get("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
-    res.status(200).json(await getAllWebsiteInquiries());
+router.get("/", requiresAdminWebsite, async (req, res) => {
+    return res.status(200).json(await getAllWebsiteInquiries());
 });
 
 // Public website form submit
@@ -33,24 +41,37 @@ router.post("/", async (req, res) => {
     if (description) req.body.description = description;
 
     const requiredBodyFields = ["full_name", "phone"];
-
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
-    if (isRequestBodyValid) {
-        const inquiryId = await addWebsiteInquiry({ ...validatedRequestBody, ...req.body });
-        res.status(201).json(await getWebsiteInquiryById({ id: inquiryId }));
-    } else {
-        res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
+
+    const id = await addWebsiteInquiry({ ...validatedRequestBody, ...req.body });
+    const created = await getWebsiteInquiryById({ id });
+    if (!created) {
+        return res.status(400).json({ error: "Failed To Add Website Inquiry" });
+    }
+
+    return res.status(201).json(created);
 });
 
 //tested
-router.delete("/:id", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.delete("/:id", requiresAdminWebsite, async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Website Inquiry Id" });
     }
-    deleteWebsiteInquiryById(req.params);
-    res.sendStatus(204);
+
+    const existing = await getWebsiteInquiryById({ id: req.params.id });
+    if (!existing) {
+        return res.status(400).json({ error: "Website Inquiry Not Exist" });
+    }
+
+    const removed = await deleteWebsiteInquiryById({ id: req.params.id });
+    if (!removed) {
+        return res.status(400).json({ error: "Failed To Delete" });
+    }
+    return res.sendStatus(204);
 });
 
 module.exports = router;

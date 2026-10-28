@@ -12,8 +12,11 @@ function getAllWebsiteInquiries() {
 //freeze
 function getWebsiteInquiryById({ id }) {
     return executeSQLQueryParameterized("SELECT * FROM WEBSITE_INQUIRIES WHERE id=?", [id])
-        .then((results) => (results.length > 0 ? results[0] : null))
-        .catch((error) => logger.error(`getWebsiteInquiryById: ${error}`));
+        .then((result) => (result.length > 0 ? result[0] : false))
+        .catch((error) => {
+            logger.error(`getWebsiteInquiryById: ${error}`);
+            return false;
+        });
 }
 
 //freeze
@@ -32,14 +35,18 @@ function addWebsiteInquiry({
         [full_name, phone, branch_slug, branch_name, course_slug, course_title, description, source],
     )
         .then((result) => result.insertId)
-        .catch((error) => logger.error(`addWebsiteInquiry: ${error}`));
+        .catch((error) => {
+            logger.error(`addWebsiteInquiry: ${error}`);
+            return false;
+        });
 }
 
 //freeze
 function deleteWebsiteInquiryById({ id }) {
-    return executeSQLQueryParameterized("DELETE FROM WEBSITE_INQUIRIES WHERE id=?", [id]).catch((error) =>
-        logger.error(`deleteWebsiteInquiryById: ${error}`),
-    );
+    return executeSQLQueryParameterized("DELETE FROM WEBSITE_INQUIRIES WHERE id=?", [id]).catch((error) => {
+        logger.error(`deleteWebsiteInquiryById: ${error}`);
+        return false;
+    });
 }
 
 module.exports = {

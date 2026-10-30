@@ -16,6 +16,7 @@ const {
     updateUserEventById,
     deleteUserEventById,
 } = require("../db/user_events");
+const { getChoghadiyaForDate, isValidDateString } = require("../libs/choghadiya");
 
 const router = libExpress.Router();
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -237,6 +238,24 @@ router.get("/summary", async (req, res) => {
     }
 
     res.status(200).json(summary);
+});
+
+router.get("/choghadiya", async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const dateStr = typeof req.query.date === "string" ? req.query.date.trim() : "";
+    if (!isValidDateString(dateStr)) {
+        return res.status(400).json({ error: "Missing or Invalid date (YYYY-MM-DD)" });
+    }
+
+    try {
+        return res.status(200).json(await getChoghadiyaForDate(dateStr));
+    } catch (error) {
+        console.error("Failed to fetch Choghadiya timings", error?.message || error);
+        return res.status(502).json({ error: "Couldn't load Choghadiya timings" });
+    }
 });
 
 router.get("/", async (req, res) => {

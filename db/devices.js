@@ -48,6 +48,12 @@ function getUserDeviceById({ id }) {
         .catch((error) => logger.error(`updateUserDeviceStatusById: ${error}`));
 }
 
+function getUserDeviceByUserIdAndFingerPrint({ user_id, finger_print }) {
+    return executeSQLQueryParameterized(`SELECT * FROM USER_DEVICES WHERE user_id=? AND finger_print=?`, [user_id, finger_print])
+        .then((result) => (result.length ? result[0] : false))
+        .catch((error) => logger.error(`getUserDeviceByUserIdAndFingerPrint: ${error}`));
+}
+
 module.exports = {
     addActiveUserDevice,
     userDeviceExist,
@@ -56,4 +62,5 @@ module.exports = {
     getDevicesByUserId,
     updateUserDeviceStatusById,
     getUserDeviceById,
+    getUserDeviceByUserIdAndFingerPrint,
 };

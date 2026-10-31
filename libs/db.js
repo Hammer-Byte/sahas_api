@@ -106,6 +106,17 @@ async function generateDBTables() {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_user_device (user_id, finger_print)
           )`,
+        `CREATE TABLE IF NOT EXISTS USER_DEVICE_CHANGE_REQUESTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            device_id INT NOT NULL,
+            status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+            requested_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            reviewed_by INT NULL,
+            reviewed_on DATETIME NULL,
+            INDEX idx_user_device_change_requests_status (status),
+            INDEX idx_user_device_change_requests_user_device (user_id, device_id)
+          )`,
         `CREATE TABLE IF NOT EXISTS BRANCHES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(56) NOT NULL,

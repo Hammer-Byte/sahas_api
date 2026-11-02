@@ -1,5 +1,7 @@
 const libExpress = require("express");
-const { validateRequestBody } = require("sahas_utils");
+const { validateRequestBody, logger } = require("sahas_utils");
+const { AUTHORITIES } = require("../constants");
+const requires_authority = require("../middlewares/requires_authority");
 const { getBatchesByUserId } = require("../db/batches");
 const {
     getBatchSchedulesByBatchIdsAndWeekday,
@@ -16,10 +18,53 @@ const {
     updateUserEventById,
     deleteUserEventById,
 } = require("../db/user_events");
+const {
+    getChoghadiyaSlotsByDate,
+    deleteChoghadiyaSlotsExceptYear,
+    countChoghadiyaDaysByYear,
+    replaceChoghadiyaSlotsForDate,
+} = require("../db/choghadiya");
+const { getGovernmentHolidaysInRange } = require("../db/government_holidays");
+const { fetchYearChoghadiya, getChoghadiyaParamsFromEnv } = require("../libs/choghadiya");
 
 const router = libExpress.Router();
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SUMMARY_DAYS = 62;
+const AUSPICIOUS_NAMES = new Set(["Amrit", "Shubh", "Labh"]);
+const INAUSPICIOUS_NAMES = new Set(["Rog", "Kaal", "Udveg"]);
+
+function isCalendarDate(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split("-").map(Number);
+    const check = new Date(Date.UTC(year, month - 1, day));
+    return check.getUTCFullYear() === year && check.getUTCMonth() === month - 1 && check.getUTCDate() === day;
+}
+
+function choghadiyaQuality(name) {
+    if (AUSPICIOUS_NAMES.has(name)) return "auspicious";
+    if (INAUSPICIOUS_NAMES.has(name)) return "inauspicious";
+    return "neutral";
+}
+
+function formatHoliday(row) {
+    if (!row) return null;
+    return {
+        id: row.id,
+        date: String(row.date).slice(0, 10),
+        name: row.name,
+        year: row.year,
+    };
+}
+
+function formatChoghadiyaSlot(row) {
+    return {
+        period: row.period,
+        slot: row.slot,
+        name: row.name,
+        quality: choghadiyaQuality(row.name),
+        start_at: toWallClockDateTime(row.start_at),
+        end_at: toWallClockDateTime(row.end_at),
+    };
+}
 
 function toTimeString(value) {
     if (value == null) return null;
@@ -160,6 +205,132 @@ function scheduleCountsTowardDay(schedule, dateStr) {
     return !!(startTime && endTime);
 }
 
+router.get("/choghadiya", async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const dateStr = typeof req.query.date === "string" ? req.query.date.trim() : "";
+    if (!isCalendarDate(dateStr)) {
+        return res.status(400).json({ error: "Missing or Invalid date (YYYY-MM-DD)" });
+    }
+
+    const slots = await getChoghadiyaSlotsByDate({ date: dateStr });
+
+    const day = [];
+    const night = [];
+    for (const slot of slots) {
+        const formatted = formatChoghadiyaSlot(slot);
+        if (slot.period === "night") night.push(formatted);
+        else day.push(formatted);
+    }
+
+    res.status(200).json({
+        date: dateStr,
+        day,
+        night,
+    });
+});
+
+router.post("/choghadiya/sync", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+    if (!process.env.NAVAMSHA_API_KEY) {
+        return res.status(500).json({ error: "NAVAMSHA_API_KEY is not configured" });
+    }
+
+    const requiredBodyFields = ["year"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const year = Number(validatedRequestBody.year);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+        return res.status(400).json({ error: "Missing or Invalid year" });
+    }
+
+    let params;
+    try {
+        params = getChoghadiyaParamsFromEnv();
+    } catch (error) {
+        return res.status(500).json({ error: error.message || "Choghadiya env is not configured" });
+    }
+
+    try {
+        const result = await fetchYearChoghadiya({
+            year,
+            ...params,
+            onDayFetched: async ({ date, slots }) => replaceChoghadiyaSlotsForDate({ date, slots }),
+            onProgress: ({ date, index, total }) => {
+                if (index === 1 || index === total || index % 30 === 0) {
+                    logger.info(`Choghadiya sync progress ${index}/${total} (${date})`);
+                }
+            },
+        });
+
+        let storedDays;
+        try {
+            storedDays = await countChoghadiyaDaysByYear({ year });
+        } catch (error) {
+            logger.error(`Choghadiya sync count failed: ${error}`);
+            return res.status(500).json({ error: "Failed To Verify Synced Choghadiya Days" });
+        }
+
+        if (!result.complete || storedDays < result.days_requested) {
+            return res.status(502).json({
+                error: `Incomplete Sync: Saved ${storedDays}/${result.days_requested} Days. Please Sync Again`,
+                year: result.year,
+                days_requested: result.days_requested,
+                days_synced: result.days_synced,
+                stored_days: storedDays,
+                failure_count: result.failures?.length || 0,
+                failures: result.failures?.slice(0, 10) || [],
+            });
+        }
+
+        await deleteChoghadiyaSlotsExceptYear({ year });
+
+        res.status(200).json({
+            year: result.year,
+            days_requested: result.days_requested,
+            days_synced: result.days_synced,
+            stored_days: storedDays,
+            failure_count: 0,
+            replaced: true,
+            complete: true,
+        });
+    } catch (error) {
+        res.status(502).json({ error: error.message || "Failed To Sync Choghadiya" });
+    }
+});
+
+router.get("/holidays", async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const fromStr = typeof req.query.from === "string" ? req.query.from.trim() : "";
+    const toStr = typeof req.query.to === "string" ? req.query.to.trim() : "";
+    if (!isCalendarDate(fromStr) || !isCalendarDate(toStr)) {
+        return res.status(400).json({ error: "Missing or Invalid from/to (YYYY-MM-DD)" });
+    }
+
+    const dayCount = daysBetweenInclusive(fromStr, toStr);
+    if (dayCount < 1) {
+        return res.status(400).json({ error: "Invalid range: to must be on or after from" });
+    }
+    if (dayCount > 400) {
+        return res.status(400).json({ error: "Range too large (max 400 days)" });
+    }
+
+    const rows = await getGovernmentHolidaysInRange({ from: fromStr, to: toStr });
+    const holidays = {};
+    for (const row of rows) {
+        const key = String(row.date).slice(0, 10);
+        holidays[key] = formatHoliday(row);
+    }
+    res.status(200).json(holidays);
+});
+
 router.get("/summary", async (req, res) => {
     if (!req.user?.id) {
         return res.status(401).json({ error: "Authentication Required" });
@@ -167,7 +338,7 @@ router.get("/summary", async (req, res) => {
 
     const fromStr = typeof req.query.from === "string" ? req.query.from.trim() : "";
     const toStr = typeof req.query.to === "string" ? req.query.to.trim() : "";
-    if (!DATE_RE.test(fromStr) || !DATE_RE.test(toStr)) {
+    if (!isCalendarDate(fromStr) || !isCalendarDate(toStr)) {
         return res.status(400).json({ error: "Missing or Invalid from/to (YYYY-MM-DD)" });
     }
 
@@ -245,7 +416,7 @@ router.get("/", async (req, res) => {
     }
 
     const dateStr = typeof req.query.date === "string" ? req.query.date.trim() : "";
-    if (!DATE_RE.test(dateStr)) {
+    if (!isCalendarDate(dateStr)) {
         return res.status(400).json({ error: "Missing or Invalid date (YYYY-MM-DD)" });
     }
 
@@ -319,6 +490,24 @@ router.get("/", async (req, res) => {
     res.status(200).json(events);
 });
 
+function validateUserEventBody(validatedRequestBody) {
+    const title = String(validatedRequestBody.title || "").trim();
+    if (!title) {
+        return { error: "Title is required" };
+    }
+
+    const start_at = String(validatedRequestBody.start_at || "").trim();
+    const end_at = String(validatedRequestBody.end_at || "").trim();
+    if (!start_at || !end_at) {
+        return { error: "Missing start_at or end_at" };
+    }
+    if (end_at <= start_at) {
+        return { error: "End must be after start" };
+    }
+
+    return { title, start_at, end_at };
+}
+
 router.post("/events", async (req, res) => {
     if (!req.user?.id) {
         return res.status(401).json({ error: "Authentication Required" });
@@ -330,12 +519,17 @@ router.post("/events", async (req, res) => {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
 
+    const parsed = validateUserEventBody(validatedRequestBody);
+    if (parsed.error) {
+        return res.status(400).json({ error: parsed.error });
+    }
+
     const id = await addUserEvent({
         user_id: req.user.id,
-        title: validatedRequestBody.title,
+        title: parsed.title,
         description: req.body.description || null,
-        start_at: validatedRequestBody.start_at,
-        end_at: validatedRequestBody.end_at,
+        start_at: parsed.start_at,
+        end_at: parsed.end_at,
     });
 
     if (!id) {
@@ -362,13 +556,18 @@ router.patch("/events", async (req, res) => {
         return res.status(400).json({ error: "Event Not Exist" });
     }
 
+    const parsed = validateUserEventBody(validatedRequestBody);
+    if (parsed.error) {
+        return res.status(400).json({ error: parsed.error });
+    }
+
     const updated = await updateUserEventById({
         id: validatedRequestBody.id,
         user_id: req.user.id,
-        title: validatedRequestBody.title,
+        title: parsed.title,
         description: req.body.description || null,
-        start_at: validatedRequestBody.start_at,
-        end_at: validatedRequestBody.end_at,
+        start_at: parsed.start_at,
+        end_at: parsed.end_at,
     });
 
     if (!updated) {

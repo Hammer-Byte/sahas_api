@@ -1198,6 +1198,27 @@ async function generateDBTables() {
             INDEX idx_user_events_user (user_id),
             INDEX idx_user_events_start (start_at)
         )`,
+        `CREATE TABLE IF NOT EXISTS CHOGHADIYA_SLOTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            date DATE NOT NULL,
+            period ENUM('day', 'night') NOT NULL,
+            slot TINYINT NOT NULL,
+            name VARCHAR(32) NOT NULL,
+            start_at DATETIME NOT NULL,
+            end_at DATETIME NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_choghadiya_slot (date, period, slot),
+            INDEX idx_choghadiya_date (date)
+        )`,
+        `CREATE TABLE IF NOT EXISTS GOVERNMENT_HOLIDAYS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            date DATE NOT NULL,
+            name VARCHAR(128) NOT NULL,
+            year SMALLINT NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_gov_holiday_date (date),
+            INDEX idx_gov_holidays_year (year)
+        )`,
         `CREATE TABLE IF NOT EXISTS USER_ACTIVITIES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
@@ -1511,7 +1532,6 @@ async function generateDBTables() {
     ];
 
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
-
 
     await backfillUserActivityTimesToIst();
 }

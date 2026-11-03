@@ -16,8 +16,29 @@ const { getAllCourses } = require("../db/courses");
 const { createNotification, getAlertTypeId } = require("../libs/notifications");
 const { recordActivity } = require("../libs/activities");
 const { getCourseById } = require("../db/courses");
+const { getUserByPhone, getUserByEmail, addUser } = require("../db/users");
+const { addUserHistory } = require("../db/user_history");
+const { hasRequiredAuthority, normalizeIndianPhone } = require("../utils");
 
 const router = libExpress.Router();
+
+async function createInquiryForUser({ user_id, course_id, note, branch_id, created_by }) {
+    const inquiryId = await addInquiry({ user_id, course_id, branch_id, created_by });
+    await addInquiryNote({ inquiry_id: inquiryId, note, created_by });
+    await createNotification({
+        user_id,
+        title: "An inquiry was created",
+        description: "A new inquiry was created on your profile.",
+        created_by,
+    });
+    const course = await getCourseById({ id: course_id });
+    await recordActivity({
+        user_id,
+        key: "CREATE_INQUIRY",
+        values: { course: course?.title },
+    });
+    return getInquiryById({ id: inquiryId });
+}
 
 //tested
 router.post("/", requires_authority(AUTHORITIES.CREATE_INQUIRY), async (req, res) => {
@@ -26,24 +47,80 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_INQUIRY), async (req, res
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (isRequestBodyValid) {
-        const inquiryId = await addInquiry({ ...validatedRequestBody, created_by: req.user.id });
-        await addInquiryNote({ inquiry_id: inquiryId, note: validatedRequestBody.note, created_by: req.user.id });
-        await createNotification({
-            user_id: validatedRequestBody.user_id,
-            title: "An inquiry was created",
-            description: "A new inquiry was created on your profile.",
-            created_by: req.user.id,
-        });
-        const course = await getCourseById({ id: validatedRequestBody.course_id });
-        await recordActivity({
-            user_id: validatedRequestBody.user_id,
-            key: "CREATE_INQUIRY",
-            values: { course: course?.title },
-        });
-        res.status(201).json(await getInquiryById({ id: inquiryId }));
+        res.status(201).json(
+            await createInquiryForUser({
+                ...validatedRequestBody,
+                created_by: req.user.id,
+            }),
+        );
     } else {
         res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
+});
+
+/**
+ * Create inquiry from Manage Inquiries: resolve/create user by phone/email, then create inquiry.
+ * Body: user fields (full_name, email, phone, branch_id, address, …) + course_id, note, inquiry_branch_id
+ */
+router.post("/with-user", requires_authority(AUTHORITIES.CREATE_INQUIRY), async (req, res) => {
+    const requiredBodyFields = ["full_name", "email", "phone", "branch_id", "address", "course_id", "note", "inquiry_branch_id"];
+
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const { phone, error: phoneError } = normalizeIndianPhone(validatedRequestBody.phone);
+    if (phoneError) {
+        return res.status(400).json({ error: phoneError });
+    }
+
+    const email = String(validatedRequestBody.email).toLowerCase().trim();
+    if (!email) {
+        return res.status(400).json({ error: "Missing email" });
+    }
+
+    let user = (await getUserByPhone({ phone })) || (await getUserByEmail({ email }));
+    let user_created = false;
+
+    if (!user) {
+        if (!hasRequiredAuthority(req.user.authorities, AUTHORITIES.CREATE_USER)) {
+            return res.status(403).json({ error: `You Don't have authority ${AUTHORITIES.CREATE_USER} to perform this operation` });
+        }
+
+        const userId = await addUser({
+            full_name: validatedRequestBody.full_name,
+            email,
+            phone,
+            branch_id: validatedRequestBody.branch_id,
+            address: validatedRequestBody.address,
+            guardian_phone: req.body.guardian_phone,
+            image: req.body.image,
+        });
+
+        if (!userId) {
+            // Race: phone/email inserted concurrently — reuse existing user
+            user = (await getUserByPhone({ phone })) || (await getUserByEmail({ email }));
+            if (!user) {
+                return res.status(400).json({ error: "Unable To Add User - User Might Already Exist" });
+            }
+        } else {
+            await addUserHistory({ user_id: userId, ...req.body?.history });
+            user = { id: userId };
+            user_created = true;
+        }
+    }
+
+    const inquiry = await createInquiryForUser({
+        user_id: user.id,
+        course_id: validatedRequestBody.course_id,
+        note: validatedRequestBody.note,
+        branch_id: validatedRequestBody.inquiry_branch_id,
+        created_by: req.user.id,
+    });
+
+    return res.status(201).json({ ...inquiry, user_created });
 });
 
 //tested

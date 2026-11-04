@@ -6,7 +6,7 @@ const { AUTHORITIES } = require("../constants");
 
 const router = libExpress.Router();
 
-router.get("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.get("/", requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT), async (req, res) => {
     const record = await getWebsiteContact();
     if (!record) {
         return res.status(400).json({ error: "Website Contact Not Exist" });
@@ -14,7 +14,7 @@ router.get("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, re
     return res.status(200).json(record);
 });
 
-router.patch("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.patch("/", requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT), async (req, res) => {
     const requiredBodyFields = ["title"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 

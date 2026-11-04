@@ -9,9 +9,9 @@ const router = libExpress.Router();
 // Same authority as other admin website management routes; guard missing user so includes() does not crash
 const requiresAdminWebsite = (req, res, next) => {
     if (!req?.user?.authorities) {
-        return res.status(403).json({ error: `You Don't have authority ${AUTHORITIES.USE_ADMIN_CORNER} to perform this operation` });
+        return res.status(403).json({ error: `You Don't have authority ${AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT} to perform this operation` });
     }
-    return requires_authority(AUTHORITIES.USE_ADMIN_CORNER)(req, res, next);
+    return requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT)(req, res, next);
 };
 
 //tested

@@ -6,11 +6,11 @@ const { AUTHORITIES } = require("../constants");
 
 const router = libExpress.Router();
 
-router.get("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.get("/", requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT), async (req, res) => {
     return res.status(200).json(await getAllWebsiteSeo());
 });
 
-router.get("/:id", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.get("/:id", requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT), async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Website Seo Id" });
     }
@@ -23,7 +23,7 @@ router.get("/:id", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req,
     return res.status(200).json(websiteSeo);
 });
 
-router.post("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.post("/", requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT), async (req, res) => {
     const requiredBodyFields = ["owner_type","owner_key"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
@@ -40,7 +40,7 @@ router.post("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, r
     return res.status(201).json(created);
 });
 
-router.patch("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.patch("/", requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT), async (req, res) => {
     const requiredBodyFields = ["id", ...["owner_type","owner_key"]];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
@@ -60,7 +60,7 @@ router.patch("/", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, 
     return res.status(200).json(await getWebsiteSeoById({ id: validatedRequestBody.id }));
 });
 
-router.delete("/:id", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.delete("/:id", requires_authority(AUTHORITIES.USE_PAGE_WEBSITE_MANAGEMENT), async (req, res) => {
     if (!req.params.id) {
         return res.status(400).json({ error: "Missing Website Seo Id" });
     }

@@ -232,7 +232,7 @@ router.get("/choghadiya", async (req, res) => {
     });
 });
 
-router.post("/choghadiya/sync", requires_authority(AUTHORITIES.USE_ADMIN_CORNER), async (req, res) => {
+router.post("/choghadiya/sync", requires_authority(AUTHORITIES.USE_PAGE_CALENDAR_SETTINGS), async (req, res) => {
     if (!process.env.NAVAMSHA_API_KEY) {
         return res.status(500).json({ error: "NAVAMSHA_API_KEY is not configured" });
     }

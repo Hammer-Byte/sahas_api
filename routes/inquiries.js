@@ -16,7 +16,7 @@ const { getAllCourses } = require("../db/courses");
 const { createNotification, getAlertTypeId } = require("../libs/notifications");
 const { recordActivity } = require("../libs/activities");
 const { getCourseById } = require("../db/courses");
-const { getUserByPhone, getUserByEmail, addUser } = require("../db/users");
+const { getUserByPhone, addUser } = require("../db/users");
 const { addUserHistory } = require("../db/user_history");
 const { hasRequiredAuthority, normalizeIndianPhone } = require("../utils");
 
@@ -24,7 +24,10 @@ const router = libExpress.Router();
 
 async function createInquiryForUser({ user_id, course_id, note, branch_id, created_by }) {
     const inquiryId = await addInquiry({ user_id, course_id, branch_id, created_by });
-    await addInquiryNote({ inquiry_id: inquiryId, note, created_by });
+    const trimmedNote = note != null ? String(note).trim() : "";
+    if (trimmedNote) {
+        await addInquiryNote({ inquiry_id: inquiryId, note: trimmedNote, created_by });
+    }
     await createNotification({
         user_id,
         title: "An inquiry was created",
@@ -59,11 +62,12 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_INQUIRY), async (req, res
 });
 
 /**
- * Create inquiry from Manage Inquiries: resolve/create user by phone/email, then create inquiry.
- * Body: user fields (full_name, email, phone, branch_id, address, …) + course_id, note, inquiry_branch_id
+ * Create inquiry from Manage Inquiries: resolve/create user by phone, then create inquiry.
+ * Required: full_name, phone, branch_id, address, course_id, inquiry_branch_id
+ * Optional: email, note, guardian_phone, image, history
  */
 router.post("/with-user", requires_authority(AUTHORITIES.CREATE_INQUIRY), async (req, res) => {
-    const requiredBodyFields = ["full_name", "email", "phone", "branch_id", "address", "course_id", "note", "inquiry_branch_id"];
+    const requiredBodyFields = ["full_name", "phone", "branch_id", "address", "course_id", "inquiry_branch_id"];
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
@@ -76,12 +80,10 @@ router.post("/with-user", requires_authority(AUTHORITIES.CREATE_INQUIRY), async 
         return res.status(400).json({ error: phoneError });
     }
 
-    const email = String(validatedRequestBody.email).toLowerCase().trim();
-    if (!email) {
-        return res.status(400).json({ error: "Missing email" });
-    }
+    const rawEmail = req.body.email != null ? String(req.body.email).toLowerCase().trim() : "";
+    const email = rawEmail || null;
 
-    let user = (await getUserByPhone({ phone })) || (await getUserByEmail({ email }));
+    let user = await getUserByPhone({ phone });
     let user_created = false;
 
     if (!user) {
@@ -100,8 +102,8 @@ router.post("/with-user", requires_authority(AUTHORITIES.CREATE_INQUIRY), async 
         });
 
         if (!userId) {
-            // Race: phone/email inserted concurrently — reuse existing user
-            user = (await getUserByPhone({ phone })) || (await getUserByEmail({ email }));
+            // Race: phone inserted concurrently — reuse existing user
+            user = await getUserByPhone({ phone });
             if (!user) {
                 return res.status(400).json({ error: "Unable To Add User - User Might Already Exist" });
             }
@@ -115,7 +117,7 @@ router.post("/with-user", requires_authority(AUTHORITIES.CREATE_INQUIRY), async 
     const inquiry = await createInquiryForUser({
         user_id: user.id,
         course_id: validatedRequestBody.course_id,
-        note: validatedRequestBody.note,
+        note: req.body.note,
         branch_id: validatedRequestBody.inquiry_branch_id,
         created_by: req.user.id,
     });

@@ -1509,7 +1509,9 @@ async function generateDBTables() {
 
         ('CREATE_NOTIFICATION', 'Create Notification'),
         ('READ_NOTIFICATION', 'Read Notification'),
-        ('USE_PAGE_MANAGE_NOTIFICATIONS', 'Page For Managing Notifications')`,
+        ('USE_PAGE_MANAGE_NOTIFICATIONS', 'Page For Managing Notifications'),
+        ('USE_PAGE_WEBSITE_MANAGEMENT', 'Page For Website Management'),
+        ('USE_PAGE_CALENDAR_SETTINGS', 'Page For Calendar Settings')`,
 
         `INSERT IGNORE INTO ROLES (title) VALUES ('STUDENT')`,
         `INSERT IGNORE INTO ROLES (title) VALUES ('DEVELOPER')`,

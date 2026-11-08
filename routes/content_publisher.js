@@ -74,10 +74,59 @@ function decorateRun(run) {
     };
 }
 
+function looksLikeYoutubeCookie(value) {
+    const s = String(value || "");
+    if (!s) return false;
+    return (
+        /netscape/i.test(s) ||
+        s.includes(".youtube.com") ||
+        s.includes("\tTRUE\t") ||
+        s.includes("\tFALSE\t") ||
+        (s.length > 180 && !/^UC[\w-]{10,}/i.test(s.trim()) && !/youtube\.com\/(channel|@)/i.test(s))
+    );
+}
+
+function looksLikeYoutubeChannelId(value) {
+    const s = String(value || "").trim();
+    if (!s) return false;
+    if (looksLikeYoutubeCookie(s)) return false;
+    return /^UC[\w-]{20,}$/i.test(s) || /youtube\.com\/channel\/UC[\w-]+/i.test(s) || /youtube\.com\/@[\w.-]+/i.test(s);
+}
+
+/**
+ * Ensure cookie never lands in youtube_channel_id (and repair swapped automation-user storage).
+ */
+function resolveYoutubeCredentials({ automationUser, requestedChannelId }) {
+    let channelId = String(requestedChannelId || "").trim() || String(automationUser?.youtube_channel_id || "").trim();
+    let cookie = String(automationUser?.youtube_cookie || "").trim();
+
+    // Case A: channel id field has cookie text; cookie field has UC…/URL (swapped in DB or form)
+    if (looksLikeYoutubeCookie(channelId) && looksLikeYoutubeChannelId(cookie)) {
+        const swappedChannel = cookie;
+        cookie = channelId;
+        channelId = swappedChannel;
+    } else if (looksLikeYoutubeCookie(channelId)) {
+        // Case B: channel id field wrongly holds cookie; keep/move into cookie if cookie empty
+        if (!cookie) cookie = channelId;
+        channelId = looksLikeYoutubeChannelId(automationUser?.youtube_channel_id) ? String(automationUser.youtube_channel_id).trim() : "";
+        // if stored channel_id was also the cookie, clear — require a real UC id
+        if (looksLikeYoutubeCookie(channelId)) channelId = "";
+    }
+
+    // Case C: cookie column somehow has a channel id and channel column has cookie
+    if (looksLikeYoutubeChannelId(cookie) && looksLikeYoutubeCookie(String(automationUser?.youtube_channel_id || ""))) {
+        channelId = cookie;
+        cookie = String(automationUser.youtube_channel_id).trim();
+    }
+
+    return { youtubeChannelId: channelId, youtubeCookie: cookie };
+}
+
 function validatePlatformPayload({ platforms, automationUser, fields }) {
     const {
         instagramUserId,
         youtubeChannelId,
+        youtubeCookie,
         instagramDestinations,
         instagramCaption,
         youtubeTitle,
@@ -102,8 +151,14 @@ function validatePlatformPayload({ platforms, automationUser, fields }) {
     }
 
     if (platforms.includes("youtube")) {
-        if (!automationUser.youtube_cookie || !youtubeChannelId) {
-            return "YouTube requires cookie and channel id on the automation user";
+        if (!youtubeCookie) {
+            return "youtube_cookie is required (store it on the automation user — do not put it in channel id)";
+        }
+        if (looksLikeYoutubeCookie(youtubeChannelId)) {
+            return "youtube_channel_id contains cookie text. Put the Netscape cookie in youtube_cookie and use a UC… id / channel URL for youtube_channel_id";
+        }
+        if (!youtubeChannelId || !looksLikeYoutubeChannelId(youtubeChannelId)) {
+            return "YouTube channel id (UC… or channel URL) is required";
         }
         if (!youtubeTitle) {
             return "youtube_title is required";
@@ -122,23 +177,26 @@ function validatePlatformPayload({ platforms, automationUser, fields }) {
 function buildHammerbyteForm({ fileBuffer, fileName, mime, platforms, automationUser, fields }) {
     const formData = new FormData();
     const blob = new Blob([fileBuffer], { type: mime || "application/octet-stream" });
-    formData.append("file", blob, fileName || "upload.bin");
+
+    // Exact SaaS field names. Never put cookie into youtube_channel_id.
     formData.append("platforms", platforms.join(","));
 
     if (platforms.includes("instagram")) {
-        formData.append("instagram_access_token", automationUser.instagram_access_token);
-        formData.append("instagram_user_id", fields.instagramUserId);
+        formData.append("instagram_user_id", String(fields.instagramUserId || ""));
         appendIfPresent(formData, "instagram_destinations", fields.instagramDestinations);
         appendIfPresent(formData, "instagram_caption", fields.instagramCaption);
+        formData.append("instagram_access_token", String(automationUser.instagram_access_token || ""));
     }
 
     if (platforms.includes("youtube")) {
-        formData.append("youtube_cookie", automationUser.youtube_cookie);
-        formData.append("youtube_channel_id", fields.youtubeChannelId);
-        formData.append("youtube_title", fields.youtubeTitle);
+        formData.append("youtube_channel_id", String(fields.youtubeChannelId || ""));
+        formData.append("youtube_cookie", String(fields.youtubeCookie || ""));
+        formData.append("youtube_title", String(fields.youtubeTitle || ""));
         appendIfPresent(formData, "youtube_description", fields.youtubeDescription);
-        appendIfPresent(formData, "youtube_destination", fields.youtubeDestination);
+        appendIfPresent(formData, "youtube_destination", fields.youtubeDestination || "community");
     }
+
+    formData.append("file", blob, fileName || "upload.bin");
 
     return formData;
 }
@@ -311,9 +369,16 @@ router.post("/publish", requires_authority(AUTHORITIES.USE_PAGE_CONTENT_PUBLISHI
             return res.status(400).json({ error: "Select at least one platform (instagram, youtube)" });
         }
 
+        const yt = resolveYoutubeCredentials({
+            automationUser,
+            requestedChannelId: req.body.youtube_channel_id,
+        });
+
         const fields = {
-            instagramUserId: (req.body.instagram_user_id || automationUser.instagram_user_id || "").trim(),
-            youtubeChannelId: (req.body.youtube_channel_id || automationUser.youtube_channel_id || "").trim(),
+            // Prefer explicit form values; fall back to stored automation-user creds/ids
+            instagramUserId: String(req.body.instagram_user_id || "").trim() || String(automationUser.instagram_user_id || "").trim(),
+            youtubeChannelId: yt.youtubeChannelId,
+            youtubeCookie: yt.youtubeCookie,
             instagramDestinations: (req.body.instagram_destinations || "feed").toString().trim() || "feed",
             instagramCaption: (req.body.instagram_caption || "").toString(),
             youtubeTitle: (req.body.youtube_title || "").toString().trim(),
@@ -401,9 +466,15 @@ router.post("/runs/:id/retry", requires_authority(AUTHORITIES.USE_PAGE_CONTENT_P
             return res.status(400).json({ error: "No failed platforms to retry" });
         }
 
+        const yt = resolveYoutubeCredentials({
+            automationUser,
+            requestedChannelId: sourceRun.youtube_channel_id,
+        });
+
         const fields = {
-            instagramUserId: (sourceRun.instagram_user_id || automationUser.instagram_user_id || "").trim(),
-            youtubeChannelId: (sourceRun.youtube_channel_id || automationUser.youtube_channel_id || "").trim(),
+            instagramUserId: String(sourceRun.instagram_user_id || "").trim() || String(automationUser.instagram_user_id || "").trim(),
+            youtubeChannelId: yt.youtubeChannelId,
+            youtubeCookie: yt.youtubeCookie,
             instagramDestinations: (sourceRun.instagram_destinations || "feed").toString().trim() || "feed",
             instagramCaption: (sourceRun.instagram_caption || "").toString(),
             youtubeTitle: (sourceRun.youtube_title || "").toString().trim(),

@@ -243,12 +243,56 @@ router.get("/runs/:id", requires_authority(AUTHORITIES.USE_PAGE_CONTENT_PUBLISHI
 
 router.post("/publish", requires_authority(AUTHORITIES.USE_PAGE_CONTENT_PUBLISHING), upload.single("file"), async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ error: "Missing file" });
+        const mediaCdnUrl = (req.body.media_cdn_url || "").toString().trim();
+        let fileBuffer = req.file?.buffer || null;
+        let mediaFilename = req.body.media_filename || req.file?.originalname || null;
+        let mediaMime = req.body.media_mime || req.file?.mimetype || null;
+
+        // Preferred path: UI already uploaded via shared FileInput → media service
+        if (mediaCdnUrl) {
+            try {
+                fileBuffer = await downloadUrlToBuffer(mediaCdnUrl);
+            } catch (error) {
+                logger.error(`content-publisher download media: ${error}`);
+                return res.status(400).json({ error: error?.message || "Failed to download media from CDN" });
+            }
+            if (!mediaFilename) {
+                try {
+                    mediaFilename = decodeURIComponent(libPath.basename(new URL(mediaCdnUrl).pathname)) || "publish.jpg";
+                } catch (e) {
+                    mediaFilename = "publish.jpg";
+                }
+            }
+            if (!mediaMime) {
+                mediaMime = "image/jpeg";
+            }
+        } else if (fileBuffer) {
+            // Fallback: raw multipart file → upload to media service, then publish
+            const name = req.file.originalname || "";
+            if (!IMAGE_EXTS.test(name)) {
+                return res.status(400).json({ error: "Only image files are supported (jpg jpeg png gif)" });
+            }
+            try {
+                const uploadedUrl = await uploadBufferToMedia({
+                    buffer: fileBuffer,
+                    filename: name || `publish${libPath.extname(name) || ".jpg"}`,
+                    mime: req.file.mimetype,
+                });
+                req.body.media_cdn_url = uploadedUrl;
+            } catch (error) {
+                logger.error(`content-publisher media upload: ${error}`);
+                return res.status(400).json({ error: error?.message || "Failed to store media" });
+            }
+        } else {
+            return res.status(400).json({ error: "Missing media_cdn_url (upload image with FileInput first)" });
         }
 
-        const name = req.file.originalname || "";
-        if (!IMAGE_EXTS.test(name)) {
+        const resolvedCdnUrl = (req.body.media_cdn_url || mediaCdnUrl || "").toString().trim();
+        if (!resolvedCdnUrl || !fileBuffer) {
+            return res.status(400).json({ error: "Missing media" });
+        }
+
+        if (mediaFilename && !IMAGE_EXTS.test(mediaFilename) && !IMAGE_EXTS.test(resolvedCdnUrl)) {
             return res.status(400).json({ error: "Only image files are supported (jpg jpeg png gif)" });
         }
 
@@ -283,23 +327,10 @@ router.post("/publish", requires_authority(AUTHORITIES.USE_PAGE_CONTENT_PUBLISHI
             return res.status(400).json({ error: validationError });
         }
 
-        // Durable copy on media/CDN first (history thumbs + retry)
-        let mediaCdnUrl = null;
-        try {
-            mediaCdnUrl = await uploadBufferToMedia({
-                buffer: req.file.buffer,
-                filename: req.file.originalname || `publish${libPath.extname(name) || ".jpg"}`,
-                mime: req.file.mimetype,
-            });
-        } catch (error) {
-            logger.error(`content-publisher media upload: ${error}`);
-            return res.status(400).json({ error: error?.message || "Failed to store media" });
-        }
-
         const formData = buildHammerbyteForm({
-            fileBuffer: req.file.buffer,
-            fileName: req.file.originalname,
-            mime: req.file.mimetype,
+            fileBuffer,
+            fileName: mediaFilename || "publish.jpg",
+            mime: mediaMime,
             platforms,
             automationUser,
             fields,
@@ -322,9 +353,9 @@ router.post("/publish", requires_authority(AUTHORITIES.USE_PAGE_CONTENT_PUBLISHI
             createdByUserId: req.user?.id,
             retryOfRunId: null,
             mediaKind: "image",
-            mediaFilename: req.file.originalname,
-            mediaMime: req.file.mimetype,
-            mediaCdnUrl,
+            mediaFilename,
+            mediaMime,
+            mediaCdnUrl: resolvedCdnUrl,
             fields,
         });
 

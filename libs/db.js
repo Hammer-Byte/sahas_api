@@ -1294,7 +1294,7 @@ async function generateDBTables() {
             instagram_access_token TEXT NULL,
             instagram_user_id VARCHAR(128) NULL,
             youtube_cookie TEXT NULL,
-            youtube_channel_id VARCHAR(128) NULL,
+            youtube_channel_id TEXT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_on DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
@@ -1314,7 +1314,7 @@ async function generateDBTables() {
             instagram_user_id VARCHAR(128) NULL,
             instagram_caption TEXT NULL,
             instagram_destinations VARCHAR(64) NULL,
-            youtube_channel_id VARCHAR(128) NULL,
+            youtube_channel_id TEXT NULL,
             youtube_title VARCHAR(512) NULL,
             youtube_description TEXT NULL,
             youtube_destination VARCHAR(64) NULL,
@@ -1586,7 +1586,7 @@ async function ensureContentPublishRunColumns() {
         `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_mime VARCHAR(128) NULL`,
         `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_path VARCHAR(1024) NULL`,
         `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN instagram_user_id VARCHAR(128) NULL`,
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN youtube_channel_id VARCHAR(128) NULL`,
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN youtube_channel_id TEXT NULL`,
         `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN targets_json LONGTEXT NULL`,
     ];
 

@@ -190,6 +190,15 @@ const routers = {
         middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
         router: require("./routes/notifications"),
     },
+    "/automation-users": {
+        middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
+        router: require("./routes/automation_users"),
+    },
+    "/content-publisher": {
+        middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
+        router: require("./routes/content_publisher"),
+    },
+
     "/branches": {
         middlewares: [requiresDeviceFingerPrint, parseAuthenticationToken, parseUserDevice, logRequest],
         router: require("./routes/branches"),

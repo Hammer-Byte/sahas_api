@@ -40,7 +40,15 @@ function getEnrollmentTransactionById({ id }) {
 }
 
 //freeze
-function getEnrollmentTransactionsForInterval({ start_date, end_date, order_by = "DESC" }) {
+function getEnrollmentTransactionsForInterval({ start_date, end_date, type, order_by = "DESC" }) {
+    const params = [start_date, end_date];
+    let typeClause = "ENROLLMENT_TRANSACTIONS.type NOT IN ('SCH','DIS')";
+
+    if (type) {
+        typeClause = "ENROLLMENT_TRANSACTIONS.type = ?";
+        params.unshift(type);
+    }
+
     return executeSQLQueryParameterized(
         `SELECT 
             ENROLLMENT_TRANSACTIONS.id,
@@ -65,9 +73,9 @@ function getEnrollmentTransactionsForInterval({ start_date, end_date, order_by =
             ON ENROLLMENTS.user_id = USERS.id 
         LEFT JOIN USERS AS CREATORS 
             ON ENROLLMENTS.created_by = CREATORS.id 
-        WHERE ENROLLMENT_TRANSACTIONS.type NOT IN ('SCH','DIS') AND ENROLLMENT_TRANSACTIONS.created_on BETWEEN ? AND ? 
+        WHERE ${typeClause} AND ENROLLMENT_TRANSACTIONS.created_on BETWEEN ? AND ? 
         ORDER BY ENROLLMENT_TRANSACTIONS.created_on ${order_by}`,
-        [start_date, end_date],
+        params,
     ).catch((error) => logger.error(`getEnrollmentTransactionsForInterval: ${error}`));
 }
 

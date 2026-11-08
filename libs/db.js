@@ -1288,6 +1288,45 @@ async function generateDBTables() {
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_notif_attachments_notification (notification_id)
         )`,
+        `CREATE TABLE IF NOT EXISTS AUTOMATION_USERS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(128) NOT NULL,
+            instagram_access_token TEXT NULL,
+            instagram_user_id VARCHAR(128) NULL,
+            youtube_cookie TEXT NULL,
+            youtube_channel_id TEXT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_on DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS CONTENT_PUBLISH_RUNS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            hammerbyte_run_id INT NOT NULL,
+            automation_user_id INT NULL,
+            created_by_user_id INT NULL,
+            retry_of_run_id INT NULL,
+            media_kind VARCHAR(32) NOT NULL DEFAULT 'image',
+            media_filename VARCHAR(512) NULL,
+            media_mime VARCHAR(128) NULL,
+            media_path VARCHAR(1024) NULL,
+            platforms VARCHAR(128) NOT NULL,
+            status VARCHAR(32) NOT NULL DEFAULT 'queued',
+            error_message TEXT NULL,
+            instagram_user_id VARCHAR(128) NULL,
+            instagram_caption TEXT NULL,
+            instagram_destinations VARCHAR(64) NULL,
+            youtube_channel_id TEXT NULL,
+            youtube_title VARCHAR(512) NULL,
+            youtube_description TEXT NULL,
+            youtube_destination VARCHAR(64) NULL,
+            targets_json LONGTEXT NULL,
+            started_on DATETIME NULL,
+            finished_on DATETIME NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_on DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_content_publish_runs_hb (hammerbyte_run_id),
+            INDEX idx_content_publish_runs_created (created_on),
+            INDEX idx_content_publish_runs_retry (retry_of_run_id)
+        )`,
 
         `INSERT IGNORE INTO CONFIGS (config_key, config_value) VALUES
         ('under_maintenance', 'false'),
@@ -1511,7 +1550,8 @@ async function generateDBTables() {
         ('READ_NOTIFICATION', 'Read Notification'),
         ('USE_PAGE_MANAGE_NOTIFICATIONS', 'Page For Managing Notifications'),
         ('USE_PAGE_WEBSITE_MANAGEMENT', 'Page For Website Management'),
-        ('USE_PAGE_CALENDAR_SETTINGS', 'Page For Calendar Settings')`,
+        ('USE_PAGE_CALENDAR_SETTINGS', 'Page For Calendar Settings'),
+        ('USE_PAGE_CONTENT_PUBLISHING', 'Page For Content Publishing')`,
 
         `INSERT IGNORE INTO ROLES (title) VALUES ('STUDENT')`,
         `INSERT IGNORE INTO ROLES (title) VALUES ('DEVELOPER')`,
@@ -1535,7 +1575,31 @@ async function generateDBTables() {
 
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
 
+    await ensureContentPublishRunColumns();
     await backfillUserActivityTimesToIst();
+}
+
+async function ensureContentPublishRunColumns() {
+    const alters = [
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN retry_of_run_id INT NULL`,
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_filename VARCHAR(512) NULL`,
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_mime VARCHAR(128) NULL`,
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_path VARCHAR(1024) NULL`,
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN instagram_user_id VARCHAR(128) NULL`,
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN youtube_channel_id TEXT NULL`,
+        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN targets_json LONGTEXT NULL`,
+    ];
+
+    for (const query of alters) {
+        try {
+            await executeSQLQueryRaw(query);
+        } catch (error) {
+            // Ignore duplicate-column errors on existing installations.
+            if (error?.code !== "ER_DUP_FIELDNAME" && error?.errno !== 1060) {
+                logger.error(`ensureContentPublishRunColumns: ${error}`);
+            }
+        }
+    }
 }
 
 // Utility function to execute SQL queries using promises

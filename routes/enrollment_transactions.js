@@ -17,30 +17,44 @@ const { getUserById } = require("../db/users");
 const { logger } = require("sahas_utils");
 const { validateRequestBody } = require("sahas_utils");
 const requires_authority = require("../middlewares/requires_authority");
-const { AUTHORITIES } = require("../constants");
+const { AUTHORITIES, REVENUE_PAYMENT_TYPES } = require("../constants");
 const { createNotification } = require("../libs/notifications");
 const { recordActivity } = require("../libs/activities");
+
+function getValidatedRevenueType(type) {
+    if (!type) return undefined;
+    if (!REVENUE_PAYMENT_TYPES.includes(type)) return null;
+    return type;
+}
+
+function validateEnrollmentTransactionsInterval(req, res, next) {
+    if (!req.query.start_date || !req.query.end_date) {
+        return res.status(400).json({ error: "Missing Start Date or End Date Range" });
+    }
+
+    const transactionsPeriod = getDifferenceOfDates({ start_date: req.query.start_date, end_date: req.query.end_date });
+
+    if (transactionsPeriod > 186 || transactionsPeriod < 0) {
+        return res.status(400).json({ error: "Date Range is Either Negative or Too Big" });
+    }
+
+    if (getValidatedRevenueType(req.query.type) === null) {
+        return res.status(400).json({ error: `Invalid Payment Type. Allowed: ${REVENUE_PAYMENT_TYPES.join(", ")}` });
+    }
+
+    next();
+}
 
 //tested
 router.get(
     "/",
     requires_authority(AUTHORITIES.READ_ENROLLMENT_TRANSACTION),
-    (req, res, next) => {
-        if (!req.query.start_date || !req.query.end_date) {
-            return res.status(400).json({ error: "Missing Start Date or End Date Range" });
-        }
-
-        const transactionsPeriod = getDifferenceOfDates({ start_date: req.query.start_date, end_date: req.query.end_date });
-
-        if (transactionsPeriod > 186 || transactionsPeriod < 0) {
-            return res.status(400).json({ error: "Date Range is Either Negative or Too Big" });
-        }
-        next();
-    },
+    validateEnrollmentTransactionsInterval,
     async (req, res) => {
         const enrollmentTranscations = await getEnrollmentTransactionsForInterval({
             start_date: getFormattedDate({ date: req.query.start_date, format: "YYYY-MM-DD HH:mm:ss" }),
             end_date: getFormattedDate({ date: req.query.end_date, format: "YYYY-MM-DD HH:mm:ss" }),
+            type: getValidatedRevenueType(req.query.type),
             order_by: req.query?.order_by,
         });
 
@@ -54,22 +68,12 @@ router.get(
 
 router.get(
     "/report",
-    (req, res, next) => {
-        if (!req.query.start_date || !req.query.end_date) {
-            return res.status(400).json({ error: "Missing Start Date or End Date Range" });
-        }
-
-        const transactionsPeriod = getDifferenceOfDates({ start_date: req.query.start_date, end_date: req.query.end_date });
-
-        if (transactionsPeriod > 186 || transactionsPeriod < 0) {
-            return res.status(400).json({ error: "Date Range is Either Negative or Too Big" });
-        }
-        next();
-    },
+    validateEnrollmentTransactionsInterval,
     async (req, res) => {
         const enrollmentTranscations = await getEnrollmentTransactionsForInterval({
             start_date: getFormattedDate({ date: req.query.start_date, format: "YYYY-MM-DD HH:mm:ss" }),
             end_date: getFormattedDate({ date: req.query.end_date, format: "YYYY-MM-DD HH:mm:ss" }),
+            type: getValidatedRevenueType(req.query.type),
             order_by: req.query?.order_by,
         });
 
@@ -121,22 +125,12 @@ router.get(
 router.get(
     "/summary",
     requires_authority(AUTHORITIES.READ_ENROLLMENT_SUMMARY),
-    (req, res, next) => {
-        if (!req.query.start_date || !req.query.end_date) {
-            return res.status(400).json({ error: "Missing Start Date or End Date Range" });
-        }
-
-        const transactionsPeriod = getDifferenceOfDates({ start_date: req.query.start_date, end_date: req.query.end_date });
-
-        if (transactionsPeriod > 186 || transactionsPeriod < 0) {
-            return res.status(400).json({ error: "Date Range is Either Negative or Too Big" });
-        }
-        next();
-    },
+    validateEnrollmentTransactionsInterval,
     async (req, res) => {
         const enrollmentTranscations = await getEnrollmentTransactionsForInterval({
             start_date: getFormattedDate({ date: req.query.start_date, format: "YYYY-MM-DD HH:mm:ss" }),
             end_date: getFormattedDate({ date: req.query.end_date, format: "YYYY-MM-DD HH:mm:ss" }),
+            type: getValidatedRevenueType(req.query.type),
             order_by: req.query?.order_by,
         });
 

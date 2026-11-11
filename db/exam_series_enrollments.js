@@ -93,7 +93,7 @@ function getGivenExamSeriesByUserId({ user_id }) {
                           SELECT 1
                           FROM EXAM_SUBMISSIONS attempted
                           WHERE attempted.exam_id = paper_exams.id
-                            AND attempted.user_id = EXAM_SERIES_ENROLLMENTS.user_id
+                            AND attempted.user_id = ?
                       )
                 ), 0) AS total_possible_marks
          FROM EXAM_SERIES_ENROLLMENTS
@@ -113,7 +113,7 @@ function getGivenExamSeriesByUserId({ user_id }) {
                   COURSES.title,
                   EXAM_SERIES_ENROLLMENTS.created_on
          ORDER BY EXAM_SERIES.end_at DESC, EXAM_SERIES.id DESC`,
-        [user_id],
+        [user_id, user_id],
     ).catch((error) => {
         logger.error(`getGivenExamSeriesByUserId: ${error}`);
         return [];

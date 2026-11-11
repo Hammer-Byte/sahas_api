@@ -96,10 +96,19 @@ function prepareSearchLikeQuery(search, query) {
     }
 }
 
-function prepareFiltersWhereQuery(appliedFilters, search, query) {
-    const { roles, branches, active, courses, dues, range } = appliedFilters;
+function isTruthyQueryFlag(value) {
+    if (value === true || value === 1) return true;
+    const normalized = String(value ?? "")
+        .trim()
+        .toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+}
 
-    if (roles || branches || active || courses || dues || range) {
+function prepareFiltersWhereQuery(appliedFilters, search, query) {
+    const { roles, branches, active, courses, dues, range, task_assignable } = appliedFilters;
+    const filterTaskAssignable = isTruthyQueryFlag(task_assignable);
+
+    if (roles || branches || active || courses || dues || range || filterTaskAssignable) {
         //if priviously search is applied then we need to add AND
         query.push(!!search ? "AND" : "WHERE");
 
@@ -132,8 +141,30 @@ function prepareFiltersWhereQuery(appliedFilters, search, query) {
             filterQueries.push(`USERS.created_on BETWEEN '${getFormattedDate({ date: dates[0] })}' AND '${getFormattedDate({ date: dates[1] })}'`);
         }
 
+        if (filterTaskAssignable) {
+            filterQueries.push(
+                `EXISTS (SELECT 1 FROM USER_ROLES ur INNER JOIN ROLES r ON r.id = ur.role_id WHERE ur.user_id = USERS.id AND r.active = TRUE AND r.task_assignable = TRUE)`,
+            );
+        }
+
         query.push(filterQueries.join(" AND "));
     }
+}
+
+function isUserTaskAssignable({ user_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT 1 AS ok
+         FROM USER_ROLES ur
+         INNER JOIN ROLES r ON r.id = ur.role_id
+         WHERE ur.user_id = ? AND r.active = TRUE AND r.task_assignable = TRUE
+         LIMIT 1`,
+        [user_id],
+    )
+        .then((rows) => rows.length > 0)
+        .catch((error) => {
+            logger.error(`isUserTaskAssignable: ${error}`);
+            return false;
+        });
 }
 
 function prepareOrderByQuery(appliedFilters, query) {
@@ -316,4 +347,5 @@ module.exports = {
     patchUserPhoneById,
     patchUserEmailById,
     patchUserStreamSelectionTestAllowedById,
+    isUserTaskAssignable,
 };

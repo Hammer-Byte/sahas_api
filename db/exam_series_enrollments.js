@@ -83,7 +83,19 @@ function getGivenExamSeriesByUserId({ user_id }) {
                 COURSES.title AS course_title,
                 EXAM_SERIES_ENROLLMENTS.created_on AS enrolled_at,
                 COUNT(DISTINCT EXAM_SUBMISSIONS.exam_id) AS exams_attempted,
-                COALESCE(SUM(EXAM_SUBMISSIONS.marks), 0) AS total_marks
+                COALESCE(SUM(EXAM_SUBMISSIONS.marks), 0) AS total_marks,
+                COALESCE((
+                    SELECT SUM(paper_exams.positive_marks)
+                    FROM EXAM_QUESTIONS paper_questions
+                    INNER JOIN EXAMS paper_exams ON paper_exams.id = paper_questions.exam_id
+                    WHERE paper_exams.exam_series_id = EXAM_SERIES.id
+                      AND EXISTS (
+                          SELECT 1
+                          FROM EXAM_SUBMISSIONS attempted
+                          WHERE attempted.exam_id = paper_exams.id
+                            AND attempted.user_id = EXAM_SERIES_ENROLLMENTS.user_id
+                      )
+                ), 0) AS total_possible_marks
          FROM EXAM_SERIES_ENROLLMENTS
          INNER JOIN EXAM_SERIES ON EXAM_SERIES.id = EXAM_SERIES_ENROLLMENTS.exam_series_id
          INNER JOIN COURSES ON COURSES.id = EXAM_SERIES.course_id

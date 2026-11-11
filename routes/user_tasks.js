@@ -21,6 +21,7 @@ const {
     deleteUserTaskCommentsByTaskId,
 } = require("../db/user_task_comments");
 const { createNotification, createNotificationsForUsers } = require("../libs/notifications");
+const { isUserTaskAssignable } = require("../db/users");
 
 const router = libExpress.Router();
 
@@ -106,6 +107,10 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_USER_TASK), async (req, r
 
     if (!isRequestBodyValid) {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    if (!(await isUserTaskAssignable({ user_id: validatedRequestBody.user_id }))) {
+        return res.status(400).json({ error: "Selected user cannot be assigned tasks" });
     }
 
     try {
@@ -246,6 +251,9 @@ router.patch("/:id", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req,
         const attachment = req.body.attachment !== undefined ? req.body.attachment : task.attachment;
         const deadline = req.body.deadline !== undefined ? req.body.deadline : task.deadline;
         const assigneeChanged = Number(user_id) !== Number(task.user_id);
+        if (assigneeChanged && !(await isUserTaskAssignable({ user_id }))) {
+            return res.status(400).json({ error: "Selected user cannot be assigned tasks" });
+        }
         try {
             await updateUserTaskById({ id: task.id, title, description, user_id, status_id, priority, attachment, deadline });
             const updated = await getUserTaskById({ id: task.id });

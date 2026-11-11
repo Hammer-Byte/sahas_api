@@ -31,10 +31,13 @@ function getRoleById({ id }) {
 }
 
 //freeze
-function updateRoleById({ id, title, active }) {
-    return executeSQLQueryParameterized("UPDATE ROLES SET title=?,active=? WHERE id=?", [title, active, id]).catch((error) =>
-        logger.error(`updateRoleById: ${error}`)
-    );
+function updateRoleById({ id, title, active, task_assignable = false }) {
+    return executeSQLQueryParameterized("UPDATE ROLES SET title=?,active=?,task_assignable=? WHERE id=?", [
+        title,
+        active,
+        Boolean(task_assignable),
+        id,
+    ]).catch((error) => logger.error(`updateRoleById: ${error}`));
 }
 
 module.exports = { getAllRoles, deleteRoleById, addRole, getRoleById, updateRoleById };

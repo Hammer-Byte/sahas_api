@@ -62,6 +62,7 @@ async function generateDBTables() {
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(36) UNIQUE NOT NULL,
             active BOOLEAN NOT NULL DEFAULT TRUE,
+            task_assignable BOOLEAN NOT NULL DEFAULT FALSE,
             created_by INT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP
         )`,

@@ -102,34 +102,54 @@ router.get("/", requires_authority(AUTHORITIES.USE_PAGE_TASKS), async (req, res)
 });
 
 router.post("/", requires_authority(AUTHORITIES.CREATE_USER_TASK), async (req, res) => {
-    const requiredBodyFields = ["title", "user_id", "status_id"];
+    const requiredBodyFields = ["title", "status_id"];
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
     if (!isRequestBodyValid) {
         return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
     }
 
-    if (!(await isUserTaskAssignable({ user_id: validatedRequestBody.user_id }))) {
-        return res.status(400).json({ error: "Selected user cannot be assigned tasks" });
+    const rawUserIds = Array.isArray(req.body.user_ids)
+        ? req.body.user_ids
+        : req.body.user_id != null
+          ? [req.body.user_id]
+          : [];
+    const userIds = [...new Set(rawUserIds.map(Number).filter((id) => Number.isFinite(id) && id > 0))];
+
+    if (!userIds.length) {
+        return res.status(400).json({ error: "Missing user_id or user_ids" });
+    }
+
+    for (const user_id of userIds) {
+        if (!(await isUserTaskAssignable({ user_id }))) {
+            return res.status(400).json({ error: "Selected user cannot be assigned tasks" });
+        }
     }
 
     try {
-        const id = await addUserTask({
-            ...validatedRequestBody,
-            priority: req.body.priority ?? 0,
-            description: req.body.description ?? null,
-            attachment: req.body.attachment ?? null,
-            deadline: req.body.deadline ?? null,
-            created_by: req.user.id,
-        });
-        const task = await getUserTaskById({ id });
-        await createNotification({
-            user_id: task.user_id,
-            title: "A task was assigned to you",
-            description: `Task "${task.title}" has been assigned to you.`,
-            created_by: req.user.id,
-        });
-        return res.status(201).json(task);
+        const createdTasks = [];
+        for (const user_id of userIds) {
+            const id = await addUserTask({
+                ...validatedRequestBody,
+                user_id,
+                priority: req.body.priority ?? 0,
+                description: req.body.description ?? null,
+                attachment: req.body.attachment ?? null,
+                deadline: req.body.deadline ?? null,
+                created_by: req.user.id,
+            });
+            const task = await getUserTaskById({ id });
+            await createNotification({
+                user_id: task.user_id,
+                title: "A task was assigned to you",
+                description: `Task "${task.title}" has been assigned to you.`,
+                created_by: req.user.id,
+            });
+            createdTasks.push(task);
+        }
+
+        // Keep single-assignee response shape for older clients; return array for multi-assign.
+        return res.status(201).json(createdTasks.length === 1 ? createdTasks[0] : createdTasks);
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Task" });
     }

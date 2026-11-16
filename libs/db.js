@@ -1037,11 +1037,12 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_QUESTIONS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             category_id INT NOT NULL,
-            question VARCHAR(255) NOT NULL UNIQUE,
+            question TEXT NOT NULL,
             media_url VARCHAR(128) NULL UNIQUE,
             view_index INT NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY question (question(255)),
              CONSTRAINT fk_category_question
                 FOREIGN KEY (category_id)
                 REFERENCES STREAM_SELECTION_QUESTION_CATEGORIES(id)
@@ -1059,18 +1060,18 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_TEST_ANSWERS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             stream_selection_test_id INT NOT NULL,
-            question VARCHAR(255) NOT NULL,
-            answer VARCHAR(255) NULL,
+            question TEXT NOT NULL,
+            answer TEXT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_QUESTION_OPTIONS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             question_id INT NOT NULL,
-            \`option\` VARCHAR(255) NOT NULL,
+            \`option\` TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY unique_question_option (question_id, \`option\`),
+            UNIQUE KEY unique_question_option (question_id, \`option\`(255)),
               CONSTRAINT fk_question_option
                 FOREIGN KEY (question_id)
                 REFERENCES STREAM_SELECTION_QUESTIONS(id)
@@ -1211,14 +1212,24 @@ async function generateDBTables() {
             UNIQUE KEY uniq_choghadiya_slot (date, period, slot),
             INDEX idx_choghadiya_date (date)
         )`,
-        `CREATE TABLE IF NOT EXISTS GOVERNMENT_HOLIDAYS (
+        `CREATE TABLE IF NOT EXISTS CALENDAR_DATE_ENTRIES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             date DATE NOT NULL,
-            name VARCHAR(128) NOT NULL,
-            year SMALLINT NOT NULL,
+            title VARCHAR(128) NOT NULL,
+            description VARCHAR(1024) NULL,
+            is_holiday BOOLEAN NOT NULL DEFAULT FALSE,
+            created_by INT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uniq_gov_holiday_date (date),
-            INDEX idx_gov_holidays_year (year)
+            INDEX idx_calendar_date_entries_date (date),
+            INDEX idx_calendar_date_entries_holiday (is_holiday)
+        )`,
+        `CREATE TABLE IF NOT EXISTS CALENDAR_MONTH_IMAGES (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            month TINYINT NOT NULL,
+            image_url VARCHAR(512) NULL,
+            updated_by INT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_calendar_month_image (month)
         )`,
         `CREATE TABLE IF NOT EXISTS USER_ACTIVITIES (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1552,6 +1563,11 @@ async function generateDBTables() {
         ('USE_PAGE_MANAGE_NOTIFICATIONS', 'Page For Managing Notifications'),
         ('USE_PAGE_WEBSITE_MANAGEMENT', 'Page For Website Management'),
         ('USE_PAGE_CALENDAR_SETTINGS', 'Page For Calendar Settings'),
+        ('CREATE_CALENDAR_DATE_ENTRY', 'Create Calendar Date Entry'),
+        ('UPDATE_CALENDAR_DATE_ENTRY', 'Update Calendar Date Entry'),
+        ('DELETE_CALENDAR_DATE_ENTRY', 'Delete Calendar Date Entry'),
+        ('UPDATE_CALENDAR_MONTH_IMAGE', 'Update Calendar Month Image'),
+        ('SYNC_CALENDAR_CHOGHADIYA', 'Sync Calendar Choghadiya'),
         ('USE_PAGE_CONTENT_PUBLISHING', 'Page For Content Publishing')`,
 
         `INSERT IGNORE INTO ROLES (title) VALUES ('STUDENT')`,

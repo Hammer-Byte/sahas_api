@@ -1037,11 +1037,12 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_QUESTIONS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             category_id INT NOT NULL,
-            question VARCHAR(255) NOT NULL UNIQUE,
+            question TEXT NOT NULL,
             media_url VARCHAR(128) NULL UNIQUE,
             view_index INT NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY question (question(255)),
              CONSTRAINT fk_category_question
                 FOREIGN KEY (category_id)
                 REFERENCES STREAM_SELECTION_QUESTION_CATEGORIES(id)
@@ -1059,18 +1060,18 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_TEST_ANSWERS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             stream_selection_test_id INT NOT NULL,
-            question VARCHAR(255) NOT NULL,
-            answer VARCHAR(255) NULL,
+            question TEXT NOT NULL,
+            answer TEXT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )`,
         `CREATE TABLE IF NOT EXISTS STREAM_SELECTION_QUESTION_OPTIONS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             question_id INT NOT NULL,
-            \`option\` VARCHAR(255) NOT NULL,
+            \`option\` TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY unique_question_option (question_id, \`option\`),
+            UNIQUE KEY unique_question_option (question_id, \`option\`(255)),
               CONSTRAINT fk_question_option
                 FOREIGN KEY (question_id)
                 REFERENCES STREAM_SELECTION_QUESTIONS(id)

@@ -24,7 +24,18 @@ const {
     countChoghadiyaDaysByYear,
     replaceChoghadiyaSlotsForDate,
 } = require("../db/choghadiya");
-const { getGovernmentHolidaysInRange } = require("../db/government_holidays");
+const {
+    getCalendarDateEntriesInRange,
+    getCalendarDateEntryById,
+    addCalendarDateEntry,
+    updateCalendarDateEntryById,
+    deleteCalendarDateEntryById,
+} = require("../db/calendar_date_entries");
+const {
+    getAllCalendarMonthImages,
+    getCalendarMonthImageByMonth,
+    upsertCalendarMonthImage,
+} = require("../db/calendar_month_images");
 const { fetchYearChoghadiya, getChoghadiyaParamsFromEnv } = require("../libs/choghadiya");
 
 const router = libExpress.Router();
@@ -45,14 +56,23 @@ function choghadiyaQuality(name) {
     return "neutral";
 }
 
-function formatHoliday(row) {
+function formatDateEntry(row) {
     if (!row) return null;
+    const title = row.title || row.name || "";
+    const isHoliday = row.is_holiday === true || row.is_holiday === 1 || row.is_holiday === "1";
     return {
         id: row.id,
         date: String(row.date).slice(0, 10),
-        name: row.name,
-        year: row.year,
+        title,
+        name: title,
+        description: row.description || null,
+        is_holiday: isHoliday,
+        created_by: row.created_by ?? null,
     };
+}
+
+function parseIsHoliday(value) {
+    return value === true || value === 1 || value === "1" || String(value).toLowerCase() === "true";
 }
 
 function formatChoghadiyaSlot(row) {
@@ -232,7 +252,7 @@ router.get("/choghadiya", async (req, res) => {
     });
 });
 
-router.post("/choghadiya/sync", requires_authority(AUTHORITIES.USE_PAGE_CALENDAR_SETTINGS), async (req, res) => {
+router.post("/choghadiya/sync", requires_authority(AUTHORITIES.SYNC_CALENDAR_CHOGHADIYA), async (req, res) => {
     if (!process.env.NAVAMSHA_API_KEY) {
         return res.status(500).json({ error: "NAVAMSHA_API_KEY is not configured" });
     }
@@ -303,6 +323,36 @@ router.post("/choghadiya/sync", requires_authority(AUTHORITIES.USE_PAGE_CALENDAR
     }
 });
 
+router.get("/date-entries", async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const fromStr = typeof req.query.from === "string" ? req.query.from.trim() : "";
+    const toStr = typeof req.query.to === "string" ? req.query.to.trim() : "";
+    if (!isCalendarDate(fromStr) || !isCalendarDate(toStr)) {
+        return res.status(400).json({ error: "Missing or Invalid from/to (YYYY-MM-DD)" });
+    }
+
+    const dayCount = daysBetweenInclusive(fromStr, toStr);
+    if (dayCount < 1) {
+        return res.status(400).json({ error: "Invalid range: to must be on or after from" });
+    }
+    if (dayCount > 400) {
+        return res.status(400).json({ error: "Range too large (max 400 days)" });
+    }
+
+    const rows = await getCalendarDateEntriesInRange({ from: fromStr, to: toStr });
+    const grouped = {};
+    for (const row of rows) {
+        const key = String(row.date).slice(0, 10);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(formatDateEntry(row));
+    }
+    res.status(200).json(grouped);
+});
+
+// Backward-compatible alias: holiday entries only, first per date (old map shape).
 router.get("/holidays", async (req, res) => {
     if (!req.user?.id) {
         return res.status(401).json({ error: "Authentication Required" });
@@ -322,13 +372,158 @@ router.get("/holidays", async (req, res) => {
         return res.status(400).json({ error: "Range too large (max 400 days)" });
     }
 
-    const rows = await getGovernmentHolidaysInRange({ from: fromStr, to: toStr });
+    const rows = await getCalendarDateEntriesInRange({ from: fromStr, to: toStr, is_holiday: true });
     const holidays = {};
     for (const row of rows) {
         const key = String(row.date).slice(0, 10);
-        holidays[key] = formatHoliday(row);
+        if (!holidays[key]) holidays[key] = formatDateEntry(row);
     }
     res.status(200).json(holidays);
+});
+
+router.post("/date-entries", requires_authority(AUTHORITIES.CREATE_CALENDAR_DATE_ENTRY), async (req, res) => {
+    const requiredBodyFields = ["date", "title"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const date = String(validatedRequestBody.date).trim();
+    const title = String(validatedRequestBody.title).trim();
+    const description =
+        req.body.description != null && String(req.body.description).trim() !== "" ? String(req.body.description).trim() : null;
+    const is_holiday = parseIsHoliday(req.body.is_holiday);
+
+    if (!isCalendarDate(date)) {
+        return res.status(400).json({ error: "Invalid date (YYYY-MM-DD)" });
+    }
+    if (!title) {
+        return res.status(400).json({ error: "title is required" });
+    }
+
+    try {
+        const id = await addCalendarDateEntry({
+            date,
+            title,
+            description,
+            is_holiday,
+            created_by: req.user.id,
+        });
+        if (!id) {
+            return res.status(400).json({ error: "Failed To Add Calendar Entry" });
+        }
+        return res.status(201).json(formatDateEntry(await getCalendarDateEntryById({ id })));
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Calendar Entry" });
+    }
+});
+
+router.patch("/date-entries", requires_authority(AUTHORITIES.UPDATE_CALENDAR_DATE_ENTRY), async (req, res) => {
+    const requiredBodyFields = ["id", "date", "title"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const id = Number(validatedRequestBody.id);
+    const date = String(validatedRequestBody.date).trim();
+    const title = String(validatedRequestBody.title).trim();
+    const description =
+        req.body.description != null && String(req.body.description).trim() !== "" ? String(req.body.description).trim() : null;
+    const is_holiday = parseIsHoliday(req.body.is_holiday);
+
+    if (!Number.isInteger(id) || id < 1) {
+        return res.status(400).json({ error: "Invalid id" });
+    }
+    if (!isCalendarDate(date)) {
+        return res.status(400).json({ error: "Invalid date (YYYY-MM-DD)" });
+    }
+    if (!title) {
+        return res.status(400).json({ error: "title is required" });
+    }
+
+    const existing = await getCalendarDateEntryById({ id });
+    if (!existing) {
+        return res.status(404).json({ error: "Calendar Entry Not Found" });
+    }
+
+    try {
+        const updated = await updateCalendarDateEntryById({
+            id,
+            date,
+            title,
+            description,
+            is_holiday,
+        });
+        if (!updated) {
+            return res.status(400).json({ error: "Failed To Update Calendar Entry" });
+        }
+        return res.status(200).json(formatDateEntry(await getCalendarDateEntryById({ id })));
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Update Calendar Entry" });
+    }
+});
+
+router.delete("/date-entries/:id", requires_authority(AUTHORITIES.DELETE_CALENDAR_DATE_ENTRY), async (req, res) => {
+    if (!req.params.id) {
+        return res.status(400).json({ error: "Missing Entry Id" });
+    }
+
+    const deleted = await deleteCalendarDateEntryById({ id: req.params.id });
+    if (!deleted) {
+        return res.status(404).json({ error: "Calendar Entry Not Found" });
+    }
+
+    res.sendStatus(204);
+});
+
+router.get("/month-images", async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const month = req.query.month != null && req.query.month !== "" ? Number(req.query.month) : null;
+    if (month != null) {
+        if (!Number.isInteger(month) || month < 1 || month > 12) {
+            return res.status(400).json({ error: "month must be 1-12" });
+        }
+        const row = await getCalendarMonthImageByMonth({ month });
+        return res.status(200).json(row || null);
+    }
+
+    res.status(200).json(await getAllCalendarMonthImages());
+});
+
+router.patch("/month-images", requires_authority(AUTHORITIES.UPDATE_CALENDAR_MONTH_IMAGE), async (req, res) => {
+    const requiredBodyFields = ["month"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const month = Number(validatedRequestBody.month);
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+        return res.status(400).json({ error: "month must be 1-12" });
+    }
+
+    const image_url = req.body.image_url != null && String(req.body.image_url).trim() !== "" ? String(req.body.image_url).trim() : null;
+
+    try {
+        const saved = await upsertCalendarMonthImage({
+            month,
+            image_url,
+            updated_by: req.user.id,
+        });
+        if (!saved) {
+            return res.status(400).json({ error: "Failed To Save Month Image" });
+        }
+        return res.status(200).json(saved);
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Save Month Image" });
+    }
 });
 
 router.get("/summary", async (req, res) => {

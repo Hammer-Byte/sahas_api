@@ -26,6 +26,7 @@ const {
 } = require("../db/batches");
 const { addGlobalNotesForUsers } = require("../db/global_notes");
 const { addCounselingNotesForUsers } = require("../db/counseling_notes");
+const { addBatchGlobalNoteHistory, getBatchGlobalNoteHistoryByBatchId } = require("../db/batch_global_note_history");
 const { createNotification, createNotificationsForUsers, getWarningTypeId, getAlertTypeId } = require("../libs/notifications");
 const { recordActivity } = require("../libs/activities");
 
@@ -137,6 +138,16 @@ router.post("/:id/attendance", requires_authority(AUTHORITIES.MANAGE_BATCH_ATTEN
     return res.status(200).json({ attendance_date, students });
 });
 
+router.get("/:id/global-note-history", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+    const batch = await requireBatchController(req, res);
+    if (!batch) {
+        return;
+    }
+
+    const history = await getBatchGlobalNoteHistoryByBatchId({ batch_id: req.params.id });
+    return res.status(200).json(history);
+});
+
 router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req, res) => {
     const batch = await requireBatchController(req, res);
     if (!batch) {
@@ -165,16 +176,35 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
     }
 
     try {
+        const note = validatedRequestBody.note;
+        const type = req.body.type ?? null;
+        const attachment = req.body.attachment ?? null;
+
         const count = await addGlobalNotesForUsers({
             user_ids,
-            note: validatedRequestBody.note,
-            type: req.body.type ?? null,
-            attachment: req.body.attachment ?? null,
+            note,
+            type,
+            attachment,
             created_by: req.user.id,
         });
 
         if (!count) {
             return res.status(400).json({ error: "Failed To Add Global Notes" });
+        }
+
+        let history_id = null;
+        if (!!req.body.save_in_history) {
+            history_id = await addBatchGlobalNoteHistory({
+                batch_id: req.params.id,
+                note,
+                type,
+                attachment,
+                created_by: req.user.id,
+                user_ids,
+            });
+            if (!history_id) {
+                return res.status(400).json({ error: "Global Notes Added But Failed To Save History" });
+            }
         }
 
         await createNotificationsForUsers({
@@ -184,7 +214,7 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
             created_by: req.user.id,
         });
 
-        return res.status(201).json({ count });
+        return res.status(201).json({ count, history_id, saved_in_history: !!history_id });
     } catch (error) {
         return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Global Notes" });
     }

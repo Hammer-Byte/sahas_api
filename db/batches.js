@@ -1,5 +1,6 @@
 const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
+const { deleteBatchGlobalNoteHistoryByBatchId } = require("./batch_global_note_history");
 
 function getAllBatches() {
     return executeSQLQueryParameterized(
@@ -109,6 +110,7 @@ function updateBatchById({ id, title, description = null, branch_id = null, star
 
 function deleteBatchById({ id }) {
     return executeSQLQueryParameterized(`DELETE FROM BATCH_ATTENDANCE WHERE batch_id=?`, [id])
+        .then(() => deleteBatchGlobalNoteHistoryByBatchId({ batch_id: id }))
         .then(() => executeSQLQueryParameterized(`DELETE FROM BATCH_USERS WHERE batch_id=?`, [id]))
         .then(() => executeSQLQueryParameterized(`DELETE FROM BATCH_CONTROLLERS WHERE batch_id=?`, [id]))
         .then(() => executeSQLQueryParameterized(`DELETE FROM BATCHES WHERE id=?`, [id]))

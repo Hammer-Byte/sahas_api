@@ -1188,6 +1188,25 @@ async function generateDBTables() {
             INDEX idx_batch_event_batches_event (batch_event_id),
             INDEX idx_batch_event_batches_batch (batch_id)
         )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_GLOBAL_NOTE_HISTORY (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            batch_id INT NOT NULL,
+            note VARCHAR(256) NOT NULL,
+            type VARCHAR(255) DEFAULT NULL,
+            attachment VARCHAR(512) DEFAULT NULL,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_batch_global_note_history_batch (batch_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_GLOBAL_NOTE_HISTORY_USERS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            history_id INT NOT NULL,
+            user_id INT NOT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_batch_global_note_history_user (history_id, user_id),
+            INDEX idx_batch_global_note_history_users_history (history_id),
+            INDEX idx_batch_global_note_history_users_user (user_id)
+        )`,
         `CREATE TABLE IF NOT EXISTS USER_EVENTS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,

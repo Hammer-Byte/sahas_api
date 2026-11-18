@@ -3,6 +3,7 @@ const { validateRequestBody } = require("sahas_utils");
 const { AUTHORITIES } = require("../constants");
 const requires_authority = require("../middlewares/requires_authority");
 const {
+    getAllBatches,
     getBatchesByControllerUserId,
     getBatchById,
     addBatch,
@@ -36,10 +37,15 @@ const { addCounselingNotesForUsers } = require("../db/counseling_notes");
 const { addBatchGlobalNoteHistory, getBatchGlobalNoteHistoryByBatchId } = require("../db/batch_global_note_history");
 const { createNotification, createNotificationsForUsers, getWarningTypeId, getAlertTypeId } = require("../libs/notifications");
 const { recordActivity } = require("../libs/activities");
+const { hasRequiredAuthority } = require("../utils");
 
 const router = libExpress.Router();
 
-async function requireBatchController(req, res) {
+function canManageBatchControllers(req) {
+    return hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.MANAGE_BATCH_CONTROLLER);
+}
+
+async function requireBatchById(req, res) {
     if (!req.params.id) {
         res.status(400).json({ error: "Missing Batch Id" });
         return false;
@@ -48,6 +54,15 @@ async function requireBatchController(req, res) {
     const batch = await getBatchById({ id: req.params.id });
     if (!batch) {
         res.status(400).json({ error: "Batch Not Exist" });
+        return false;
+    }
+
+    return batch;
+}
+
+async function requireBatchController(req, res) {
+    const batch = await requireBatchById(req, res);
+    if (!batch) {
         return false;
     }
 
@@ -61,15 +76,14 @@ async function requireBatchController(req, res) {
 }
 
 async function requireBatchControllerOrTestSupervisor(req, res) {
-    if (!req.params.id) {
-        res.status(400).json({ error: "Missing Batch Id" });
+    const batch = await requireBatchById(req, res);
+    if (!batch) {
         return false;
     }
 
-    const batch = await getBatchById({ id: req.params.id });
-    if (!batch) {
-        res.status(400).json({ error: "Batch Not Exist" });
-        return false;
+    // Admins with MANAGE_BATCH_CONTROLLER can open any batch (e.g. to assign controllers).
+    if (canManageBatchControllers(req)) {
+        return batch;
     }
 
     const canControl = await isBatchController({ batch_id: req.params.id, user_id: req.user?.id });
@@ -87,7 +101,11 @@ async function requireBatchControllerOrTestSupervisor(req, res) {
 }
 
 router.get("/", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-    res.status(200).json(await getBatchesByControllerUserId({ user_id: req.user.id }));
+    // Controller managers (admins) see every batch so they can assign controllers anywhere.
+    if (canManageBatchControllers(req)) {
+        return res.status(200).json(await getAllBatches());
+    }
+    return res.status(200).json(await getBatchesByControllerUserId({ user_id: req.user.id }));
 });
 
 router.get("/:id/users", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
@@ -318,7 +336,8 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
 });
 
 router.get("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
-    const batch = await requireBatchController(req, res);
+    // Authority alone is enough — admins do not need to already be a controller of the batch.
+    const batch = await requireBatchById(req, res);
     if (!batch) {
         return;
     }
@@ -327,7 +346,7 @@ router.get("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTR
 });
 
 router.post("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
-    const batch = await requireBatchController(req, res);
+    const batch = await requireBatchById(req, res);
     if (!batch) {
         return;
     }
@@ -373,7 +392,7 @@ router.post("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONT
 });
 
 router.delete("/:id/controllers/:userId", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
-    const batch = await requireBatchController(req, res);
+    const batch = await requireBatchById(req, res);
     if (!batch) {
         return;
     }

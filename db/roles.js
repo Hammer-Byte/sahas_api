@@ -31,11 +31,12 @@ function getRoleById({ id }) {
 }
 
 //freeze
-function updateRoleById({ id, title, active, task_assignable = false }) {
-    return executeSQLQueryParameterized("UPDATE ROLES SET title=?,active=?,task_assignable=? WHERE id=?", [
+function updateRoleById({ id, title, active, task_assignable = false, test_paper_assignable = false }) {
+    return executeSQLQueryParameterized("UPDATE ROLES SET title=?,active=?,task_assignable=?,test_paper_assignable=? WHERE id=?", [
         title,
         active,
         Boolean(task_assignable),
+        Boolean(test_paper_assignable),
         id,
     ]).catch((error) => logger.error(`updateRoleById: ${error}`));
 }

@@ -63,6 +63,7 @@ async function generateDBTables() {
             title VARCHAR(36) UNIQUE NOT NULL,
             active BOOLEAN NOT NULL DEFAULT TRUE,
             task_assignable BOOLEAN NOT NULL DEFAULT FALSE,
+            test_paper_assignable BOOLEAN NOT NULL DEFAULT FALSE,
             created_by INT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP
         )`,
@@ -1123,11 +1124,26 @@ async function generateDBTables() {
             batch_id INT NOT NULL,
             user_id INT NOT NULL,
             roll_no INT NULL,
+            level_id INT NULL,
+            incharge_user_id INT NULL,
+            is_left BOOLEAN NOT NULL DEFAULT FALSE,
+            left_on DATETIME NULL,
             created_by INT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_batch_user (batch_id, user_id),
             INDEX idx_batch_users_batch (batch_id),
-            INDEX idx_batch_users_user (user_id)
+            INDEX idx_batch_users_user (user_id),
+            INDEX idx_batch_users_level (level_id),
+            INDEX idx_batch_users_incharge (incharge_user_id),
+            INDEX idx_batch_users_is_left (is_left)
+        )`,
+        `CREATE TABLE IF NOT EXISTS LEVELS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(64) UNIQUE NOT NULL,
+            color VARCHAR(32) NULL,
+            view_index INT NOT NULL DEFAULT 0,
+            active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP
         )`,
         `CREATE TABLE IF NOT EXISTS BATCH_ATTENDANCE (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1206,6 +1222,57 @@ async function generateDBTables() {
             UNIQUE KEY unique_batch_global_note_history_user (history_id, user_id),
             INDEX idx_batch_global_note_history_users_history (history_id),
             INDEX idx_batch_global_note_history_users_user (user_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_TESTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            batch_id INT NOT NULL,
+            subject_id INT NOT NULL,
+            test_date DATE NOT NULL,
+            total_marks INT NOT NULL,
+            start_time TIME NULL,
+            end_time TIME NULL,
+            comment VARCHAR(1024) NULL,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_batch_tests_batch (batch_id),
+            INDEX idx_batch_tests_subject (subject_id),
+            INDEX idx_batch_tests_date (test_date)
+        )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_TEST_SUPERVISORS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            test_id INT NOT NULL,
+            user_id INT NOT NULL,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_batch_test_supervisor (test_id, user_id),
+            INDEX idx_batch_test_supervisors_test (test_id),
+            INDEX idx_batch_test_supervisors_user (user_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_TEST_RECORDS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            test_id INT NOT NULL,
+            user_id INT NOT NULL,
+            attendance_status ENUM('PRESENT', 'ABSENT') NOT NULL DEFAULT 'ABSENT',
+            marks_obtained DECIMAL(8,2) NULL,
+            comment VARCHAR(512) NULL,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_batch_test_record (test_id, user_id),
+            INDEX idx_batch_test_records_test (test_id),
+            INDEX idx_batch_test_records_user (user_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS BATCH_TEST_PAPERS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            test_id INT NOT NULL,
+            paper_type ENUM('PAPER', 'SOLUTION', 'TOPPERS') NOT NULL,
+            file_path VARCHAR(512) NOT NULL,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_batch_test_paper_type (test_id, paper_type),
+            INDEX idx_batch_test_papers_test (test_id)
         )`,
         `CREATE TABLE IF NOT EXISTS USER_EVENTS (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1379,6 +1446,12 @@ async function generateDBTables() {
         (3, 'Completed', '#D1FAE5'),
         (4, 'Cancelled', '#FEE2E2')`,
 
+        `INSERT IGNORE INTO LEVELS (id, title, color, view_index) VALUES
+        (1, 'Topper', '#D1FAE5', 1),
+        (2, 'Good', '#DBEAFE', 2),
+        (3, 'Average', '#FEF3C7', 3),
+        (4, 'Weak', '#FEE2E2', 4)`,
+
         `INSERT IGNORE INTO NOTIFICATION_TYPES (id, title, color) VALUES
         (1, 'Notice', '#DBEAFE'),
         (2, 'Alert', '#FEF3C7'),
@@ -1410,6 +1483,13 @@ async function generateDBTables() {
         ('ASSIGN_BATCH_STUDENT', 'Assign Student To Batch'),
         ('MANAGE_BATCH_ATTENDANCE', 'Manage Batch Attendance'),
         ('MANAGE_BATCH_CONTROLLER', 'Manage Batch Controllers'),
+        ('CREATE_BATCH_TEST', 'Create Batch Test'),
+        ('UPDATE_BATCH_TEST', 'Update Batch Test'),
+        ('DELETE_BATCH_TEST', 'Delete Batch Test'),
+        ('MANAGE_BATCH_TEST_SUPERVISORS', 'Manage Batch Test Supervisors'),
+        ('MANAGE_BATCH_TEST_RECORDS', 'Manage Batch Test Attendance And Marks'),
+        ('MANAGE_BATCH_TEST_PAPERS', 'Manage Batch Test Paper PDFs'),
+        ('MANAGE_BATCH_STUDENT_LEVEL', 'Manage Batch Student Levels And Incharge'),
         ('USE_PAGE_MANAGE_EVENTS', 'Page For Managing Batch Events'),
         ('CREATE_BATCH_EVENT', 'Create Batch Event'),
         ('UPDATE_BATCH_EVENT', 'Update Batch Event'),
@@ -1612,7 +1692,30 @@ async function generateDBTables() {
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
 
     await ensureContentPublishRunColumns();
+    await ensureBatchUsersStudentLevelColumns();
     await backfillUserActivityTimesToIst();
+}
+
+async function ensureBatchUsersStudentLevelColumns() {
+    const alters = [
+        `ALTER TABLE BATCH_USERS ADD COLUMN level_id INT NULL`,
+        `ALTER TABLE BATCH_USERS ADD COLUMN incharge_user_id INT NULL`,
+        `ALTER TABLE BATCH_USERS ADD COLUMN is_left BOOLEAN NOT NULL DEFAULT FALSE`,
+        `ALTER TABLE BATCH_USERS ADD COLUMN left_on DATETIME NULL`,
+        `ALTER TABLE BATCH_USERS ADD INDEX idx_batch_users_level (level_id)`,
+        `ALTER TABLE BATCH_USERS ADD INDEX idx_batch_users_incharge (incharge_user_id)`,
+        `ALTER TABLE BATCH_USERS ADD INDEX idx_batch_users_is_left (is_left)`,
+    ];
+
+    for (const query of alters) {
+        try {
+            await executeSQLQueryRaw(query);
+        } catch (error) {
+            if (error?.code !== "ER_DUP_FIELDNAME" && error?.errno !== 1060 && error?.code !== "ER_DUP_KEYNAME" && error?.errno !== 1061) {
+                logger.error(`ensureBatchUsersStudentLevelColumns: ${error}`);
+            }
+        }
+    }
 }
 
 async function ensureContentPublishRunColumns() {

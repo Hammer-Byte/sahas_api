@@ -40,10 +40,45 @@ async function generateDBTables() {
             institute VARCHAR(64) NULL,
             course VARCHAR(64) NULL,
             course_exam_seat VARCHAR(64) NULL,
+            pnr_gr_number VARCHAR(64) NULL,
             refered_by VARCHAR(64) NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             CONSTRAINT fk_history_user
+                FOREIGN KEY (user_id)
+                REFERENCES USERS(id)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE
+          )
+        `,
+        `CREATE TABLE IF NOT EXISTS USER_CAREER_INTERESTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            preference_1 VARCHAR(128) NULL,
+            preference_2 VARCHAR(128) NULL,
+            preference_3 VARCHAR(128) NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_user_career_interest (user_id),
+            CONSTRAINT fk_career_interest_user
+                FOREIGN KEY (user_id)
+                REFERENCES USERS(id)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE
+          )
+        `,
+        `CREATE TABLE IF NOT EXISTS USER_TARGET_RESULTS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            course_id INT NOT NULL,
+            target_percentage DECIMAL(5,2) NOT NULL,
+            created_by INT NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_user_course_target (user_id, course_id),
+            INDEX idx_user_target_results_user (user_id),
+            INDEX idx_user_target_results_course (course_id),
+            CONSTRAINT fk_target_result_user
                 FOREIGN KEY (user_id)
                 REFERENCES USERS(id)
                 ON DELETE CASCADE

@@ -105,10 +105,11 @@ function isTruthyQueryFlag(value) {
 }
 
 function prepareFiltersWhereQuery(appliedFilters, search, query) {
-    const { roles, branches, active, courses, dues, range, task_assignable } = appliedFilters;
+    const { roles, branches, active, courses, dues, range, task_assignable, test_paper_assignable } = appliedFilters;
     const filterTaskAssignable = isTruthyQueryFlag(task_assignable);
+    const filterTestPaperAssignable = isTruthyQueryFlag(test_paper_assignable);
 
-    if (roles || branches || active || courses || dues || range || filterTaskAssignable) {
+    if (roles || branches || active || courses || dues || range || filterTaskAssignable || filterTestPaperAssignable) {
         //if priviously search is applied then we need to add AND
         query.push(!!search ? "AND" : "WHERE");
 
@@ -147,6 +148,12 @@ function prepareFiltersWhereQuery(appliedFilters, search, query) {
             );
         }
 
+        if (filterTestPaperAssignable) {
+            filterQueries.push(
+                `EXISTS (SELECT 1 FROM USER_ROLES ur INNER JOIN ROLES r ON r.id = ur.role_id WHERE ur.user_id = USERS.id AND r.active = TRUE AND r.test_paper_assignable = TRUE)`,
+            );
+        }
+
         query.push(filterQueries.join(" AND "));
     }
 }
@@ -163,6 +170,22 @@ function isUserTaskAssignable({ user_id }) {
         .then((rows) => rows.length > 0)
         .catch((error) => {
             logger.error(`isUserTaskAssignable: ${error}`);
+            return false;
+        });
+}
+
+function isUserTestPaperAssignable({ user_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT 1 AS ok
+         FROM USER_ROLES ur
+         INNER JOIN ROLES r ON r.id = ur.role_id
+         WHERE ur.user_id = ? AND r.active = TRUE AND r.test_paper_assignable = TRUE
+         LIMIT 1`,
+        [user_id],
+    )
+        .then((rows) => rows.length > 0)
+        .catch((error) => {
+            logger.error(`isUserTestPaperAssignable: ${error}`);
             return false;
         });
 }
@@ -348,4 +371,5 @@ module.exports = {
     patchUserEmailById,
     patchUserStreamSelectionTestAllowedById,
     isUserTaskAssignable,
+    isUserTestPaperAssignable,
 };

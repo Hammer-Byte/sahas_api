@@ -43,6 +43,15 @@ const { getUserActivitiesByUserIdBetween } = require("../db/user_activities");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
 const { addUserHistory, getUserHistoryById, updateUserHistoryById } = require("../db/user_history");
+const {
+    getCareerInterestByUserId,
+    upsertCareerInterestByUserId,
+    getTargetResultsByUserId,
+    getTargetResultById,
+    addTargetResult,
+    updateTargetResultById,
+    deleteTargetResultById,
+} = require("../db/user_career_goals");
 const { getBatchesByUserId, getAssignableBatchesForUser, isUserInBatch, getUserBatchAttendanceByDateRange } = require("../db/batches");
 const {
     getLatestStreamSelectionTestByUserId,
@@ -409,6 +418,130 @@ router.get("/:id/counseling-notes", requires_authority(AUTHORITIES.READ_COUNSELI
     }
     const notes = await getCounselingNotesByUserId({ user_id: id });
     res.status(200).json(notes);
+});
+
+router.get("/:id/career-goals", requires_authority(AUTHORITIES.READ_USER), async (req, res) => {
+    const { id } = req.params;
+    if (!id) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+
+    const [career_interest, target_results] = await Promise.all([
+        getCareerInterestByUserId({ user_id: id }),
+        getTargetResultsByUserId({ user_id: id }),
+    ]);
+
+    return res.status(200).json({ career_interest, target_results });
+});
+
+router.put("/:id/career-interest", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) => {
+    const { id } = req.params;
+    if (!id) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+
+    try {
+        const career_interest = await upsertCareerInterestByUserId({
+            user_id: id,
+            preference_1: req.body?.preference_1 ?? null,
+            preference_2: req.body?.preference_2 ?? null,
+            preference_3: req.body?.preference_3 ?? null,
+        });
+        return res.status(200).json(career_interest);
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Update Career Interest" });
+    }
+});
+
+router.post("/:id/target-results", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) => {
+    const { id } = req.params;
+    if (!id) {
+        return res.status(400).json({ error: "Missing User Id" });
+    }
+
+    const requiredBodyFields = ["course_id", "target_percentage"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const targetPercentage = Number(validatedRequestBody.target_percentage);
+    if (!Number.isFinite(targetPercentage) || targetPercentage < 0 || targetPercentage > 100) {
+        return res.status(400).json({ error: "Target percentage must be between 0 and 100" });
+    }
+
+    try {
+        const targetResult = await addTargetResult({
+            user_id: id,
+            course_id: validatedRequestBody.course_id,
+            target_percentage: targetPercentage,
+            created_by: req.user?.id ?? null,
+        });
+        return res.status(201).json(targetResult);
+    } catch (error) {
+        if (error?.code === "ER_DUP_ENTRY") {
+            return res.status(400).json({ error: "Target result already exists for this course" });
+        }
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Add Target Result" });
+    }
+});
+
+router.put("/:id/target-results/:resultId", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) => {
+    const { id, resultId } = req.params;
+    if (!id || !resultId) {
+        return res.status(400).json({ error: "Missing User Id Or Target Result Id" });
+    }
+
+    const existing = await getTargetResultById({ id: resultId });
+    if (!existing || Number(existing.user_id) !== Number(id)) {
+        return res.status(404).json({ error: "Target Result Not Found" });
+    }
+
+    const requiredBodyFields = ["course_id", "target_percentage"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const targetPercentage = Number(validatedRequestBody.target_percentage);
+    if (!Number.isFinite(targetPercentage) || targetPercentage < 0 || targetPercentage > 100) {
+        return res.status(400).json({ error: "Target percentage must be between 0 and 100" });
+    }
+
+    try {
+        const targetResult = await updateTargetResultById({
+            id: resultId,
+            course_id: validatedRequestBody.course_id,
+            target_percentage: targetPercentage,
+        });
+        return res.status(200).json(targetResult);
+    } catch (error) {
+        if (error?.code === "ER_DUP_ENTRY") {
+            return res.status(400).json({ error: "Target result already exists for this course" });
+        }
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Update Target Result" });
+    }
+});
+
+router.delete("/:id/target-results/:resultId", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) => {
+    const { id, resultId } = req.params;
+    if (!id || !resultId) {
+        return res.status(400).json({ error: "Missing User Id Or Target Result Id" });
+    }
+
+    const existing = await getTargetResultById({ id: resultId });
+    if (!existing || Number(existing.user_id) !== Number(id)) {
+        return res.status(404).json({ error: "Target Result Not Found" });
+    }
+
+    try {
+        await deleteTargetResultById({ id: resultId });
+        return res.sendStatus(204);
+    } catch (error) {
+        return res.status(400).json({ error: error?.sqlMessage || error?.message || "Failed To Delete Target Result" });
+    }
 });
 
 //tested

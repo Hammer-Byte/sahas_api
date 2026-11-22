@@ -21,9 +21,14 @@ const {
     getBatchTestDetail,
 } = require("../db/batch_tests");
 const { createNotificationsForUsers, getAlertTypeId } = require("../libs/notifications");
+const { hasRequiredAuthority } = require("../utils");
 
 const VALID_PAPER_TYPES = new Set(["PAPER", "SOLUTION", "TOPPERS"]);
 const VALID_ATTENDANCE = new Set(["PRESENT", "ABSENT"]);
+
+function canManageBatchControllers(req) {
+    return hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.MANAGE_BATCH_CONTROLLER);
+}
 
 function normalizeTime(value) {
     if (value === null || value === undefined || value === "") {
@@ -54,7 +59,7 @@ function isBatchTestOver(test, now = Date.now()) {
     return Number.isFinite(endMs) && now > endMs;
 }
 
-async function requireBatchController(req, res) {
+async function requireBatchById(req, res) {
     if (!req.params.id) {
         res.status(400).json({ error: "Missing Batch Id" });
         return false;
@@ -63,6 +68,22 @@ async function requireBatchController(req, res) {
     const batch = await getBatchById({ id: req.params.id });
     if (!batch) {
         res.status(400).json({ error: "Batch Not Exist" });
+        return false;
+    }
+
+    return batch;
+}
+
+async function isBatchControllerAccess(req, batch_id) {
+    if (canManageBatchControllers(req)) {
+        return true;
+    }
+    return isBatchController({ batch_id, user_id: req.user?.id });
+}
+
+async function requireBatchController(req, res) {
+    const batch = await requireBatchById(req, res);
+    if (!batch) {
         return false;
     }
 
@@ -76,19 +97,12 @@ async function requireBatchController(req, res) {
 }
 
 async function requireBatchControllerOrTestSupervisor(req, res) {
-    if (!req.params.id) {
-        res.status(400).json({ error: "Missing Batch Id" });
-        return false;
-    }
-
-    const batch = await getBatchById({ id: req.params.id });
+    const batch = await requireBatchById(req, res);
     if (!batch) {
-        res.status(400).json({ error: "Batch Not Exist" });
         return false;
     }
 
-    const canControl = await isBatchController({ batch_id: req.params.id, user_id: req.user?.id });
-    if (canControl) {
+    if (await isBatchControllerAccess(req, req.params.id)) {
         return { batch, isController: true };
     }
 
@@ -102,9 +116,8 @@ async function requireBatchControllerOrTestSupervisor(req, res) {
 }
 
 async function requireBatchTest(req, res, { allowSupervisor = false } = {}) {
-    const batch = await getBatchById({ id: req.params.id });
+    const batch = await requireBatchById(req, res);
     if (!batch) {
-        res.status(400).json({ error: "Batch Not Exist" });
         return false;
     }
 
@@ -114,10 +127,10 @@ async function requireBatchTest(req, res, { allowSupervisor = false } = {}) {
         return false;
     }
 
-    const canControl = await isBatchController({ batch_id: req.params.id, user_id: req.user?.id });
+    const isController = await isBatchControllerAccess(req, req.params.id);
     const isSupervisor = await isBatchTestSupervisor({ test_id: test.id, user_id: req.user?.id });
 
-    if (canControl) {
+    if (isController) {
         return {
             batch,
             test,
@@ -143,10 +156,6 @@ async function requireBatchTest(req, res, { allowSupervisor = false } = {}) {
     return false;
 }
 
-/**
- * Controllers of the batch and assigned supervisors of the test can manage it.
- * Specific authorities are enforced in the UI; these roles have full test control.
- */
 async function requireBatchTestManage(req, res) {
     return requireBatchTest(req, res, { allowSupervisor: true });
 }
@@ -161,7 +170,6 @@ function registerBatchTestRoutes(router) {
         const supervisedIds = await getSupervisedTestIdsByBatchAndUser({ batch_id: req.params.id, user_id: req.user?.id });
         const supervisedSet = new Set(supervisedIds.map((id) => Number(id)));
 
-        // Controllers see every test; supervisors only see tests they are assigned to (latest first from SQL).
         let tests = await getBatchTestsByBatchId({ batch_id: req.params.id });
         if (!access.isController) {
             tests = (tests || []).filter((test) => supervisedSet.has(Number(test.id)));
@@ -178,7 +186,6 @@ function registerBatchTestRoutes(router) {
                     is_batch_controller,
                     is_test_supervisor,
                     can_manage,
-                    // Same role gate as manage: this-test supervisor or batch controller (UI uses HasBatchTestAccess).
                     can_enter_marks: can_manage,
                 };
             }),
@@ -254,31 +261,18 @@ function registerBatchTestRoutes(router) {
     });
 
     router.get("/:id/tests/:testId", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-        const batch = await getBatchById({ id: req.params.id });
-        if (!batch) {
-            return res.status(400).json({ error: "Batch Not Exist" });
-        }
-
-        const test = await getBatchTestById({ id: req.params.testId });
-        if (!test || Number(test.batch_id) !== Number(req.params.id)) {
-            return res.status(400).json({ error: "Test Not Exist" });
-        }
-
-        const isController = await isBatchController({ batch_id: req.params.id, user_id: req.user?.id });
-        const isSupervisor = await isBatchTestSupervisor({ test_id: test.id, user_id: req.user?.id });
-        // Controllers may open any test; supervisors may open only tests they are assigned to.
-        if (!isController && !isSupervisor) {
-            return res.status(403).json({ error: "You Do Not Have Access To This Test" });
+        const access = await requireBatchTest(req, res, { allowSupervisor: true });
+        if (!access) {
+            return;
         }
 
         const detail = await getBatchTestDetail({ id: req.params.testId });
-        const can_manage = !!(isController || isSupervisor);
         return res.status(200).json({
             ...detail,
-            is_batch_controller: !!isController,
-            is_test_supervisor: !!isSupervisor,
-            can_manage,
-            can_enter_marks: can_manage,
+            is_batch_controller: !!access.isController,
+            is_test_supervisor: !!access.isSupervisor,
+            can_manage: !!access.canManage,
+            can_enter_marks: !!access.canEnterMarks,
         });
     });
 

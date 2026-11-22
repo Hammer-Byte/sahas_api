@@ -168,16 +168,48 @@ const BATCH_USER_SELECT = `SELECT BATCH_USERS.id, BATCH_USERS.batch_id, BATCH_US
          LEFT JOIN LEVELS ON LEVELS.id = BATCH_USERS.level_id
          LEFT JOIN USERS INCHARGE ON INCHARGE.id = BATCH_USERS.incharge_user_id`;
 
-function getUsersByBatchId({ batch_id }) {
-    return executeSQLQueryParameterized(
-        `${BATCH_USER_SELECT} WHERE BATCH_USERS.batch_id = ? ORDER BY BATCH_USERS.roll_no ASC, BATCH_USERS.id ASC`,
-        [batch_id],
-    )
-        .then((rows) => (rows || []).map((row) => ({ ...row, is_left: !!row.is_left })))
-        .catch((error) => {
-            logger.error(`getUsersByBatchId: ${error}`);
-            return [];
-        });
+async function getUsersByBatchId({ batch_id }) {
+    try {
+        const rows = await executeSQLQueryParameterized(
+            `${BATCH_USER_SELECT} WHERE BATCH_USERS.batch_id = ? ORDER BY BATCH_USERS.roll_no ASC, BATCH_USERS.id ASC`,
+            [batch_id],
+        );
+        const users = (rows || []).map((row) => ({ ...row, is_left: !!row.is_left }));
+        if (!users.length) {
+            return users;
+        }
+
+        const {
+            getCareerInterestsByUserIds,
+            getTargetResultsByUserIds,
+        } = require("./user_career_goals");
+        const userIds = users.map((user) => user.user_id);
+        const [interests, targets] = await Promise.all([
+            getCareerInterestsByUserIds({ user_ids: userIds }),
+            getTargetResultsByUserIds({ user_ids: userIds }),
+        ]);
+
+        const interestByUserId = (interests || []).reduce((acc, row) => {
+            acc[row.user_id] = row;
+            return acc;
+        }, {});
+        const targetsByUserId = (targets || []).reduce((acc, row) => {
+            if (!acc[row.user_id]) {
+                acc[row.user_id] = [];
+            }
+            acc[row.user_id].push(row);
+            return acc;
+        }, {});
+
+        return users.map((user) => ({
+            ...user,
+            career_interest: interestByUserId[user.user_id] || null,
+            target_results: targetsByUserId[user.user_id] || [],
+        }));
+    } catch (error) {
+        logger.error(`getUsersByBatchId: ${error}`);
+        return [];
+    }
 }
 
 function getNextRollNo({ batch_id }) {

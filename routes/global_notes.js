@@ -29,7 +29,7 @@ router.post("/", requires_authority(AUTHORITIES.CREATE_GLOBAL_NOTE), async (req,
         await createNotification({
             user_id: note.user_id,
             title: "A global note was created",
-            description: "A new global note has been added to your profile.",
+            description: note.note,
             created_by: req.user.id,
         });
         await recordActivity({ user_id: note.user_id, key: "ADD_GLOBAL_NOTE" });
@@ -56,7 +56,7 @@ router.patch("/", requires_authority(AUTHORITIES.UPDATE_GLOBAL_NOTE), async (req
         await createNotification({
             user_id: note.user_id,
             title: "A global note was updated",
-            description: "A global note on your profile was updated.",
+            description: note.note,
             created_by: req.user.id,
         });
         res.status(200).json(note);

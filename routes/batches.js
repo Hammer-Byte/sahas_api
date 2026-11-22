@@ -60,6 +60,16 @@ async function requireBatchById(req, res) {
     return batch;
 }
 
+async function hasBatchMembershipAccess(req, batch_id) {
+    if (canManageBatchControllers(req)) {
+        return true;
+    }
+    if (await isBatchController({ batch_id, user_id: req.user?.id })) {
+        return true;
+    }
+    return isUserSupervisorOfAnyBatchTest({ batch_id, user_id: req.user?.id });
+}
+
 async function requireBatchController(req, res) {
     const batch = await requireBatchById(req, res);
     if (!batch) {
@@ -81,18 +91,7 @@ async function requireBatchControllerOrTestSupervisor(req, res) {
         return false;
     }
 
-    // Admins with MANAGE_BATCH_CONTROLLER can open any batch (e.g. to assign controllers).
-    if (canManageBatchControllers(req)) {
-        return batch;
-    }
-
-    const canControl = await isBatchController({ batch_id: req.params.id, user_id: req.user?.id });
-    if (canControl) {
-        return batch;
-    }
-
-    const isSupervisor = await isUserSupervisorOfAnyBatchTest({ batch_id: req.params.id, user_id: req.user?.id });
-    if (!isSupervisor) {
+    if (!(await hasBatchMembershipAccess(req, req.params.id))) {
         res.status(403).json({ error: "You Do Not Control This Batch" });
         return false;
     }
@@ -101,7 +100,6 @@ async function requireBatchControllerOrTestSupervisor(req, res) {
 }
 
 router.get("/", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-    // Controller managers (admins) see every batch so they can assign controllers anywhere.
     if (canManageBatchControllers(req)) {
         return res.status(200).json(await getAllBatches());
     }
@@ -272,7 +270,7 @@ router.post("/:id/global-notes", requires_authority(AUTHORITIES.CREATE_GLOBAL_NO
         await createNotificationsForUsers({
             user_ids,
             title: "A global note was created",
-            description: "A new global note has been added to your profile.",
+            description: note,
             created_by: req.user.id,
         });
 

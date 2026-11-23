@@ -37,12 +37,12 @@ const { addCounselingNotesForUsers } = require("../db/counseling_notes");
 const { addBatchGlobalNoteHistory, getBatchGlobalNoteHistoryByBatchId } = require("../db/batch_global_note_history");
 const { createNotification, createNotificationsForUsers, getWarningTypeId, getAlertTypeId } = require("../libs/notifications");
 const { recordActivity } = require("../libs/activities");
-const { hasRequiredAuthority } = require("../utils");
 
 const router = libExpress.Router();
 
-function canManageBatchControllers(req) {
-    return hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.MANAGE_BATCH_CONTROLLER);
+function canSeeAllBatches(req) {
+    const roles = req?.user?.roles || [];
+    return roles.includes("ADMIN") || roles.includes("DEVELOPER");
 }
 
 async function requireBatchById(req, res) {
@@ -61,13 +61,36 @@ async function requireBatchById(req, res) {
 }
 
 async function hasBatchMembershipAccess(req, batch_id) {
-    if (canManageBatchControllers(req)) {
+    if (canSeeAllBatches(req)) {
         return true;
     }
     if (await isBatchController({ batch_id, user_id: req.user?.id })) {
         return true;
     }
     return isUserSupervisorOfAnyBatchTest({ batch_id, user_id: req.user?.id });
+}
+
+// Controllers button / CRUD: ADMIN/DEVELOPER or assigned batch controller only (not supervisor-only).
+// Authority MANAGE_BATCH_CONTROLLER is enforced separately via requires_authority on the routes.
+async function canManageBatchControllers(req, batch_id) {
+    if (canSeeAllBatches(req)) {
+        return true;
+    }
+    return isBatchController({ batch_id, user_id: req.user?.id });
+}
+
+async function requireCanManageBatchControllers(req, res) {
+    const batch = await requireBatchById(req, res);
+    if (!batch) {
+        return false;
+    }
+
+    if (!(await canManageBatchControllers(req, req.params.id))) {
+        res.status(403).json({ error: "You Do Not Manage Controllers For This Batch" });
+        return false;
+    }
+
+    return batch;
 }
 
 async function requireBatchController(req, res) {
@@ -100,7 +123,9 @@ async function requireBatchControllerOrTestSupervisor(req, res) {
 }
 
 router.get("/", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
-    if (canManageBatchControllers(req)) {
+    // ADMIN/DEVELOPER roles see every batch. USE_ADMIN_CORNER alone does not unlock the full list.
+    // Controllers/supervisors only see batches they control or supervise.
+    if (canSeeAllBatches(req)) {
         return res.status(200).json(await getAllBatches());
     }
     return res.status(200).json(await getBatchesByControllerUserId({ user_id: req.user.id }));
@@ -334,8 +359,7 @@ router.post("/:id/counseling-notes", requires_authority(AUTHORITIES.CREATE_COUNS
 });
 
 router.get("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
-    // Authority alone is enough — admins do not need to already be a controller of the batch.
-    const batch = await requireBatchById(req, res);
+    const batch = await requireCanManageBatchControllers(req, res);
     if (!batch) {
         return;
     }
@@ -344,7 +368,7 @@ router.get("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTR
 });
 
 router.post("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
-    const batch = await requireBatchById(req, res);
+    const batch = await requireCanManageBatchControllers(req, res);
     if (!batch) {
         return;
     }
@@ -390,7 +414,7 @@ router.post("/:id/controllers", requires_authority(AUTHORITIES.MANAGE_BATCH_CONT
 });
 
 router.delete("/:id/controllers/:userId", requires_authority(AUTHORITIES.MANAGE_BATCH_CONTROLLER), async (req, res) => {
-    const batch = await requireBatchById(req, res);
+    const batch = await requireCanManageBatchControllers(req, res);
     if (!batch) {
         return;
     }
@@ -596,7 +620,14 @@ router.get("/:id", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), asyn
         return;
     }
 
-    return res.status(200).json(batch);
+    const is_batch_controller = canSeeAllBatches(req) || (await isBatchController({ batch_id: req.params.id, user_id: req.user?.id }));
+    const can_manage_controllers = await canManageBatchControllers(req, req.params.id);
+
+    return res.status(200).json({
+        ...batch,
+        is_batch_controller: !!is_batch_controller,
+        can_manage_controllers: !!can_manage_controllers,
+    });
 });
 
 router.get("/:id/schedule", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {

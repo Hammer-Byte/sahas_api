@@ -16,18 +16,21 @@ const {
     getSupervisedTestIdsByBatchAndUser,
     getBatchTestRecords,
     setBatchTestRecords,
+    resolveResultStatusId,
+    recalculateBatchTestResultStatuses,
+    getTestResultStatuses,
     upsertBatchTestPaper,
     deleteBatchTestPaper,
     getBatchTestDetail,
 } = require("../db/batch_tests");
 const { createNotificationsForUsers, getAlertTypeId } = require("../libs/notifications");
-const { hasRequiredAuthority } = require("../utils");
 
 const VALID_PAPER_TYPES = new Set(["PAPER", "SOLUTION", "TOPPERS"]);
 const VALID_ATTENDANCE = new Set(["PRESENT", "ABSENT"]);
 
-function canManageBatchControllers(req) {
-    return hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.MANAGE_BATCH_CONTROLLER);
+function canSeeAllBatches(req) {
+    const roles = req?.user?.roles || [];
+    return roles.includes("ADMIN") || roles.includes("DEVELOPER");
 }
 
 function normalizeTime(value) {
@@ -59,6 +62,65 @@ function isBatchTestOver(test, now = Date.now()) {
     return Number.isFinite(endMs) && now > endMs;
 }
 
+function parsePassingMarks({ total_marks, passing_marks }) {
+    if (passing_marks === null || passing_marks === undefined || passing_marks === "") {
+        return { passing_marks: null };
+    }
+    const passing = Number(passing_marks);
+    if (!Number.isFinite(passing) || passing <= 0) {
+        return { error: "Passing Marks Must Be A Positive Number" };
+    }
+    if (passing > Number(total_marks)) {
+        return { error: "Passing Marks Cannot Exceed Total Marks" };
+    }
+    return { passing_marks: passing };
+}
+
+async function withResultDisplay(detail) {
+    if (!detail) {
+        return detail;
+    }
+    const totalMarks = detail.total_marks != null ? Number(detail.total_marks) : null;
+    const passing_marks = detail.passing_marks;
+    const statuses = await getTestResultStatuses();
+    const statusById = new Map((statuses || []).map((row) => [Number(row.id), row]));
+
+    const records = [];
+    for (const row of detail.records || []) {
+        const marks = row.marks_obtained != null ? Number(row.marks_obtained) : null;
+        const marksLabel =
+            marks == null || totalMarks == null
+                ? null
+                : `${Number.isInteger(marks) ? marks : Number(marks.toFixed(2))}/${totalMarks}`;
+
+        let result_status_id = row.result_status_id != null ? Number(row.result_status_id) : null;
+        let result_status_title = row.result_status_title || null;
+        let result_status_color = row.result_status_color || null;
+
+        if (result_status_id == null || !result_status_title) {
+            result_status_id = await resolveResultStatusId({
+                attendance_status: row.attendance_status,
+                marks_obtained: row.marks_obtained,
+                passing_marks,
+                is_left: row.is_left,
+            });
+            const status = statusById.get(Number(result_status_id));
+            result_status_title = status?.title || null;
+            result_status_color = status?.color || null;
+        }
+
+        records.push({
+            ...row,
+            marks_display: marksLabel,
+            result_status: result_status_title,
+            result_status_id,
+            result_status_title,
+            result_status_color,
+        });
+    }
+    return { ...detail, records };
+}
+
 async function requireBatchById(req, res) {
     if (!req.params.id) {
         res.status(400).json({ error: "Missing Batch Id" });
@@ -75,7 +137,7 @@ async function requireBatchById(req, res) {
 }
 
 async function isBatchControllerAccess(req, batch_id) {
-    if (canManageBatchControllers(req)) {
+    if (canSeeAllBatches(req)) {
         return true;
     }
     return isBatchController({ batch_id, user_id: req.user?.id });
@@ -215,6 +277,11 @@ function registerBatchTestRoutes(router) {
             return res.status(400).json({ error: "Total Marks Must Be A Positive Number" });
         }
 
+        const passingParsed = parsePassingMarks({ total_marks, passing_marks: req.body.passing_marks });
+        if (passingParsed.error) {
+            return res.status(400).json({ error: passingParsed.error });
+        }
+
         const start_time = normalizeTime(req.body.start_time);
         const end_time = normalizeTime(req.body.end_time);
         if ((req.body.start_time && !start_time) || (req.body.end_time && !end_time)) {
@@ -234,6 +301,7 @@ function registerBatchTestRoutes(router) {
             subject_id: validatedRequestBody.subject_id,
             test_date: validatedRequestBody.test_date,
             total_marks,
+            passing_marks: passingParsed.passing_marks,
             start_time,
             end_time,
             comment: typeof req.body.comment === "string" ? req.body.comment.trim() || null : null,
@@ -257,7 +325,7 @@ function registerBatchTestRoutes(router) {
             created_by: req.user?.id,
         });
 
-        return res.status(201).json(await getBatchTestDetail({ id }));
+        return res.status(201).json(await withResultDisplay(await getBatchTestDetail({ id })));
     });
 
     router.get("/:id/tests/:testId", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
@@ -266,7 +334,7 @@ function registerBatchTestRoutes(router) {
             return;
         }
 
-        const detail = await getBatchTestDetail({ id: req.params.testId });
+        const detail = await withResultDisplay(await getBatchTestDetail({ id: req.params.testId }));
         return res.status(200).json({
             ...detail,
             is_batch_controller: !!access.isController,
@@ -299,6 +367,11 @@ function registerBatchTestRoutes(router) {
             return res.status(400).json({ error: "Total Marks Must Be A Positive Number" });
         }
 
+        const passingParsed = parsePassingMarks({ total_marks, passing_marks: req.body.passing_marks });
+        if (passingParsed.error) {
+            return res.status(400).json({ error: passingParsed.error });
+        }
+
         const start_time = normalizeTime(req.body.start_time);
         const end_time = normalizeTime(req.body.end_time);
         if ((req.body.start_time && !start_time) || (req.body.end_time && !end_time)) {
@@ -310,12 +383,18 @@ function registerBatchTestRoutes(router) {
             subject_id: validatedRequestBody.subject_id,
             test_date: validatedRequestBody.test_date,
             total_marks,
+            passing_marks: passingParsed.passing_marks,
             start_time,
             end_time,
             comment: typeof req.body.comment === "string" ? req.body.comment.trim() || null : null,
         });
 
-        return res.status(200).json(await getBatchTestDetail({ id: req.params.testId }));
+        await recalculateBatchTestResultStatuses({
+            test_id: req.params.testId,
+            passing_marks: passingParsed.passing_marks,
+        });
+
+        return res.status(200).json(await withResultDisplay(await getBatchTestDetail({ id: req.params.testId })));
     });
 
     router.delete("/:id/tests/:testId", requires_authority(AUTHORITIES.DELETE_BATCH_TEST), async (req, res) => {
@@ -352,7 +431,7 @@ function registerBatchTestRoutes(router) {
             created_by: req.user?.id,
         });
 
-        return res.status(200).json(await getBatchTestDetail({ id: req.params.testId }));
+        return res.status(200).json(await withResultDisplay(await getBatchTestDetail({ id: req.params.testId })));
     });
 
     router.get("/:id/tests/:testId/records", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
@@ -390,6 +469,7 @@ function registerBatchTestRoutes(router) {
         const existingRecords = await getBatchTestRecords({ test_id: req.params.testId, batch_id: req.params.id });
         const existingByUserId = new Map((existingRecords || []).map((row) => [Number(row.user_id), row]));
         const totalMarks = Number(access.test.total_marks);
+        const passing_marks = access.test.passing_marks;
         const normalized = [];
         const touchedUserIds = new Set();
 
@@ -417,11 +497,18 @@ function registerBatchTestRoutes(router) {
                     return res.status(400).json({ error: "Invalid Attendance Status" });
                 }
 
+                const marks_obtained = attendance_status === "PRESENT" ? existing.marks_obtained ?? null : null;
+                const comment = attendance_status === "PRESENT" ? existing.comment || null : null;
                 normalized.push({
                     user_id,
                     attendance_status,
-                    marks_obtained: attendance_status === "PRESENT" ? existing.marks_obtained ?? null : null,
-                    comment: attendance_status === "PRESENT" ? existing.comment || null : null,
+                    marks_obtained,
+                    comment,
+                    result_status_id: await resolveResultStatusId({
+                        attendance_status,
+                        marks_obtained,
+                        passing_marks,
+                    }),
                 });
                 continue;
             }
@@ -446,6 +533,11 @@ function registerBatchTestRoutes(router) {
                 attendance_status,
                 marks_obtained,
                 comment,
+                result_status_id: await resolveResultStatusId({
+                    attendance_status,
+                    marks_obtained,
+                    passing_marks,
+                }),
             });
         }
 
@@ -455,11 +547,19 @@ function registerBatchTestRoutes(router) {
             if (touchedUserIds.has(userId) || !existing.record_id) {
                 continue;
             }
+            const attendance_status = existing.attendance_status || "ABSENT";
+            const marks_obtained = existing.marks_obtained ?? null;
             normalized.push({
                 user_id: userId,
-                attendance_status: existing.attendance_status || "ABSENT",
-                marks_obtained: existing.marks_obtained ?? null,
+                attendance_status,
+                marks_obtained,
                 comment: existing.comment || null,
+                result_status_id: await resolveResultStatusId({
+                    attendance_status,
+                    marks_obtained,
+                    passing_marks,
+                    is_left: existing.is_left,
+                }),
             });
         }
 
@@ -469,7 +569,7 @@ function registerBatchTestRoutes(router) {
             created_by: req.user?.id,
         });
 
-        return res.status(200).json(await getBatchTestDetail({ id: req.params.testId }));
+        return res.status(200).json(await withResultDisplay(await getBatchTestDetail({ id: req.params.testId })));
     });
 
     router.put("/:id/tests/:testId/papers", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {

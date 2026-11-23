@@ -30,22 +30,41 @@ function getBatchTestById({ id }) {
         });
 }
 
-function addBatchTest({ batch_id, subject_id, test_date, total_marks, start_time = null, end_time = null, comment = null, created_by = null }) {
+function addBatchTest({
+    batch_id,
+    subject_id,
+    test_date,
+    total_marks,
+    passing_marks,
+    start_time = null,
+    end_time = null,
+    comment = null,
+    created_by = null,
+}) {
     return executeSQLQueryParameterized(
-        `INSERT INTO BATCH_TESTS (batch_id, subject_id, test_date, total_marks, start_time, end_time, comment, created_by)
-         VALUES (?,?,?,?,?,?,?,?)`,
-        [batch_id, subject_id, test_date, total_marks, start_time, end_time, comment, created_by],
+        `INSERT INTO BATCH_TESTS (batch_id, subject_id, test_date, total_marks, passing_marks, start_time, end_time, comment, created_by)
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+        [batch_id, subject_id, test_date, total_marks, passing_marks, start_time, end_time, comment, created_by],
     )
         .then((result) => result.insertId)
         .catch((error) => logger.error(`addBatchTest: ${error}`));
 }
 
-function updateBatchTestById({ id, subject_id, test_date, total_marks, start_time = null, end_time = null, comment = null }) {
+function updateBatchTestById({
+    id,
+    subject_id,
+    test_date,
+    total_marks,
+    passing_marks,
+    start_time = null,
+    end_time = null,
+    comment = null,
+}) {
     return executeSQLQueryParameterized(
         `UPDATE BATCH_TESTS
-         SET subject_id=?, test_date=?, total_marks=?, start_time=?, end_time=?, comment=?
+         SET subject_id=?, test_date=?, total_marks=?, passing_marks=?, start_time=?, end_time=?, comment=?
          WHERE id=?`,
-        [subject_id, test_date, total_marks, start_time, end_time, comment, id],
+        [subject_id, test_date, total_marks, passing_marks, start_time, end_time, comment, id],
     ).catch((error) => logger.error(`updateBatchTestById: ${error}`));
 }
 
@@ -137,6 +156,41 @@ function getSupervisedTestIdsByBatchAndUser({ batch_id, user_id }) {
         });
 }
 
+function getTestResultStatuses() {
+    return executeSQLQueryParameterized("SELECT id, title, color FROM TEST_RESULT_STATUSES ORDER BY id ASC").catch((error) => {
+        logger.error(`getTestResultStatuses: ${error}`);
+        return [];
+    });
+}
+
+let testResultStatusIdCache = null;
+
+async function getTestResultStatusIdByTitle(title) {
+    if (!testResultStatusIdCache) {
+        const rows = await getTestResultStatuses();
+        testResultStatusIdCache = {};
+        for (const row of rows || []) {
+            testResultStatusIdCache[String(row.title).toLowerCase()] = Number(row.id);
+        }
+    }
+    return testResultStatusIdCache[String(title || "").toLowerCase()] || null;
+}
+
+async function resolveResultStatusId({ attendance_status, marks_obtained, passing_marks, is_left = false }) {
+    if (is_left || String(attendance_status || "").toUpperCase() === "ABSENT") {
+        return getTestResultStatusIdByTitle("Absent");
+    }
+    if (marks_obtained === null || marks_obtained === undefined || marks_obtained === "") {
+        return getTestResultStatusIdByTitle("Pending");
+    }
+    const marks = Number(marks_obtained);
+    const passing = passing_marks != null && passing_marks !== "" ? Number(passing_marks) : null;
+    if (!Number.isFinite(marks) || !Number.isFinite(passing)) {
+        return getTestResultStatusIdByTitle("Pending");
+    }
+    return marks >= passing ? getTestResultStatusIdByTitle("Pass") : getTestResultStatusIdByTitle("Fail");
+}
+
 function getBatchTestRecords({ test_id, batch_id }) {
     return executeSQLQueryParameterized(
         `SELECT BATCH_USERS.user_id, BATCH_USERS.roll_no, BATCH_USERS.is_left, BATCH_USERS.left_on,
@@ -144,11 +198,15 @@ function getBatchTestRecords({ test_id, batch_id }) {
                 BATCH_TEST_RECORDS.id AS record_id,
                 COALESCE(BATCH_TEST_RECORDS.attendance_status, 'ABSENT') AS attendance_status,
                 BATCH_TEST_RECORDS.marks_obtained,
+                BATCH_TEST_RECORDS.result_status_id,
+                TEST_RESULT_STATUSES.title AS result_status_title,
+                TEST_RESULT_STATUSES.color AS result_status_color,
                 BATCH_TEST_RECORDS.comment
          FROM BATCH_USERS
          INNER JOIN USERS ON USERS.id = BATCH_USERS.user_id
          LEFT JOIN BATCH_TEST_RECORDS
             ON BATCH_TEST_RECORDS.test_id = ? AND BATCH_TEST_RECORDS.user_id = BATCH_USERS.user_id
+         LEFT JOIN TEST_RESULT_STATUSES ON TEST_RESULT_STATUSES.id = BATCH_TEST_RECORDS.result_status_id
          WHERE BATCH_USERS.batch_id = ?
          ORDER BY BATCH_USERS.roll_no ASC, BATCH_USERS.id ASC`,
         [test_id, batch_id],
@@ -166,11 +224,19 @@ function deleteBatchTestRecordsByTestId({ test_id }) {
     );
 }
 
-function addBatchTestRecord({ test_id, user_id, attendance_status, marks_obtained = null, comment = null, created_by = null }) {
+function addBatchTestRecord({
+    test_id,
+    user_id,
+    attendance_status,
+    marks_obtained = null,
+    result_status_id = null,
+    comment = null,
+    created_by = null,
+}) {
     return executeSQLQueryParameterized(
-        `INSERT INTO BATCH_TEST_RECORDS (test_id, user_id, attendance_status, marks_obtained, comment, created_by)
-         VALUES (?,?,?,?,?,?)`,
-        [test_id, user_id, attendance_status, marks_obtained, comment, created_by],
+        `INSERT INTO BATCH_TEST_RECORDS (test_id, user_id, attendance_status, marks_obtained, result_status_id, comment, created_by)
+         VALUES (?,?,?,?,?,?,?)`,
+        [test_id, user_id, attendance_status, marks_obtained, result_status_id, comment, created_by],
     )
         .then((result) => result.insertId)
         .catch((error) => logger.error(`addBatchTestRecord: ${error}`));
@@ -184,9 +250,31 @@ async function setBatchTestRecords({ test_id, records = [], created_by = null })
             user_id: record.user_id,
             attendance_status: record.attendance_status,
             marks_obtained: record.marks_obtained,
+            result_status_id: record.result_status_id,
             comment: record.comment,
             created_by,
         });
+    }
+}
+
+async function recalculateBatchTestResultStatuses({ test_id, passing_marks }) {
+    const rows = await executeSQLQueryParameterized(
+        `SELECT id, attendance_status, marks_obtained FROM BATCH_TEST_RECORDS WHERE test_id = ?`,
+        [test_id],
+    ).catch((error) => {
+        logger.error(`recalculateBatchTestResultStatuses select: ${error}`);
+        return [];
+    });
+
+    for (const row of rows || []) {
+        const result_status_id = await resolveResultStatusId({
+            attendance_status: row.attendance_status,
+            marks_obtained: row.marks_obtained,
+            passing_marks,
+        });
+        await executeSQLQueryParameterized(`UPDATE BATCH_TEST_RECORDS SET result_status_id=? WHERE id=?`, [result_status_id, row.id]).catch(
+            (error) => logger.error(`recalculateBatchTestResultStatuses update: ${error}`),
+        );
     }
 }
 
@@ -247,6 +335,9 @@ module.exports = {
     getSupervisedTestIdsByBatchAndUser,
     getBatchTestRecords,
     setBatchTestRecords,
+    getTestResultStatuses,
+    resolveResultStatusId,
+    recalculateBatchTestResultStatuses,
     getBatchTestPapers,
     upsertBatchTestPaper,
     deleteBatchTestPaper,

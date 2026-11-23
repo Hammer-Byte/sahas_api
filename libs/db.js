@@ -1264,6 +1264,7 @@ async function generateDBTables() {
             subject_id INT NOT NULL,
             test_date DATE NOT NULL,
             total_marks INT NOT NULL,
+            passing_marks INT NULL,
             start_time TIME NULL,
             end_time TIME NULL,
             comment VARCHAR(1024) NULL,
@@ -1284,19 +1285,27 @@ async function generateDBTables() {
             INDEX idx_batch_test_supervisors_test (test_id),
             INDEX idx_batch_test_supervisors_user (user_id)
         )`,
+        `CREATE TABLE IF NOT EXISTS TEST_RESULT_STATUSES (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(64) NOT NULL UNIQUE,
+            color VARCHAR(32) NOT NULL DEFAULT '#E5E7EB',
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
         `CREATE TABLE IF NOT EXISTS BATCH_TEST_RECORDS (
             id INT AUTO_INCREMENT PRIMARY KEY,
             test_id INT NOT NULL,
             user_id INT NOT NULL,
             attendance_status ENUM('PRESENT', 'ABSENT') NOT NULL DEFAULT 'ABSENT',
             marks_obtained DECIMAL(8,2) NULL,
+            result_status_id INT NULL,
             comment VARCHAR(512) NULL,
             created_by INT NULL,
             created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_batch_test_record (test_id, user_id),
             INDEX idx_batch_test_records_test (test_id),
-            INDEX idx_batch_test_records_user (user_id)
+            INDEX idx_batch_test_records_user (user_id),
+            INDEX idx_batch_test_records_result_status (result_status_id)
         )`,
         `CREATE TABLE IF NOT EXISTS BATCH_TEST_PAPERS (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1491,6 +1500,12 @@ async function generateDBTables() {
         (1, 'Notice', '#DBEAFE'),
         (2, 'Alert', '#FEF3C7'),
         (3, 'Warning', '#FEE2E2')`,
+
+        `INSERT IGNORE INTO TEST_RESULT_STATUSES (id, title, color) VALUES
+        (1, 'Pass', '#D1FAE5'),
+        (2, 'Fail', '#FEE2E2'),
+        (3, 'Absent', '#E5E7EB'),
+        (4, 'Pending', '#FEF3C7')`,
 
         `INSERT IGNORE INTO AUTHORITIES (title, description) VALUES
         ('MANAGE_OTHER_USERS', 'Manage Other User Profile'),

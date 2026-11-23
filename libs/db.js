@@ -1726,54 +1726,7 @@ async function generateDBTables() {
 
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
 
-    await ensureContentPublishRunColumns();
-    await ensureBatchUsersStudentLevelColumns();
     await backfillUserActivityTimesToIst();
-}
-
-async function ensureBatchUsersStudentLevelColumns() {
-    const alters = [
-        `ALTER TABLE BATCH_USERS ADD COLUMN level_id INT NULL`,
-        `ALTER TABLE BATCH_USERS ADD COLUMN incharge_user_id INT NULL`,
-        `ALTER TABLE BATCH_USERS ADD COLUMN is_left BOOLEAN NOT NULL DEFAULT FALSE`,
-        `ALTER TABLE BATCH_USERS ADD COLUMN left_on DATETIME NULL`,
-        `ALTER TABLE BATCH_USERS ADD INDEX idx_batch_users_level (level_id)`,
-        `ALTER TABLE BATCH_USERS ADD INDEX idx_batch_users_incharge (incharge_user_id)`,
-        `ALTER TABLE BATCH_USERS ADD INDEX idx_batch_users_is_left (is_left)`,
-    ];
-
-    for (const query of alters) {
-        try {
-            await executeSQLQueryRaw(query);
-        } catch (error) {
-            if (error?.code !== "ER_DUP_FIELDNAME" && error?.errno !== 1060 && error?.code !== "ER_DUP_KEYNAME" && error?.errno !== 1061) {
-                logger.error(`ensureBatchUsersStudentLevelColumns: ${error}`);
-            }
-        }
-    }
-}
-
-async function ensureContentPublishRunColumns() {
-    const alters = [
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN retry_of_run_id INT NULL`,
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_filename VARCHAR(512) NULL`,
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_mime VARCHAR(128) NULL`,
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN media_path VARCHAR(1024) NULL`,
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN instagram_user_id VARCHAR(128) NULL`,
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN youtube_channel_id TEXT NULL`,
-        `ALTER TABLE CONTENT_PUBLISH_RUNS ADD COLUMN targets_json LONGTEXT NULL`,
-    ];
-
-    for (const query of alters) {
-        try {
-            await executeSQLQueryRaw(query);
-        } catch (error) {
-            // Ignore duplicate-column errors on existing installations.
-            if (error?.code !== "ER_DUP_FIELDNAME" && error?.errno !== 1060) {
-                logger.error(`ensureContentPublishRunColumns: ${error}`);
-            }
-        }
-    }
 }
 
 // Utility function to execute SQL queries using promises

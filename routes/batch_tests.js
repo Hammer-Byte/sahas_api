@@ -21,13 +21,13 @@ const {
     getBatchTestDetail,
 } = require("../db/batch_tests");
 const { createNotificationsForUsers, getAlertTypeId } = require("../libs/notifications");
-const { hasRequiredAuthority } = require("../utils");
 
 const VALID_PAPER_TYPES = new Set(["PAPER", "SOLUTION", "TOPPERS"]);
 const VALID_ATTENDANCE = new Set(["PRESENT", "ABSENT"]);
 
-function canManageBatchControllers(req) {
-    return hasRequiredAuthority(req?.user?.authorities, AUTHORITIES.MANAGE_BATCH_CONTROLLER);
+function canSeeAllBatches(req) {
+    const roles = req?.user?.roles || [];
+    return roles.includes("ADMIN") || roles.includes("DEVELOPER");
 }
 
 function normalizeTime(value) {
@@ -75,7 +75,7 @@ async function requireBatchById(req, res) {
 }
 
 async function isBatchControllerAccess(req, batch_id) {
-    if (canManageBatchControllers(req)) {
+    if (canSeeAllBatches(req)) {
         return true;
     }
     return isBatchController({ batch_id, user_id: req.user?.id });

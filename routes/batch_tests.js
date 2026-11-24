@@ -22,6 +22,7 @@ const {
     upsertBatchTestPaper,
     deleteBatchTestPaper,
     getBatchTestDetail,
+    getBatchTestSubjectsByCourseId,
 } = require("../db/batch_tests");
 const { createNotificationsForUsers, getAlertTypeId } = require("../libs/notifications");
 
@@ -252,6 +253,20 @@ function registerBatchTestRoutes(router) {
                 };
             }),
         });
+    });
+
+    router.get("/:id/tests/subjects", requires_authority(AUTHORITIES.USE_PAGE_MANAGE_BATCHES), async (req, res) => {
+        const access = await requireBatchControllerOrTestSupervisor(req, res);
+        if (!access) {
+            return;
+        }
+
+        const course_id = req.query.course_id != null ? Number(req.query.course_id) : null;
+        if (!Number.isFinite(course_id) || course_id <= 0) {
+            return res.status(400).json({ error: "Missing or Invalid course_id" });
+        }
+
+        res.status(200).json(await getBatchTestSubjectsByCourseId({ course_id }));
     });
 
     router.post("/:id/tests", requires_authority(AUTHORITIES.CREATE_BATCH_TEST), async (req, res) => {

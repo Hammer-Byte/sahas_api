@@ -62,10 +62,12 @@ function getBatchEventsForUserBatchesOnDay({ batch_ids, day_start, day_end }) {
 
     const placeholders = batch_ids.map(() => "?").join(",");
     return executeSQLQueryParameterized(
-        `SELECT DISTINCT BATCH_EVENTS.*, BATCHES.id AS batch_id, BATCHES.title AS batch_title
+        `SELECT DISTINCT BATCH_EVENTS.*, BATCHES.id AS batch_id, BATCHES.title AS batch_title,
+                BATCHES.branch_id AS branch_id, BRANCHES.title AS branch_title
          FROM BATCH_EVENTS
          INNER JOIN BATCH_EVENT_BATCHES ON BATCH_EVENT_BATCHES.batch_event_id = BATCH_EVENTS.id
          INNER JOIN BATCHES ON BATCHES.id = BATCH_EVENT_BATCHES.batch_id
+         LEFT JOIN BRANCHES ON BRANCHES.id = BATCHES.branch_id
          WHERE BATCH_EVENT_BATCHES.batch_id IN (${placeholders})
            AND BATCH_EVENTS.start_at < ?
            AND BATCH_EVENTS.end_at > ?
@@ -82,10 +84,12 @@ function getBatchEventsForUserBatchesInRange({ batch_ids, range_start, range_end
 
     const placeholders = batch_ids.map(() => "?").join(",");
     return executeSQLQueryParameterized(
-        `SELECT DISTINCT BATCH_EVENTS.*, BATCHES.id AS batch_id, BATCHES.title AS batch_title
+        `SELECT DISTINCT BATCH_EVENTS.*, BATCHES.id AS batch_id, BATCHES.title AS batch_title,
+                BATCHES.branch_id AS branch_id, BRANCHES.title AS branch_title
          FROM BATCH_EVENTS
          INNER JOIN BATCH_EVENT_BATCHES ON BATCH_EVENT_BATCHES.batch_event_id = BATCH_EVENTS.id
          INNER JOIN BATCHES ON BATCHES.id = BATCH_EVENT_BATCHES.batch_id
+         LEFT JOIN BRANCHES ON BRANCHES.id = BATCHES.branch_id
          WHERE BATCH_EVENT_BATCHES.batch_id IN (${placeholders})
            AND BATCH_EVENTS.start_at < ?
            AND BATCH_EVENTS.end_at > ?

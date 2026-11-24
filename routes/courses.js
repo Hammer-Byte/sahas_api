@@ -6,6 +6,7 @@ const { getCourseSubjectsByCourseId } = require("../db/course_subjects");
 const { removeBundledCoursesByCourseId, addBundledCourse, getBundledCoursesByCourseId } = require("../db/bundled_courses");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES, PAYMENT_RESULT_API_PATH } = require("../constants");
+const { hasRequiredAuthority } = require("../utils");
 const {
     getCourseCarouselByCourseId,
     getCourseCarouselItemById,
@@ -46,7 +47,10 @@ router.post(
         next();
     },
     async (req, res) => {
-        const courseId = await addCourse(req.body);
+        const canSetActive = hasRequiredAuthority(req.user?.authorities, AUTHORITIES.UPDATE_COURSE_ACTIVE);
+        const active = canSetActive ? !!req.body.active : false;
+
+        const courseId = await addCourse({ ...req.body, active });
 
         const course = await getCourseById({ id: courseId });
 
@@ -178,8 +182,19 @@ router.patch(
     },
     async (req, res) => {
         const course = req.body;
+        const existing = await getCourseById({ id: course.id });
+        if (!existing) {
+            return res.status(400).json({ error: "Course Not Exist" });
+        }
 
-        updateCourseById(course);
+        const canSetActive = hasRequiredAuthority(req.user?.authorities, AUTHORITIES.UPDATE_COURSE_ACTIVE);
+        const active = canSetActive
+            ? course.active !== undefined && course.active !== null
+                ? !!course.active
+                : !!existing.active
+            : !!existing.active;
+
+        await updateCourseById({ ...course, active });
 
         await removeBundledCoursesByCourseId({ course_id: course.id });
         if (!!course.is_bundle && course?.bundledCourses?.length > 0) {
@@ -190,9 +205,14 @@ router.patch(
             course.bundledCourses = await getBundledCoursesByCourseId({ course_id: course?.id });
         }
 
-        await recordActivity({ user_id: req.user?.id, key: "UPDATE_COURSE", values: { course: course?.title } });
+        const updated = await getCourseById({ id: course.id });
+        if (updated?.is_bundle) {
+            updated.bundledCourses = course.bundledCourses || (await getBundledCoursesByCourseId({ course_id: course.id }));
+        }
 
-        res.status(200).json(course);
+        await recordActivity({ user_id: req.user?.id, key: "UPDATE_COURSE", values: { course: updated?.title || course?.title } });
+
+        res.status(200).json(updated);
     },
 );
 
@@ -205,6 +225,12 @@ router.get("/:id", requires_authority(AUTHORITIES.READ_COURSE), async (req, res)
     const course = await getCourseById({ id: req.params.id });
 
     if (course) {
+        const isActive = !!course.active;
+        const canReadHidden = hasRequiredAuthority(req.user?.authorities || [], AUTHORITIES.READ_HIDDEN_COURSE);
+        if (!isActive && !canReadHidden) {
+            return res.status(403).json({ error: "Course Is Not Active" });
+        }
+
         course.enrollment = await getEnrollmentByCourseIdAndUserId({ course_id: course?.id, user_id: req?.user?.id });
         course.subjects = await getCourseSubjectsByCourseId({ course_id: req.params.id });
 
@@ -238,6 +264,12 @@ router.post("/payment-gateway-payloads", async (req, res) => {
 
     if (isRequestBodyValid) {
         const course = await getCourseById({ id: validatedRequestBody.courseId });
+        if (!course) {
+            return res.status(400).json({ error: "Course Not Exist" });
+        }
+        if (!course.active) {
+            return res.status(400).json({ error: "Course Is Not Active" });
+        }
 
         const paymentGateWayPayLoad = {
             course: { ...course, validity: getDateByInterval({ days: course?.validity }) },

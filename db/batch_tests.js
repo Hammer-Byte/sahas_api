@@ -1,28 +1,52 @@
 const { executeSQLQueryParameterized } = require("../libs/db");
 const { logger } = require("sahas_utils");
 
-const BATCH_TEST_SELECT = `SELECT BATCH_TESTS.*,
-            SUBJECTS.title AS subject_title,
-            CREATOR.full_name AS created_by_full_name,
-            (SELECT COUNT(*) FROM BATCH_USERS WHERE BATCH_USERS.batch_id = BATCH_TESTS.batch_id) AS student_count,
-            (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.attendance_status = 'PRESENT') AS present_count,
-            (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.attendance_status = 'ABSENT') AS absent_count,
-            (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.marks_obtained IS NOT NULL) AS marks_entered_count
-     FROM BATCH_TESTS
-     LEFT JOIN SUBJECTS ON SUBJECTS.id = BATCH_TESTS.subject_id
-     LEFT JOIN USERS CREATOR ON CREATOR.id = BATCH_TESTS.created_by`;
-
 function getBatchTestsByBatchId({ batch_id }) {
-    return executeSQLQueryParameterized(`${BATCH_TEST_SELECT} WHERE BATCH_TESTS.batch_id = ? ORDER BY BATCH_TESTS.test_date DESC, BATCH_TESTS.id DESC`, [
-        batch_id,
-    ]).catch((error) => {
+    return executeSQLQueryParameterized(
+        `SELECT BATCH_TESTS.*,
+                SUBJECTS.title AS subject_title,
+                CREATOR.full_name AS created_by_full_name,
+                (SELECT COURSE_SUBJECTS.course_id
+                 FROM COURSE_SUBJECTS
+                 WHERE COURSE_SUBJECTS.subject_id = BATCH_TESTS.subject_id
+                 ORDER BY COURSE_SUBJECTS.id ASC
+                 LIMIT 1) AS course_id,
+                (SELECT COUNT(*) FROM BATCH_USERS WHERE BATCH_USERS.batch_id = BATCH_TESTS.batch_id) AS student_count,
+                (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.attendance_status = 'PRESENT') AS present_count,
+                (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.attendance_status = 'ABSENT') AS absent_count,
+                (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.marks_obtained IS NOT NULL) AS marks_entered_count
+         FROM BATCH_TESTS
+         LEFT JOIN SUBJECTS ON SUBJECTS.id = BATCH_TESTS.subject_id
+         LEFT JOIN USERS CREATOR ON CREATOR.id = BATCH_TESTS.created_by
+         WHERE BATCH_TESTS.batch_id = ?
+         ORDER BY BATCH_TESTS.test_date DESC, BATCH_TESTS.id DESC`,
+        [batch_id],
+    ).catch((error) => {
         logger.error(`getBatchTestsByBatchId: ${error}`);
         return [];
     });
 }
 
 function getBatchTestById({ id }) {
-    return executeSQLQueryParameterized(`${BATCH_TEST_SELECT} WHERE BATCH_TESTS.id = ?`, [id])
+    return executeSQLQueryParameterized(
+        `SELECT BATCH_TESTS.*,
+                SUBJECTS.title AS subject_title,
+                CREATOR.full_name AS created_by_full_name,
+                (SELECT COURSE_SUBJECTS.course_id
+                 FROM COURSE_SUBJECTS
+                 WHERE COURSE_SUBJECTS.subject_id = BATCH_TESTS.subject_id
+                 ORDER BY COURSE_SUBJECTS.id ASC
+                 LIMIT 1) AS course_id,
+                (SELECT COUNT(*) FROM BATCH_USERS WHERE BATCH_USERS.batch_id = BATCH_TESTS.batch_id) AS student_count,
+                (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.attendance_status = 'PRESENT') AS present_count,
+                (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.attendance_status = 'ABSENT') AS absent_count,
+                (SELECT COUNT(*) FROM BATCH_TEST_RECORDS WHERE BATCH_TEST_RECORDS.test_id = BATCH_TESTS.id AND BATCH_TEST_RECORDS.marks_obtained IS NOT NULL) AS marks_entered_count
+         FROM BATCH_TESTS
+         LEFT JOIN SUBJECTS ON SUBJECTS.id = BATCH_TESTS.subject_id
+         LEFT JOIN USERS CREATOR ON CREATOR.id = BATCH_TESTS.created_by
+         WHERE BATCH_TESTS.id = ?`,
+        [id],
+    )
         .then((result) => (result.length > 0 ? result[0] : false))
         .catch((error) => {
             logger.error(`getBatchTestById: ${error}`);
@@ -42,8 +66,7 @@ function addBatchTest({
     created_by = null,
 }) {
     return executeSQLQueryParameterized(
-        `INSERT INTO BATCH_TESTS (batch_id, subject_id, test_date, total_marks, passing_marks, start_time, end_time, comment, created_by)
-         VALUES (?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO BATCH_TESTS (batch_id, subject_id, test_date, total_marks, passing_marks, start_time, end_time, comment, created_by) VALUES (?,?,?,?,?,?,?,?,?)`,
         [batch_id, subject_id, test_date, total_marks, passing_marks, start_time, end_time, comment, created_by],
     )
         .then((result) => result.insertId)
@@ -61,9 +84,7 @@ function updateBatchTestById({
     comment = null,
 }) {
     return executeSQLQueryParameterized(
-        `UPDATE BATCH_TESTS
-         SET subject_id=?, test_date=?, total_marks=?, passing_marks=?, start_time=?, end_time=?, comment=?
-         WHERE id=?`,
+        "UPDATE BATCH_TESTS SET subject_id=?, test_date=?, total_marks=?, passing_marks=?, start_time=?, end_time=?, comment=? WHERE id=?",
         [subject_id, test_date, total_marks, passing_marks, start_time, end_time, comment, id],
     ).catch((error) => logger.error(`updateBatchTestById: ${error}`));
 }
@@ -234,8 +255,7 @@ function addBatchTestRecord({
     created_by = null,
 }) {
     return executeSQLQueryParameterized(
-        `INSERT INTO BATCH_TEST_RECORDS (test_id, user_id, attendance_status, marks_obtained, result_status_id, comment, created_by)
-         VALUES (?,?,?,?,?,?,?)`,
+        `INSERT INTO BATCH_TEST_RECORDS (test_id, user_id, attendance_status, marks_obtained, result_status_id, comment, created_by) VALUES (?,?,?,?,?,?,?)`,
         [test_id, user_id, attendance_status, marks_obtained, result_status_id, comment, created_by],
     )
         .then((result) => result.insertId)
@@ -258,10 +278,9 @@ async function setBatchTestRecords({ test_id, records = [], created_by = null })
 }
 
 async function recalculateBatchTestResultStatuses({ test_id, passing_marks }) {
-    const rows = await executeSQLQueryParameterized(
-        `SELECT id, attendance_status, marks_obtained FROM BATCH_TEST_RECORDS WHERE test_id = ?`,
-        [test_id],
-    ).catch((error) => {
+    const rows = await executeSQLQueryParameterized(`SELECT id, attendance_status, marks_obtained FROM BATCH_TEST_RECORDS WHERE test_id = ?`, [
+        test_id,
+    ]).catch((error) => {
         logger.error(`recalculateBatchTestResultStatuses select: ${error}`);
         return [];
     });
@@ -272,8 +291,8 @@ async function recalculateBatchTestResultStatuses({ test_id, passing_marks }) {
             marks_obtained: row.marks_obtained,
             passing_marks,
         });
-        await executeSQLQueryParameterized(`UPDATE BATCH_TEST_RECORDS SET result_status_id=? WHERE id=?`, [result_status_id, row.id]).catch(
-            (error) => logger.error(`recalculateBatchTestResultStatuses update: ${error}`),
+        await executeSQLQueryParameterized(`UPDATE BATCH_TEST_RECORDS SET result_status_id=? WHERE id=?`, [result_status_id, row.id]).catch((error) =>
+            logger.error(`recalculateBatchTestResultStatuses update: ${error}`),
         );
     }
 }
@@ -294,8 +313,7 @@ function getBatchTestPapers({ test_id }) {
 
 function upsertBatchTestPaper({ test_id, paper_type, file_path, created_by = null }) {
     return executeSQLQueryParameterized(
-        `INSERT INTO BATCH_TEST_PAPERS (test_id, paper_type, file_path, created_by)
-         VALUES (?,?,?,?)
+        `INSERT INTO BATCH_TEST_PAPERS (test_id, paper_type, file_path, created_by) VALUES (?,?,?,?)
          ON DUPLICATE KEY UPDATE file_path=VALUES(file_path), created_by=VALUES(created_by)`,
         [test_id, paper_type, file_path, created_by],
     ).catch((error) => logger.error(`upsertBatchTestPaper: ${error}`));
@@ -322,6 +340,24 @@ async function getBatchTestDetail({ id }) {
     return { ...test, supervisors, records, papers };
 }
 
+function getBatchTestSubjectsByCourseId({ course_id }) {
+    return executeSQLQueryParameterized(
+        `SELECT SUBJECTS.*
+         FROM SUBJECTS
+         INNER JOIN COURSE_SUBJECTS ON COURSE_SUBJECTS.subject_id = SUBJECTS.id
+         WHERE COURSE_SUBJECTS.course_id = ?
+            OR COURSE_SUBJECTS.course_id IN (
+                SELECT BUNDLED_COURSES.bundled_course_id FROM BUNDLED_COURSES WHERE BUNDLED_COURSES.course_id = ?
+            )
+         GROUP BY SUBJECTS.id
+         ORDER BY MIN(COURSE_SUBJECTS.view_index) ASC, SUBJECTS.title ASC`,
+        [course_id, course_id],
+    ).catch((error) => {
+        logger.error(`getBatchTestSubjectsByCourseId: ${error}`);
+        return [];
+    });
+}
+
 module.exports = {
     getBatchTestsByBatchId,
     getBatchTestById,
@@ -342,4 +378,5 @@ module.exports = {
     upsertBatchTestPaper,
     deleteBatchTestPaper,
     getBatchTestDetail,
+    getBatchTestSubjectsByCourseId,
 };

@@ -13,13 +13,34 @@ function getTransactionsByEnrollmentId({ enrollment_id }) {
 }
 
 //freeze
-function addEnrollmentTransaction({ enrollment_id, amount, cgst, sgst, created_by, coupon_code = null, discount = 0, note, type, image = null }) {
+function addEnrollmentTransaction({
+    enrollment_id,
+    amount,
+    cgst,
+    sgst,
+    created_by,
+    coupon_code = null,
+    discount = 0,
+    note,
+    type,
+    image = null,
+    gateway_txn_id = null,
+}) {
     return executeSQLQueryParameterized(
-        `INSERT INTO ENROLLMENT_TRANSACTIONS(enrollment_id,amount,cgst,sgst,created_by,coupon_code,discount,note,type,image) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [enrollment_id, amount, cgst, sgst, created_by, coupon_code, discount, note, type, image],
+        `INSERT INTO ENROLLMENT_TRANSACTIONS(enrollment_id,amount,cgst,sgst,created_by,coupon_code,discount,note,type,image,gateway_txn_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+        [enrollment_id, amount, cgst, sgst, created_by, coupon_code, discount, note, type, image, gateway_txn_id],
     )
         .then((result) => result.insertId)
         .catch((error) => logger.error(`addEnrollmentTransaction: ${error}`));
+}
+
+function getEnrollmentTransactionByGatewayTxnId({ gateway_txn_id }) {
+    return executeSQLQueryParameterized(`SELECT * FROM ENROLLMENT_TRANSACTIONS WHERE gateway_txn_id=? LIMIT 1`, [gateway_txn_id])
+        .then((rows) => (rows?.length ? rows[0] : null))
+        .catch((error) => {
+            logger.error(`getEnrollmentTransactionByGatewayTxnId: ${error}`);
+            return null;
+        });
 }
 
 //freeze
@@ -88,6 +109,7 @@ function updateEnrollmentTransactionVerificationById({ manually_verified, id }) 
 
 module.exports = {
     addEnrollmentTransaction,
+    getEnrollmentTransactionByGatewayTxnId,
     getTransactionsByEnrollmentId,
     getEnrollmentTransactionById,
     updateEnrollmentTransactionInvoiceById,

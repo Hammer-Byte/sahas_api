@@ -1,8 +1,9 @@
 const libExpress = require("express");
 const { validateRequestBody } = require("sahas_utils");
-const { PAYMENT_POST_ROUTE } = require("../constants");
-const { getUserByEmail, patchUserStreamSelectionTestAllowedById } = require("../db/users");
-const { createNotification } = require("../libs/notifications");
+const { PAYMENT_POST_ROUTE, PAYMENT_ORDER_PRODUCT_STREAM_SELECTION } = require("../constants");
+const { getPaymentOrderByTxnId, updatePaymentOrderPayuStatusByTxnId } = require("../db/payment_orders");
+const { fulfillPaymentOrder } = require("../libs/fulfill_payment_order");
+const { logger } = require("sahas_utils");
 
 const router = libExpress.Router();
 
@@ -11,24 +12,32 @@ router.post("/", async (req, res) => {
 
     const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
 
-    if (isRequestBodyValid) {
-        const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
 
-        if (validatedRequestBody.productinfo === "Stream Selection Test") {
-            const user = await getUserByEmail({ email: req.body.email });
-            await patchUserStreamSelectionTestAllowedById({ id: user.id, stream_selection_test_allowed: true });
-            await createNotification({
-                user_id: user.id,
-                title: "Psychometric test access granted",
-                description: "You can now take the stream selection test.",
-                created_by: user.id,
-            });
-            return res.redirect(redirectionHost.concat("stream-selection-test/enroll"));
+    const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
+    const txnid = validatedRequestBody.txnid;
+    const payuStatus = req.body.status || req.body.unmappedstatus || null;
+
+    const order = await getPaymentOrderByTxnId({ txnid });
+    if (order) {
+        if (payuStatus) {
+            await updatePaymentOrderPayuStatusByTxnId({ txnid, payu_status: String(payuStatus) });
         }
 
-        return res.redirect(redirectionHost.concat(PAYMENT_POST_ROUTE.concat(validatedRequestBody.txnid)));
+        try {
+            await fulfillPaymentOrder(txnid, { skipAuthCheck: true });
+        } catch (error) {
+            logger.error(`PayU callback fulfill failed for ${txnid}: ${error}`);
+        }
+
+        if (order.product_type === PAYMENT_ORDER_PRODUCT_STREAM_SELECTION) {
+            return res.redirect(redirectionHost.concat("stream-selection-test/enroll"));
+        }
     }
-    res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+
+    return res.redirect(redirectionHost.concat(PAYMENT_POST_ROUTE.concat(txnid)));
 });
 
 module.exports = router;

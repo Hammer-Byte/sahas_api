@@ -1,10 +1,15 @@
 const libExpress = require("express");
-const libCrypto = require("crypto");
 const { fetchExamQuestionsFromCsvUrl } = require("../libs/exam_questions_csv");
-const { PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES, PAYMENT_GATEWAY_TYPE_EXAM_SERIES, AUTHORITIES, PAYMENT_RESULT_API_PATH } = require("../constants");
+const {
+    PAYMENT_GATEWAY_PRODUCT_EXAM_SERIES,
+    PAYMENT_GATEWAY_TYPE_EXAM_SERIES,
+    AUTHORITIES,
+    PAYMENT_RESULT_API_PATH,
+    PAYMENT_ORDER_PRODUCT_EXAM_SERIES,
+} = require("../constants");
 const requires_authority = require("../middlewares/requires_authority");
-const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
 const { getConfigByKey } = require("../db/configs");
+const { persistPaymentGatewayOrder } = require("../libs/create_or_refresh_payment_order");
 const {
     getAllExamSeries,
     getExamSeriesByCourseId,
@@ -234,7 +239,6 @@ router.post("/payment-gateway-payloads", async (req, res) => {
     const cgst = Number(await getConfigByKey("payment_cgst"));
     const sgst = Number(await getConfigByKey("payment_sgst"));
     const merchantKey = process.env.PAYU_MERCHANT_KEY;
-    const merchantSalt = process.env.PAYU_MERCHANT_SALT;
     const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
     const url = process.env.PAYU_URL;
 
@@ -247,7 +251,6 @@ router.post("/payment-gateway-payloads", async (req, res) => {
             url,
         },
         transaction: {
-            id: libCrypto.randomUUID(),
             successURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
             failureURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
             amount: Number(examSeries.fees),
@@ -265,7 +268,7 @@ router.post("/payment-gateway-payloads", async (req, res) => {
     paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
 
     paymentGateWayPayLoad.transaction.preTaxAmount =
-        Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
+        Number(Number(paymentGateWayPayLoad.transaction.amount).toFixed(2)) -
         (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
 
     paymentGateWayPayLoad.transaction.amount = (
@@ -274,16 +277,14 @@ router.post("/payment-gateway-payloads", async (req, res) => {
         Number(paymentGateWayPayLoad.transaction.cgst)
     ).toFixed(2);
 
-    paymentGateWayPayLoad.transaction.hash = libCrypto
-        .createHash("sha512")
-        .update(
-            `${merchantKey}|${paymentGateWayPayLoad.transaction.id}|${paymentGateWayPayLoad.transaction.amount}|${paymentGateWayPayLoad.product}|${paymentGateWayPayLoad.user.firstName}|${paymentGateWayPayLoad.user.email}|||||||||||${merchantSalt}`,
-        )
-        .digest("hex");
+    const persisted = await persistPaymentGatewayOrder({
+        userId: req.user.id,
+        productType: PAYMENT_ORDER_PRODUCT_EXAM_SERIES,
+        productId: examSeries.id,
+        paymentGateWayPayLoad,
+    });
 
-    addPaymentGateWayPayLoad(paymentGateWayPayLoad);
-
-    res.status(201).json(paymentGateWayPayLoad);
+    res.status(201).json(persisted);
 });
 
 router.get("/exams/:examId", async (req, res) => {

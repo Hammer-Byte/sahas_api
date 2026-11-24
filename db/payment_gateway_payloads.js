@@ -1,15 +1,4 @@
-let paymentGateWayPayLoads = [];
+// Legacy in-memory payment payload store removed.
+// Use db/payment_orders.js + libs/create_or_refresh_payment_order.js instead.
 
-//freeze
-function addPaymentGateWayPayLoad(paymentGateWayPayLoad) {
-    paymentGateWayPayLoads.push(paymentGateWayPayLoad);
-}
-
-//freeze
-function getAllNonVerifiedPaymentGateWayPayLoads() {
-    const nonVerifiedPaymentGateWayPayLoads = [...paymentGateWayPayLoads];
-    paymentGateWayPayLoads = [];
-    return nonVerifiedPaymentGateWayPayLoads;
-}
-
-module.exports = { addPaymentGateWayPayLoad, getAllNonVerifiedPaymentGateWayPayLoads };
+module.exports = {};

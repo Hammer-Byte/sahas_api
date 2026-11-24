@@ -14,6 +14,7 @@ const { getCoursesByCategoryId } = require("../db/courses");
 const { getBundledCoursesByCourseId } = require("../db/bundled_courses");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
+const { hasRequiredAuthority } = require("../utils");
 
 const router = libExpress.Router();
 
@@ -106,7 +107,10 @@ router.get("/:id/courses", requires_authority(AUTHORITIES.READ_COURSE_BY_CATEGOR
         return res.status(400).json({ error: "Missing Course Category Id" });
     }
 
-    const courses = await getCoursesByCategoryId({ category_id: req.params.id });
+    const courses = await getCoursesByCategoryId({
+        category_id: req.params.id,
+        include_inactive: hasRequiredAuthority(req.user?.authorities || [], AUTHORITIES.READ_HIDDEN_COURSE),
+    });
 
     for (const course of courses) {
         if (course?.is_bundle) course.bundledCourses = await getBundledCoursesByCourseId({ course_id: course.id });

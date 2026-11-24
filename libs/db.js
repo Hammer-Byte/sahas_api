@@ -760,7 +760,7 @@ async function generateDBTables() {
             validity INT NOT NULL DEFAULT 365,
             view_index INT NOT NULL DEFAULT 0,
             is_bundle BOOLEAN NOT NULL DEFAULT FALSE,
-            active BOOLEAN NOT NULL DEFAULT TRUE,
+            active BOOLEAN NOT NULL DEFAULT FALSE,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_category_title (category_id, title)
         )`,
@@ -1645,7 +1645,9 @@ async function generateDBTables() {
         ('DELETE_COURSE','Delete Course'),
         ('UPDATE_COURSE_VIEW_INDEX','Update Course View Index'),
         ('UPDATE_COURSE','Update Course'),
+        ('UPDATE_COURSE_ACTIVE','Toggle Course Active / Hide'),
         ('READ_COURSE','View Course and enrollment & subjects '),
+        ('READ_HIDDEN_COURSE','View Hidden / Not Launched Courses'),
 
         ('UPDATE_COURSE_SUBJECT_VIEW_INDEX','Update Course Subject View Index'),
         ('CREATE_COURSE_SUBJECT','Create Course Subject'),

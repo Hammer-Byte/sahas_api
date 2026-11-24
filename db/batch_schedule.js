@@ -39,9 +39,11 @@ function getBatchSchedulesByBatchIdsAndWeekday({ batch_ids, weekday }) {
     .then(() =>
       executeSQLQueryParameterized(
         `SELECT BATCH_SCHEDULE.*, BATCHES.title AS batch_title, BATCHES.start_date, BATCHES.end_date, BATCHES.active,
+                        BATCHES.branch_id AS branch_id, BRANCHES.title AS branch_title,
                         USERS.full_name AS event_handler_name
                  FROM BATCH_SCHEDULE
                  INNER JOIN BATCHES ON BATCHES.id = BATCH_SCHEDULE.batch_id
+                 LEFT JOIN BRANCHES ON BRANCHES.id = BATCHES.branch_id
                  LEFT JOIN USERS ON USERS.id = BATCH_SCHEDULE.event_handler
                  WHERE BATCH_SCHEDULE.batch_id IN (${placeholders})
                    AND BATCH_SCHEDULE.weekday = ?
@@ -61,9 +63,11 @@ function getBatchSchedulesByEventHandlerAndWeekday({ user_id, weekday }) {
     .then(() =>
       executeSQLQueryParameterized(
         `SELECT BATCH_SCHEDULE.*, BATCHES.title AS batch_title, BATCHES.start_date, BATCHES.end_date, BATCHES.active,
+                        BATCHES.branch_id AS branch_id, BRANCHES.title AS branch_title,
                         USERS.full_name AS event_handler_name
                  FROM BATCH_SCHEDULE
                  INNER JOIN BATCHES ON BATCHES.id = BATCH_SCHEDULE.batch_id
+                 LEFT JOIN BRANCHES ON BRANCHES.id = BATCHES.branch_id
                  LEFT JOIN USERS ON USERS.id = BATCH_SCHEDULE.event_handler
                  WHERE BATCH_SCHEDULE.event_handler = ?
                    AND BATCH_SCHEDULE.weekday = ?
@@ -86,9 +90,11 @@ function getBatchSchedulesByBatchIds({ batch_ids }) {
     .then(() =>
       executeSQLQueryParameterized(
         `SELECT BATCH_SCHEDULE.*, BATCHES.title AS batch_title, BATCHES.start_date, BATCHES.end_date, BATCHES.active,
+                        BATCHES.branch_id AS branch_id, BRANCHES.title AS branch_title,
                         USERS.full_name AS event_handler_name
                  FROM BATCH_SCHEDULE
                  INNER JOIN BATCHES ON BATCHES.id = BATCH_SCHEDULE.batch_id
+                 LEFT JOIN BRANCHES ON BRANCHES.id = BATCHES.branch_id
                  LEFT JOIN USERS ON USERS.id = BATCH_SCHEDULE.event_handler
                  WHERE BATCH_SCHEDULE.batch_id IN (${placeholders})
                    AND BATCH_SCHEDULE.start_time IS NOT NULL
@@ -107,9 +113,11 @@ function getBatchSchedulesByEventHandler({ user_id }) {
     .then(() =>
       executeSQLQueryParameterized(
         `SELECT BATCH_SCHEDULE.*, BATCHES.title AS batch_title, BATCHES.start_date, BATCHES.end_date, BATCHES.active,
+                        BATCHES.branch_id AS branch_id, BRANCHES.title AS branch_title,
                         USERS.full_name AS event_handler_name
                  FROM BATCH_SCHEDULE
                  INNER JOIN BATCHES ON BATCHES.id = BATCH_SCHEDULE.batch_id
+                 LEFT JOIN BRANCHES ON BRANCHES.id = BATCHES.branch_id
                  LEFT JOIN USERS ON USERS.id = BATCH_SCHEDULE.event_handler
                  WHERE BATCH_SCHEDULE.event_handler = ?
                    AND BATCH_SCHEDULE.start_time IS NOT NULL

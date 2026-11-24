@@ -162,6 +162,8 @@ function pushScheduleEvent(events, seen, schedule, dateStr) {
         cancelled: false,
         batch_id: schedule.batch_id,
         batch_title: schedule.batch_title,
+        branch_id: schedule.branch_id || null,
+        branch_title: schedule.branch_title || null,
         subject: schedule.subject || null,
         event_handler: schedule.event_handler || null,
         event_handler_name: schedule.event_handler_name || null,
@@ -647,6 +649,8 @@ router.get("/", async (req, res) => {
                 cancelled: !!batchEvent.cancelled,
                 batch_id: batchEvent.batch_id,
                 batch_title: batchEvent.batch_title,
+                branch_id: batchEvent.branch_id || null,
+                branch_title: batchEvent.branch_title || null,
                 editable: false,
             });
         }
@@ -676,6 +680,8 @@ router.get("/", async (req, res) => {
             cancelled: false,
             batch_id: null,
             batch_title: null,
+            branch_id: null,
+            branch_title: null,
             editable: true,
             source_id: userEvent.id,
         });

@@ -10,18 +10,32 @@ function getAllCourses() {
 }
 
 //freeze
-function getCoursesByCategoryId({ category_id }) {
-    return executeSQLQueryParameterized(`SELECT * FROM COURSES WHERE category_id=? ORDER BY view_index ASC ,updated_at DESC`, [category_id]).catch((error) => {
+function getCoursesByCategoryId({ category_id, include_inactive = false }) {
+    const activeClause = include_inactive ? "" : " AND active = TRUE";
+    return executeSQLQueryParameterized(
+        `SELECT * FROM COURSES WHERE category_id=?${activeClause} ORDER BY view_index ASC ,updated_at DESC`,
+        [category_id],
+    ).catch((error) => {
         logger.error(`getCoursesByCategoryId: ${error}`);
         return [];
     });
 }
 
 //freeze
-function addCourse({ category_id, title, description, image, fees, whatsapp_group = null, view_index, is_bundle = false }) {
+function addCourse({
+    category_id,
+    title,
+    description,
+    image,
+    fees,
+    whatsapp_group = null,
+    view_index,
+    is_bundle = false,
+    active = false,
+}) {
     return executeSQLQueryParameterized(
-        `INSERT INTO COURSES(category_id, title, description, image, fees, whatsapp_group,view_index,is_bundle) VALUES(?,?,?,?,?,?,?,?)`,
-        [category_id, title, description, image, fees, whatsapp_group, view_index, is_bundle]
+        `INSERT INTO COURSES(category_id, title, description, image, fees, whatsapp_group, view_index, is_bundle, active) VALUES(?,?,?,?,?,?,?,?,?)`,
+        [category_id, title, description, image, fees, whatsapp_group, view_index, is_bundle, !!active],
     )
         .then((result) => result.insertId)
         .catch((error) => {
@@ -55,21 +69,16 @@ function deleteCourseById({ id }) {
 //freeze
 function updateCourseViewIndexById({ id, view_index }) {
     return executeSQLQueryParameterized("UPDATE COURSES SET view_index=? WHERE id=?", [view_index, id]).catch((error) =>
-        logger.error(`updateCourseViewIndexById: ${error}`)
+        logger.error(`updateCourseViewIndexById: ${error}`),
     );
 }
 
 //freeze
-function updateCourseById({ id, title, description, image, fees, whatsapp_group = null, is_bundle = false }) {
-    return executeSQLQueryParameterized("UPDATE COURSES SET title=?,description=?,image=?,fees=?,whatsapp_group=?,is_bundle=? WHERE id=?", [
-        title,
-        description,
-        image,
-        fees,
-        whatsapp_group,
-        is_bundle,
-        id,
-    ]).catch((error) => logger.error(`updateCourse: ${error}`));
+function updateCourseById({ id, title, description, image, fees, whatsapp_group = null, is_bundle = false, active = false }) {
+    return executeSQLQueryParameterized(
+        "UPDATE COURSES SET title=?,description=?,image=?,fees=?,whatsapp_group=?,is_bundle=?,active=? WHERE id=?",
+        [title, description, image, fees, whatsapp_group, is_bundle, !!active, id],
+    ).catch((error) => logger.error(`updateCourse: ${error}`));
 }
 
 module.exports = {

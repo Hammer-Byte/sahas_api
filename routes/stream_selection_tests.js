@@ -7,12 +7,14 @@ const { logger, requestService } = require("sahas_utils");
 const { patchUserStreamSelectionTestAllowedById } = require("../db/users");
 const parseGuestUser = require("../middlewares/parse_guest_user");
 const { getFormattedDate } = require("../utils");
-const { PAYMENT_RESULT_API_PATH } = require("../constants");
+const {
+    PAYMENT_RESULT_API_PATH,
+    PAYMENT_GATEWAY_PRODUCT_STREAM_SELECTION,
+    PAYMENT_ORDER_PRODUCT_STREAM_SELECTION,
+} = require("../constants");
 const { getConfigByKey } = require("../db/configs");
 const { createNotification } = require("../libs/notifications");
-
-const libCrypto = require("crypto");
-const { addPaymentGateWayPayLoad } = require("../db/payment_gateway_payloads");
+const { persistPaymentGatewayOrder } = require("../libs/create_or_refresh_payment_order");
 
 
 //tested
@@ -244,11 +246,9 @@ router.post("/", parseGuestUser, async (req, res) => {
 
 
 router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
-
     const cgst = Number(await getConfigByKey("payment_cgst"));
     const sgst = Number(await getConfigByKey("payment_sgst"));
     const merchantKey = process.env.PAYU_MERCHANT_KEY;
-    const merchantSalt = process.env.PAYU_MERCHANT_SALT;
     const redirectionHost = process.env.PAYU_REDIRECTION_HOST;
     const url = process.env.PAYU_URL;
 
@@ -260,7 +260,6 @@ router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
             url,
         },
         transaction: {
-            id: libCrypto.randomUUID(),
             successURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
             failureURL: redirectionHost.concat(PAYMENT_RESULT_API_PATH),
             amount: fees,
@@ -271,41 +270,30 @@ router.post("/payment-gateway-payloads", parseGuestUser, async (req, res) => {
             lastName: req.user.full_name?.split(" ")?.[1] || "NA",
             phone: req.user.phone,
         },
-        product: "Stream Selection Test",
+        product: PAYMENT_GATEWAY_PRODUCT_STREAM_SELECTION,
     };
 
-    //add cgst and sgst
     paymentGateWayPayLoad.transaction.cgst = ((paymentGateWayPayLoad.transaction.amount * cgst) / 100).toFixed(2);
     paymentGateWayPayLoad.transaction.sgst = ((paymentGateWayPayLoad.transaction.amount * sgst) / 100).toFixed(2);
 
-    //pre tax amount
     paymentGateWayPayLoad.transaction.preTaxAmount =
-        Number(paymentGateWayPayLoad.transaction.amount.toFixed(2)) -
+        Number(Number(paymentGateWayPayLoad.transaction.amount).toFixed(2)) -
         (Number(paymentGateWayPayLoad.transaction.cgst) + Number(paymentGateWayPayLoad.transaction.sgst));
 
-    //final amount
     paymentGateWayPayLoad.transaction.amount = (
         Number(paymentGateWayPayLoad.transaction.preTaxAmount) +
         Number(paymentGateWayPayLoad.transaction.sgst) +
         Number(paymentGateWayPayLoad.transaction.cgst)
     ).toFixed(2);
 
-    //hash generation
-    paymentGateWayPayLoad.transaction.hash = libCrypto
-        .createHash("sha512")
-        .update(
-            `${merchantKey}|${paymentGateWayPayLoad.transaction.id}|${paymentGateWayPayLoad.transaction.amount}|${paymentGateWayPayLoad.product}|${paymentGateWayPayLoad.user.firstName}|${paymentGateWayPayLoad.user.email}|||||||||||${merchantSalt}`,
-        )
-        .digest("hex");
+    const persisted = await persistPaymentGatewayOrder({
+        userId: req.user.id,
+        productType: PAYMENT_ORDER_PRODUCT_STREAM_SELECTION,
+        productId: null,
+        paymentGateWayPayLoad,
+    });
 
-
-    //add a post payment route to the payment gate way payload
-
-    //add transcation in to table
-    addPaymentGateWayPayLoad(paymentGateWayPayLoad);
-
-    res.status(201).json(paymentGateWayPayLoad);
-
+    res.status(201).json(persisted);
 });
 
 

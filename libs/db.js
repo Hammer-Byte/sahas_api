@@ -737,9 +737,40 @@ async function generateDBTables() {
             type VARCHAR(16) NOT NULL,
             image VARCHAR(128) NULL UNIQUE,
             invoice VARCHAR(128) NULL,
+            gateway_txn_id VARCHAR(64) NULL,
             manually_verified BOOLEAN NOT NULL DEFAULT FALSE,
             created_by INT NULL,
-            created_on DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_gateway_txn_id (gateway_txn_id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS PAYMENT_ORDERS (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            txnid VARCHAR(64) NOT NULL,
+            user_id INT NOT NULL,
+            product_type VARCHAR(32) NOT NULL,
+            product_id INT NULL,
+            product_title VARCHAR(256) NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            pre_tax_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            cgst DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            sgst DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            discount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            used_wallet_balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            coupon_code VARCHAR(16) NULL,
+            commission DECIMAL(10, 2) NULL,
+            distributor_user_id INT NULL,
+            hash VARCHAR(128) NULL,
+            status VARCHAR(16) NOT NULL DEFAULT 'pending',
+            payu_status VARCHAR(64) NULL,
+            enrollment_id INT NULL,
+            enrollment_transaction_id INT NULL,
+            snapshot JSON NULL,
+            fulfilled_at DATETIME NULL,
+            created_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_payment_order_txnid (txnid),
+            INDEX idx_payment_orders_user_product_status (user_id, product_type, product_id, status),
+            INDEX idx_payment_orders_status_created (status, created_on)
         )`,
         `CREATE TABLE IF NOT EXISTS COURSE_CATEGORIES(
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1743,7 +1774,25 @@ async function generateDBTables() {
 
     await Promise.all(createUserTableQuery.map((query) => executeSQLQueryRaw(query)));
 
+    await ensureEnrollmentTransactionGatewayTxnIdColumn();
     await backfillUserActivityTimesToIst();
+}
+
+async function ensureEnrollmentTransactionGatewayTxnIdColumn() {
+    try {
+        await executeSQLQueryRaw(`ALTER TABLE ENROLLMENT_TRANSACTIONS ADD COLUMN gateway_txn_id VARCHAR(64) NULL`);
+    } catch (error) {
+        if (!String(error?.message || error).includes("Duplicate column")) {
+            logger.error(`ensureEnrollmentTransactionGatewayTxnIdColumn add column: ${error}`);
+        }
+    }
+    try {
+        await executeSQLQueryRaw(`ALTER TABLE ENROLLMENT_TRANSACTIONS ADD UNIQUE KEY unique_gateway_txn_id (gateway_txn_id)`);
+    } catch (error) {
+        if (!String(error?.message || error).includes("Duplicate")) {
+            logger.error(`ensureEnrollmentTransactionGatewayTxnIdColumn add unique: ${error}`);
+        }
+    }
 }
 
 // Utility function to execute SQL queries using promises
@@ -1796,6 +1845,55 @@ function executeSQLQueryParameterized(query, parameters) {
     });
 }
 
+function withTransaction(work) {
+    return new Promise((resolve, reject) => {
+        dbConnectionPool.getConnection((error, dbConnection) => {
+            if (error) {
+                logger.error(`Database Connection Failed ${error.message}`);
+                reject(error);
+                return;
+            }
+
+            dbConnection.beginTransaction(async (beginError) => {
+                if (beginError) {
+                    dbConnection.release();
+                    reject(beginError);
+                    return;
+                }
+
+                const execute = (query, parameters) => {
+                    const values = (parameters || []).map((value) => (value === undefined ? null : value));
+                    return new Promise((execResolve, execReject) => {
+                        dbConnection.execute(query, values, (execError, result) => {
+                            logger.info(`TX Executing ${query} [${values}]`);
+                            if (execError) {
+                                logger.error("TX FAILED - ", query, execError);
+                                execReject(execError);
+                            } else {
+                                execResolve(result);
+                            }
+                        });
+                    });
+                };
+
+                try {
+                    const result = await work(execute);
+                    dbConnection.commit((commitError) => {
+                        dbConnection.release();
+                        if (commitError) reject(commitError);
+                        else resolve(result);
+                    });
+                } catch (workError) {
+                    dbConnection.rollback(() => {
+                        dbConnection.release();
+                        reject(workError);
+                    });
+                }
+            });
+        });
+    });
+}
+
 async function backfillUserActivityTimesToIst() {
     try {
         const existing = await executeSQLQueryParameterized(`SELECT config_value FROM CONFIGS WHERE config_key = ?`, [
@@ -1823,7 +1921,7 @@ async function backfillUserActivityTimesToIst() {
 }
 
 // Export the pool to use in other files
-module.exports = { generateDBTables, executeSQLQueryRaw, executeSQLQueryParameterized };
+module.exports = { generateDBTables, executeSQLQueryRaw, executeSQLQueryParameterized, withTransaction };
 
 
 

@@ -979,7 +979,7 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS GLOBAL_NOTES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
-            note VARCHAR(256) NOT NULL,
+            note TEXT NOT NULL,
             type VARCHAR(255) DEFAULT NULL,
             attachment VARCHAR(512) DEFAULT NULL,
             created_by INT NOT NULL,
@@ -999,7 +999,7 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS COUNSELING_NOTES (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
-            note VARCHAR(256) NOT NULL,
+            note TEXT NOT NULL,
             type VARCHAR(255) DEFAULT NULL,
             attachment VARCHAR(512) DEFAULT NULL,
             created_by INT NOT NULL,
@@ -1273,7 +1273,7 @@ async function generateDBTables() {
         `CREATE TABLE IF NOT EXISTS BATCH_GLOBAL_NOTE_HISTORY (
             id INT AUTO_INCREMENT PRIMARY KEY,
             batch_id INT NOT NULL,
-            note VARCHAR(256) NOT NULL,
+            note TEXT NOT NULL,
             type VARCHAR(255) DEFAULT NULL,
             attachment VARCHAR(512) DEFAULT NULL,
             created_by INT NULL,

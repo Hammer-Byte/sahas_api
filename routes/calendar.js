@@ -709,6 +709,95 @@ function validateUserEventBody(validatedRequestBody) {
     return { title, start_at, end_at };
 }
 
+function listDateForRangeEvent(startAt, fromStr) {
+    const startDate = wallClockDatePart(startAt);
+    if (!startDate) return fromStr;
+    return startDate < fromStr ? fromStr : startDate;
+}
+
+router.get("/events", async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const fromStr = typeof req.query.from === "string" ? req.query.from.trim() : "";
+    const toStr = typeof req.query.to === "string" ? req.query.to.trim() : "";
+    if (!isCalendarDate(fromStr) || !isCalendarDate(toStr)) {
+        return res.status(400).json({ error: "Missing or Invalid from/to (YYYY-MM-DD)" });
+    }
+
+    const dayCount = daysBetweenInclusive(fromStr, toStr);
+    if (dayCount < 1) {
+        return res.status(400).json({ error: "Invalid range: to must be on or after from" });
+    }
+    if (dayCount > MAX_SUMMARY_DAYS) {
+        return res.status(400).json({ error: `Range too large (max ${MAX_SUMMARY_DAYS} days)` });
+    }
+
+    const range_start = `${fromStr} 00:00:00`;
+    const range_end = `${toStr} 23:59:59`;
+
+    const memberships = await getBatchesByUserId({ user_id: req.user.id });
+    const activeBatches = memberships.filter((batch) => batch.active !== 0 && batch.active !== false);
+    const batch_ids = activeBatches.map((batch) => batch.id);
+
+    const [batchEvents, userEvents] = await Promise.all([
+        batch_ids.length
+            ? getBatchEventsForUserBatchesInRange({ batch_ids, range_start, range_end })
+            : Promise.resolve([]),
+        getUserEventsByUserIdInRange({ user_id: req.user.id, range_start, range_end }),
+    ]);
+
+    const events = [];
+    const seenBatchEvents = new Set();
+    for (const batchEvent of batchEvents) {
+        if (seenBatchEvents.has(batchEvent.id)) continue;
+        seenBatchEvents.add(batchEvent.id);
+        events.push({
+            id: `batch_event:${batchEvent.id}`,
+            type: "BATCH_EVENT",
+            title: batchEvent.title,
+            description: batchEvent.description,
+            date: listDateForRangeEvent(batchEvent.start_at, fromStr),
+            start_at: toWallClockDateTime(batchEvent.start_at),
+            end_at: toWallClockDateTime(batchEvent.end_at),
+            cancelled: !!batchEvent.cancelled,
+            batch_id: batchEvent.batch_id,
+            batch_title: batchEvent.batch_title,
+            branch_id: batchEvent.branch_id || null,
+            branch_title: batchEvent.branch_title || null,
+            editable: false,
+        });
+    }
+
+    for (const userEvent of userEvents) {
+        events.push({
+            id: `user_event:${userEvent.id}`,
+            type: "USER_EVENT",
+            title: userEvent.title,
+            description: userEvent.description,
+            date: listDateForRangeEvent(userEvent.start_at, fromStr),
+            start_at: toWallClockDateTime(userEvent.start_at),
+            end_at: toWallClockDateTime(userEvent.end_at),
+            cancelled: false,
+            batch_id: null,
+            batch_title: null,
+            branch_id: null,
+            branch_title: null,
+            editable: true,
+            source_id: userEvent.id,
+        });
+    }
+
+    events.sort((a, b) => {
+        const byDate = String(a.date).localeCompare(String(b.date));
+        if (byDate !== 0) return byDate;
+        return String(a.start_at).localeCompare(String(b.start_at));
+    });
+
+    res.status(200).json(events);
+});
+
 router.post("/events", async (req, res) => {
     if (!req.user?.id) {
         return res.status(401).json({ error: "Authentication Required" });

@@ -323,6 +323,15 @@ function patchUserStreamSelectionTestAllowedById({ id, stream_selection_test_all
     );
 }
 
+function patchUserEnrollmentProfileById({ id, address, guardian_phone = null, dob = null }) {
+    return executeSQLQueryParameterized(`UPDATE USERS SET address=?, guardian_phone=?, dob=? WHERE id = ?`, [
+        address,
+        guardian_phone || null,
+        dob || null,
+        id,
+    ]).catch((error) => logger.error(`patchUserEnrollmentProfileById: ${error}`));
+}
+
 //freeze
 function addUser({ email, full_name, phone, guardian_phone = null, image = null, address, branch_id = null }) {
     return executeSQLQueryParameterized(
@@ -370,6 +379,7 @@ module.exports = {
     patchUserPhoneById,
     patchUserEmailById,
     patchUserStreamSelectionTestAllowedById,
+    patchUserEnrollmentProfileById,
     isUserTaskAssignable,
     isUserTestPaperAssignable,
 };

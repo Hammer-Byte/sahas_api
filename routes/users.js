@@ -12,6 +12,7 @@ const {
     addGuestUser,
     getUserByEmail,
     patchUserStreamSelectionTestAllowedById,
+    patchUserEnrollmentProfileById,
 } = require("../db/users");
 const { getInquiriesByUserId } = require("../db/inquiries");
 const { getNotificationsByUserId, markAllSeenByUserId } = require("../db/notifications");
@@ -42,7 +43,7 @@ const { recordActivity } = require("../libs/activities");
 const { getUserActivitiesByUserIdBetween } = require("../db/user_activities");
 const requires_authority = require("../middlewares/requires_authority");
 const { AUTHORITIES } = require("../constants");
-const { addUserHistory, getUserHistoryById, updateUserHistoryById } = require("../db/user_history");
+const { addUserHistory, getUserHistoryById, updateUserHistoryById, upsertUserEnrollmentHistory } = require("../db/user_history");
 const {
     getCareerInterestByUserId,
     upsertCareerInterestByUserId,
@@ -292,6 +293,72 @@ router.get("/stream-selection-test-results", async (req, res) => {
         streamSelectionTest.answers = await getStreamSelectionTestAnswersByStreamSelectionTestId({ stream_selection_test_id: streamSelectionTest?.id });
     }
     res.status(200).json(streamSelectionTests);
+});
+
+router.get("/enrollment-profile", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const user = await getUserById({ id: req.user.id });
+    if (!user) {
+        return res.status(400).json({ error: "User Not Exist" });
+    }
+
+    user.history = await getUserHistoryById({ user_id: user.id });
+    return res.status(200).json(user);
+});
+
+router.patch("/enrollment-profile", requires_authority(AUTHORITIES.UPDATE_USER), async (req, res) => {
+    if (!req.user?.id) {
+        return res.status(401).json({ error: "Authentication Required" });
+    }
+
+    const requiredBodyFields = ["address", "guardian_phone", "dob", "institute", "course"];
+    const { isRequestBodyValid, missingRequestBodyFields, validatedRequestBody } = validateRequestBody(req.body, requiredBodyFields);
+    if (!isRequestBodyValid) {
+        return res.status(400).json({ error: `Missing ${missingRequestBodyFields?.join(",")}` });
+    }
+
+    const address = String(validatedRequestBody.address || "").trim();
+    if (!address) {
+        return res.status(400).json({ error: "Address is required" });
+    }
+
+    const { phone: guardian_phone, error: phoneError } = normalizeIndianPhone(validatedRequestBody.guardian_phone);
+    if (phoneError) {
+        return res.status(400).json({ error: phoneError });
+    }
+
+    const dob = String(validatedRequestBody.dob || "").trim();
+    if (!dob) {
+        return res.status(400).json({ error: "Date of Birth is required" });
+    }
+
+    const institute = String(validatedRequestBody.institute || "").trim();
+    const course = String(validatedRequestBody.course || "").trim();
+    if (!institute || !course) {
+        return res.status(400).json({ error: "Last School and Last Coaching Class are required" });
+    }
+
+    await patchUserEnrollmentProfileById({
+        id: req.user.id,
+        address,
+        guardian_phone,
+        dob,
+    });
+
+    await upsertUserEnrollmentHistory({
+        user_id: req.user.id,
+        institute,
+        course,
+    });
+
+    await recordActivity({ user_id: req.user.id, key: "UPDATE_ENROLLMENT_PROFILE" });
+
+    const user = await getUserById({ id: req.user.id });
+    user.history = await getUserHistoryById({ user_id: user.id });
+    return res.status(200).json(user);
 });
 
 //tested

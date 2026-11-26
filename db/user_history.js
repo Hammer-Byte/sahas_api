@@ -25,8 +25,24 @@ function updateUserHistoryById({ id, institute = null, course = null, pnr_gr_num
     ]).catch((error) => logger.error(`updateUserHistory: ${error}`));
 }
 
+async function upsertUserEnrollmentHistory({ user_id, institute = null, course = null }) {
+    const existing = await getUserHistoryById({ user_id });
+    if (existing?.id) {
+        return executeSQLQueryParameterized(`UPDATE USER_HISTORY SET institute=?, course=? WHERE id=?`, [institute, course, existing.id]).catch(
+            (error) => logger.error(`upsertUserEnrollmentHistory update: ${error}`),
+        );
+    }
+
+    return executeSQLQueryParameterized(`INSERT INTO USER_HISTORY (user_id, institute, course) VALUES (?,?,?)`, [
+        user_id,
+        institute,
+        course,
+    ]).catch((error) => logger.error(`upsertUserEnrollmentHistory insert: ${error}`));
+}
+
 module.exports = {
     addUserHistory,
     getUserHistoryById,
     updateUserHistoryById,
+    upsertUserEnrollmentHistory,
 };
